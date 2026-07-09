@@ -14,6 +14,11 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: 'src/preload/index.ts',
+        output: {
+          format: 'cjs',
+          entryFileNames: '[name].cjs',
+          chunkFileNames: '[name]-[hash].cjs',
+        },
       },
     },
   },
