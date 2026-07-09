@@ -168,7 +168,7 @@ export class ReadingActionService {
       fullText: document.fullText,
       selectedText: thread.selectedText,
       nearbyText,
-      actionInstruction: `请回答读者对这个阅读 tab 的追问：${input.question}`,
+      actionInstruction: '请基于当前阅读上下文，回答读者在这个阅读 tab 中的追问。',
       threadMessages: messages.map((message) => ({
         role: message.role,
         content: message.content,

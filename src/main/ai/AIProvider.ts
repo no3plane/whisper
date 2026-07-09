@@ -19,7 +19,7 @@ export class AIProvider {
       purpose: options?.purpose,
       settings: redactSettings(settings),
       system: input.system,
-      user: input.user,
+      messages: input.messages,
     });
 
     try {
@@ -31,7 +31,7 @@ export class AIProvider {
       const result = await generateText({
         model: openai(settings.model),
         system: input.system,
-        prompt: input.user,
+        messages: input.messages,
       });
 
       const output = {
@@ -65,7 +65,7 @@ export class AIProvider {
     logger.info('ai.stream.start', {
       settings: redactSettings(settings),
       system: input.system,
-      user: input.user,
+      messages: input.messages,
     });
 
     try {
@@ -77,7 +77,7 @@ export class AIProvider {
       const result = streamText({
         model: openai(settings.model),
         system: input.system,
-        prompt: input.user,
+        messages: input.messages,
       });
 
       let text = '';
@@ -116,7 +116,7 @@ export class AIProvider {
       settings,
       {
         system: '你只需要回答 OK。',
-        user: '请回答 OK。',
+        messages: [{ role: 'user', content: '请回答 OK。' }],
       },
       { purpose: 'testConnection' },
     );

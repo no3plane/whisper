@@ -15,9 +15,9 @@ describe('ContextAssembler', () => {
     });
 
     expect(result.system).toContain('尽量让全书在场');
-    expect(result.user).toContain('第一章全文\n\n第二章全文');
-    expect(result.user).toContain('请白话解释这段。');
-    expect(result.user).toContain('之前的问题');
+    expect(result.system).toContain('请白话解释这段。');
+    expect(result.messages[0]?.content).toContain('第一章全文\n\n第二章全文');
+    expect(result.messages).toContainEqual({ role: 'user', content: '之前的问题' });
   });
 
   it('非 full_book 策略在纵向切片中明确报错', () => {
