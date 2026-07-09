@@ -18,8 +18,8 @@ export class AIProvider {
     logger.info('ai.generate.start', {
       purpose: options?.purpose,
       settings: redactSettings(settings),
-      system: input.system,
-      messages: input.messages,
+      systemLength: input.system.length,
+      messageCount: input.messages.length,
     });
 
     try {
@@ -44,7 +44,7 @@ export class AIProvider {
         model: settings.model,
         durationMs: Date.now() - startedAt,
         tokenUsage: output.usage,
-        text: output.text,
+        textLength: output.text.length,
       });
 
       return output;
@@ -64,8 +64,8 @@ export class AIProvider {
     const startedAt = Date.now();
     logger.info('ai.stream.start', {
       settings: redactSettings(settings),
-      system: input.system,
-      messages: input.messages,
+      systemLength: input.system.length,
+      messageCount: input.messages.length,
     });
 
     try {
@@ -96,7 +96,7 @@ export class AIProvider {
         model: settings.model,
         durationMs: Date.now() - startedAt,
         tokenUsage: output.usage,
-        text: output.text,
+        textLength: output.text.length,
       });
 
       return output;
