@@ -1,5 +1,44 @@
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
+import { ipcChannels } from '../shared/ipc';
+import type {
+  AISettings,
+  Book,
+  BookDocument,
+  FollowUpInput,
+  ImportBookInput,
+  ReadingThread,
+  RunReadingActionInput,
+  ThreadMessage,
+} from '../shared/types';
 
-contextBridge.exposeInMainWorld('whisper', {
-  version: '0.1.0',
-});
+const whisper = {
+  settings: {
+    get: () => ipcRenderer.invoke(ipcChannels.settingsGet) as Promise<AISettings | null>,
+    save: (settings: AISettings) => ipcRenderer.invoke(ipcChannels.settingsSave, settings) as Promise<void>,
+    testConnection: (settings: AISettings) =>
+      ipcRenderer.invoke(ipcChannels.settingsTestConnection, settings) as Promise<{ ok: boolean; message: string }>,
+  },
+  books: {
+    importMarkdown: (input: ImportBookInput) =>
+      ipcRenderer.invoke(ipcChannels.booksImportMarkdown, input) as Promise<Book>,
+    list: () => ipcRenderer.invoke(ipcChannels.booksList) as Promise<Book[]>,
+    open: (bookId: string) => ipcRenderer.invoke(ipcChannels.booksOpen, bookId) as Promise<BookDocument>,
+  },
+  ai: {
+    runReadingAction: (input: RunReadingActionInput) =>
+      ipcRenderer.invoke(ipcChannels.aiRunReadingAction, input) as Promise<{
+        thread: ReadingThread;
+        messages: ThreadMessage[];
+      }>,
+    followUp: (input: FollowUpInput) =>
+      ipcRenderer.invoke(ipcChannels.aiFollowUp, input) as Promise<{ thread: ReadingThread; messages: ThreadMessage[] }>,
+  },
+  threads: {
+    listByBook: (bookId: string) =>
+      ipcRenderer.invoke(ipcChannels.threadsListByBook, bookId) as Promise<ReadingThread[]>,
+  },
+};
+
+contextBridge.exposeInMainWorld('whisper', whisper);
+
+export type WhisperApi = typeof whisper;
