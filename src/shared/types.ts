@@ -16,6 +16,7 @@ export interface Book {
   preprocessStatus: PreprocessStatus;
   tokenEstimate: number;
   defaultContextStrategy: ContextStrategy;
+  activeThreadId: string | null;
 }
 
 export interface Chapter {
@@ -120,3 +121,13 @@ export type AiStreamEvent =
       threadId: string;
       message: string;
     };
+
+export interface BookThreadsPayload {
+  threads: Array<{ thread: ReadingThread; messages: ThreadMessage[] }>;
+  activeThreadId: string | null;
+}
+
+export interface SetActiveThreadInput {
+  bookId: string;
+  threadId: string | null;
+}

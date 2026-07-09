@@ -20,8 +20,50 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const [streamError, setStreamError] = useState('');
 
   useEffect(() => {
-    void whisper.books.open(bookId).then(setDocument);
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const doc = await whisper.books.open(bookId);
+        if (cancelled) return;
+        setDocument(doc);
+        setError('');
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : String(err));
+        return;
+      }
+
+      try {
+        const history = await whisper.threads.listWithMessagesByBook(bookId);
+        if (cancelled) return;
+        setThreads(history.threads);
+        setActiveThreadId(history.activeThreadId);
+      } catch (err) {
+        if (cancelled) return;
+        setThreads([]);
+        setActiveThreadId(null);
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [bookId]);
+
+  async function persistActiveThread(threadId: string | null) {
+    setActiveThreadId(threadId);
+    try {
+      await whisper.books.setActiveThread({ bookId, threadId });
+    } catch {
+      // 选中态写回失败不打断阅读
+    }
+  }
+
+  function handleSelectThread(threadId: string | null) {
+    void persistActiveThread(threadId);
+  }
 
   useEffect(() => {
     return whisper.ai.onStream((event: AiStreamEvent) => {
@@ -29,6 +71,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         setStreamError('');
         setThreads((current) => upsertThread(current, event.thread, event.messages));
         setActiveThreadId(event.thread.id);
+        void whisper.books.setActiveThread({ bookId, threadId: event.thread.id }).catch(() => undefined);
         return;
       }
 
@@ -66,7 +109,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         );
       }
     });
-  }, []);
+  }, [bookId]);
 
   const passageId = useMemo(() => {
     if (!document || !selectedText) return null;
@@ -99,7 +142,17 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     await whisper.ai.followUp({ threadId, question });
   }
 
-  if (!document) return <p className="app-shell">正在打开书籍...</p>;
+  if (!document) {
+    if (error) {
+      return (
+        <main className="app-shell">
+          <p className="error">{error}</p>
+          <button onClick={onBack}>返回书库</button>
+        </main>
+      );
+    }
+    return <p className="app-shell">正在打开书籍...</p>;
+  }
 
   return (
     <section className="reader-layout">
@@ -124,7 +177,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
       <RightAiPanel
         threads={threads}
         activeThreadId={activeThreadId}
-        onSelectThread={setActiveThreadId}
+        onSelectThread={handleSelectThread}
         onFollowUp={followUp}
         streamError={streamError}
       />

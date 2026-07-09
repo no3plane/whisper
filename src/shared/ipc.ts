@@ -9,4 +9,6 @@ export const ipcChannels = {
   aiFollowUp: 'ai.followUp',
   aiStream: 'ai.stream',
   threadsListByBook: 'threads.listByBook',
+  threadsListWithMessagesByBook: 'threads.listWithMessagesByBook',
+  booksSetActiveThread: 'books.setActiveThread',
 } as const;

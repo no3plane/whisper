@@ -18,6 +18,7 @@ interface BookRow {
   preprocess_status: PreprocessStatus;
   token_estimate: number;
   default_context_strategy: ContextStrategy;
+  active_thread_id: string | null;
 }
 
 interface ChapterRow {
@@ -56,6 +57,7 @@ function mapBookRow(row: BookRow): Book {
     preprocessStatus: row.preprocess_status,
     tokenEstimate: row.token_estimate,
     defaultContextStrategy: row.default_context_strategy,
+    activeThreadId: row.active_thread_id ?? null,
   };
 }
 
@@ -116,6 +118,7 @@ export class LibraryService {
       preprocessStatus: 'not_started',
       tokenEstimate: Math.ceil(parsed.fullText.length / 3),
       defaultContextStrategy: 'full_book',
+      activeThreadId: null,
     };
 
     const insert = this.db.transaction(() => {
@@ -133,8 +136,9 @@ export class LibraryService {
             last_opened_at,
             preprocess_status,
             token_estimate,
-            default_context_strategy
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            default_context_strategy,
+            active_thread_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           book.id,
@@ -149,6 +153,7 @@ export class LibraryService {
           book.preprocessStatus,
           book.tokenEstimate,
           book.defaultContextStrategy,
+          book.activeThreadId,
         );
 
       const insertChapter = this.db.prepare(
@@ -238,5 +243,14 @@ export class LibraryService {
       passages,
       fullText: passages.map((passage) => passage.text).join('\n\n'),
     };
+  }
+
+  setActiveThread(bookId: string, threadId: string | null): void {
+    const result = this.db
+      .prepare('UPDATE books SET active_thread_id = ? WHERE id = ?')
+      .run(threadId, bookId);
+    if (result.changes === 0) {
+      throw new Error(`Book not found: ${bookId}`);
+    }
   }
 }

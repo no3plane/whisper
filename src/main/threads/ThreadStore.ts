@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { ContextStrategy, ReadingActionType, ReadingThread, ThreadMessage } from '../../shared/types';
+import type { BookThreadsPayload, ContextStrategy, ReadingActionType, ReadingThread, ThreadMessage } from '../../shared/types';
 import type { AppDatabase } from '../storage/database';
 
 interface ReadingThreadRow {
@@ -185,6 +185,29 @@ export class ThreadStore {
       .prepare('SELECT * FROM reading_threads WHERE book_id = ? ORDER BY updated_at DESC')
       .all(bookId) as ReadingThreadRow[];
     return rows.map(mapThreadRow);
+  }
+
+  listThreadsWithMessagesByBook(bookId: string): BookThreadsPayload {
+    const threads = this.listThreadsByBook(bookId);
+    const bookRow = this.db.prepare('SELECT active_thread_id FROM books WHERE id = ?').get(bookId) as
+      | { active_thread_id: string | null }
+      | undefined;
+
+    if (!bookRow) {
+      throw new Error(`找不到书籍：${bookId}`);
+    }
+
+    const storedActiveId = bookRow.active_thread_id;
+    const activeThreadId =
+      storedActiveId && threads.some((thread) => thread.id === storedActiveId) ? storedActiveId : null;
+
+    return {
+      threads: threads.map((thread) => ({
+        thread,
+        messages: this.listMessages(thread.id),
+      })),
+      activeThreadId,
+    };
   }
 
   getThread(threadId: string): ReadingThread {

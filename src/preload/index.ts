@@ -5,10 +5,12 @@ import type {
   AiStreamEvent,
   Book,
   BookDocument,
+  BookThreadsPayload,
   FollowUpInput,
   ImportBookInput,
   ReadingThread,
   RunReadingActionInput,
+  SetActiveThreadInput,
   ThreadMessage,
 } from '../shared/types';
 
@@ -24,6 +26,8 @@ const whisper = {
       ipcRenderer.invoke(ipcChannels.booksImportMarkdown, input) as Promise<Book>,
     list: () => ipcRenderer.invoke(ipcChannels.booksList) as Promise<Book[]>,
     open: (bookId: string) => ipcRenderer.invoke(ipcChannels.booksOpen, bookId) as Promise<BookDocument>,
+    setActiveThread: (input: SetActiveThreadInput) =>
+      ipcRenderer.invoke(ipcChannels.booksSetActiveThread, input) as Promise<void>,
   },
   ai: {
     runReadingAction: (input: RunReadingActionInput) =>
@@ -44,6 +48,8 @@ const whisper = {
   threads: {
     listByBook: (bookId: string) =>
       ipcRenderer.invoke(ipcChannels.threadsListByBook, bookId) as Promise<ReadingThread[]>,
+    listWithMessagesByBook: (bookId: string) =>
+      ipcRenderer.invoke(ipcChannels.threadsListWithMessagesByBook, bookId) as Promise<BookThreadsPayload>,
   },
 };
 

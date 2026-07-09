@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { ipcChannels } from '../../shared/ipc';
-import type { AISettings, FollowUpInput, ImportBookInput, RunReadingActionInput } from '../../shared/types';
+import type { AISettings, FollowUpInput, ImportBookInput, RunReadingActionInput, SetActiveThreadInput } from '../../shared/types';
 import { AIProvider } from '../ai/AIProvider';
 import type { ReadingActionService } from '../ai/ReadingActionService';
 import type { LibraryService } from '../library/LibraryService';
@@ -53,4 +53,12 @@ export function registerIpc(services: IpcServices) {
   });
 
   ipcMain.handle(ipcChannels.threadsListByBook, (_event, bookId: string) => services.threads.listThreadsByBook(bookId));
+
+  ipcMain.handle(ipcChannels.threadsListWithMessagesByBook, (_event, bookId: string) =>
+    services.threads.listThreadsWithMessagesByBook(bookId),
+  );
+
+  ipcMain.handle(ipcChannels.booksSetActiveThread, (_event, input: SetActiveThreadInput) => {
+    services.library.setActiveThread(input.bookId, input.threadId);
+  });
 }

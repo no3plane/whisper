@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS books (
   last_opened_at TEXT,
   preprocess_status TEXT NOT NULL,
   token_estimate INTEGER NOT NULL,
-  default_context_strategy TEXT NOT NULL
+  default_context_strategy TEXT NOT NULL,
+  active_thread_id TEXT
 );
 
 CREATE TABLE IF NOT EXISTS chapters (
