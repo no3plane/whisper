@@ -1,4 +1,10 @@
-import type { FollowUpInput, RunReadingActionInput, ThreadMessage } from '../../shared/types';
+import type { BrowserWindow } from 'electron';
+import type {
+  AiStreamEvent,
+  FollowUpInput,
+  RunReadingActionInput,
+} from '../../shared/types';
+import { ipcChannels } from '../../shared/ipc';
 import type { LibraryService } from '../library/LibraryService';
 import type { SettingsService } from '../settings/SettingsService';
 import type { ThreadStore } from '../threads/ThreadStore';
@@ -18,7 +24,7 @@ export class ReadingActionService {
     private readonly threads: ThreadStore,
   ) {}
 
-  async runReadingAction(input: RunReadingActionInput) {
+  async runReadingAction(input: RunReadingActionInput, window: BrowserWindow) {
     if (input.actionType !== 'plain_explanation') {
       throw new Error(`当前纵向切片只支持 plain_explanation，收到：${input.actionType}`);
     }
@@ -36,6 +42,7 @@ export class ReadingActionService {
       actionType: input.actionType,
       selectedText: input.selectedText,
       contextStrategy: input.contextStrategy,
+      status: 'streaming',
     });
 
     this.threads.addMessage({
@@ -45,6 +52,22 @@ export class ReadingActionService {
       model: null,
       tokenUsage: null,
       contextStrategy: input.contextStrategy,
+    });
+
+    const assistantMessage = this.threads.addMessage({
+      threadId: thread.id,
+      role: 'assistant',
+      content: '',
+      model: aiSettings.model,
+      tokenUsage: null,
+      contextStrategy: input.contextStrategy,
+    });
+
+    this.emit(window, {
+      type: 'started',
+      thread: this.threads.getThread(thread.id),
+      messages: this.threads.listMessages(thread.id),
+      assistantMessageId: assistantMessage.id,
     });
 
     const context = this.assembler.forReadingAction({
@@ -57,27 +80,46 @@ export class ReadingActionService {
       threadMessages: [],
     });
 
-    const output = await this.provider.generate(aiSettings, context);
-    this.threads.addMessage({
-      threadId: thread.id,
-      role: 'assistant',
-      content: output.text,
-      model: aiSettings.model,
-      tokenUsage: output.usage,
-      contextStrategy: input.contextStrategy,
-    });
+    try {
+      const output = await this.provider.streamGenerate(aiSettings, context, {
+        onChunk: (chunk) => {
+          this.emit(window, {
+            type: 'chunk',
+            threadId: thread.id,
+            messageId: assistantMessage.id,
+            chunk,
+          });
+        },
+      });
 
-    return {
-      thread: this.threads.getThread(thread.id),
-      messages: this.threads.listMessages(thread.id),
-    };
+      this.threads.updateMessage(assistantMessage.id, {
+        content: output.text,
+        model: aiSettings.model,
+        tokenUsage: output.usage,
+      });
+      this.threads.updateThreadStatus(thread.id, 'ready');
+
+      const result = {
+        thread: this.threads.getThread(thread.id),
+        messages: this.threads.listMessages(thread.id),
+      };
+      this.emit(window, { type: 'done', ...result });
+      return result;
+    } catch (error) {
+      this.threads.updateThreadStatus(thread.id, 'failed');
+      const message = error instanceof Error ? error.message : String(error);
+      this.emit(window, { type: 'error', threadId: thread.id, message });
+      throw error;
+    }
   }
 
-  async followUp(input: FollowUpInput) {
+  async followUp(input: FollowUpInput, window: BrowserWindow) {
     const aiSettings = this.requireSettings();
     const thread = this.threads.getThread(input.threadId);
     const document = this.library.openBook(thread.bookId);
     const nearbyText = this.getNearbyText(document.passages, thread.passageId, thread.selectedText);
+
+    this.threads.updateThreadStatus(input.threadId, 'streaming');
 
     this.threads.addMessage({
       threadId: input.threadId,
@@ -88,7 +130,23 @@ export class ReadingActionService {
       contextStrategy: thread.contextStrategy,
     });
 
-    const messages = this.threads.listMessages(input.threadId);
+    const assistantMessage = this.threads.addMessage({
+      threadId: input.threadId,
+      role: 'assistant',
+      content: '',
+      model: aiSettings.model,
+      tokenUsage: null,
+      contextStrategy: thread.contextStrategy,
+    });
+
+    this.emit(window, {
+      type: 'started',
+      thread: this.threads.getThread(input.threadId),
+      messages: this.threads.listMessages(input.threadId),
+      assistantMessageId: assistantMessage.id,
+    });
+
+    const messages = this.threads.listMessages(input.threadId).filter((item) => item.id !== assistantMessage.id);
     const context = this.assembler.forReadingAction({
       strategy: thread.contextStrategy,
       bookTitle: document.book.title,
@@ -102,20 +160,43 @@ export class ReadingActionService {
       })),
     });
 
-    const output = await this.provider.generate(aiSettings, context);
-    this.threads.addMessage({
-      threadId: input.threadId,
-      role: 'assistant',
-      content: output.text,
-      model: aiSettings.model,
-      tokenUsage: output.usage,
-      contextStrategy: thread.contextStrategy,
-    });
+    try {
+      const output = await this.provider.streamGenerate(aiSettings, context, {
+        onChunk: (chunk) => {
+          this.emit(window, {
+            type: 'chunk',
+            threadId: input.threadId,
+            messageId: assistantMessage.id,
+            chunk,
+          });
+        },
+      });
 
-    return {
-      thread: this.threads.getThread(input.threadId),
-      messages: this.threads.listMessages(input.threadId),
-    };
+      this.threads.updateMessage(assistantMessage.id, {
+        content: output.text,
+        model: aiSettings.model,
+        tokenUsage: output.usage,
+      });
+      this.threads.updateThreadStatus(input.threadId, 'ready');
+
+      const result = {
+        thread: this.threads.getThread(input.threadId),
+        messages: this.threads.listMessages(input.threadId),
+      };
+      this.emit(window, { type: 'done', ...result });
+      return result;
+    } catch (error) {
+      this.threads.updateThreadStatus(input.threadId, 'failed');
+      const message = error instanceof Error ? error.message : String(error);
+      this.emit(window, { type: 'error', threadId: input.threadId, message });
+      throw error;
+    }
+  }
+
+  private emit(window: BrowserWindow, event: AiStreamEvent) {
+    if (!window.isDestroyed()) {
+      window.webContents.send(ipcChannels.aiStream, event);
+    }
   }
 
   private requireSettings() {

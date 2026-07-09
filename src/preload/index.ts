@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron';
 import { ipcChannels } from '../shared/ipc';
 import type {
   AISettings,
+  AiStreamEvent,
   Book,
   BookDocument,
   FollowUpInput,
@@ -32,6 +33,13 @@ const whisper = {
       }>,
     followUp: (input: FollowUpInput) =>
       ipcRenderer.invoke(ipcChannels.aiFollowUp, input) as Promise<{ thread: ReadingThread; messages: ThreadMessage[] }>,
+    onStream: (listener: (event: AiStreamEvent) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: AiStreamEvent) => listener(payload);
+      ipcRenderer.on(ipcChannels.aiStream, handler);
+      return () => {
+        ipcRenderer.removeListener(ipcChannels.aiStream, handler);
+      };
+    },
   },
   threads: {
     listByBook: (bookId: string) =>

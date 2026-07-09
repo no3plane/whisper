@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { BrowserWindow, ipcMain } from 'electron';
 import { ipcChannels } from '../../shared/ipc';
 import type { AISettings, FollowUpInput, ImportBookInput, RunReadingActionInput } from '../../shared/types';
 import { AIProvider } from '../ai/AIProvider';
@@ -15,6 +15,10 @@ export interface IpcServices {
 }
 
 const aiProvider = new AIProvider();
+
+function senderWindow(event: Electron.IpcMainInvokeEvent) {
+  return BrowserWindow.fromWebContents(event.sender);
+}
 
 export function registerIpc(services: IpcServices) {
   ipcMain.handle(ipcChannels.settingsGet, () => services.settings.getAISettings());
@@ -36,11 +40,17 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(ipcChannels.booksOpen, (_event, bookId: string) => services.library.openBook(bookId));
 
-  ipcMain.handle(ipcChannels.aiRunReadingAction, (_event, input: RunReadingActionInput) =>
-    services.readingActions.runReadingAction(input),
-  );
+  ipcMain.handle(ipcChannels.aiRunReadingAction, (event, input: RunReadingActionInput) => {
+    const window = senderWindow(event);
+    if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
+    return services.readingActions.runReadingAction(input, window);
+  });
 
-  ipcMain.handle(ipcChannels.aiFollowUp, (_event, input: FollowUpInput) => services.readingActions.followUp(input));
+  ipcMain.handle(ipcChannels.aiFollowUp, (event, input: FollowUpInput) => {
+    const window = senderWindow(event);
+    if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
+    return services.readingActions.followUp(input, window);
+  });
 
   ipcMain.handle(ipcChannels.threadsListByBook, (_event, bookId: string) => services.threads.listThreadsByBook(bookId));
 }

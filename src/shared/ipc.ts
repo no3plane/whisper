@@ -7,5 +7,6 @@ export const ipcChannels = {
   booksOpen: 'books.open',
   aiRunReadingAction: 'ai.runReadingAction',
   aiFollowUp: 'ai.followUp',
+  aiStream: 'ai.stream',
   threadsListByBook: 'threads.listByBook',
 } as const;

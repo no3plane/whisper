@@ -196,4 +196,47 @@ export class ThreadStore {
     }
     return mapThreadRow(row);
   }
+
+  updateThreadStatus(threadId: string, status: ReadingThread['status']): ReadingThread {
+    const now = new Date().toISOString();
+    this.db
+      .prepare('UPDATE reading_threads SET status = ?, updated_at = ? WHERE id = ?')
+      .run(status, now, threadId);
+    return this.getThread(threadId);
+  }
+
+  updateMessage(
+    messageId: string,
+    patch: {
+      content?: string;
+      model?: string | null;
+      tokenUsage?: number | null;
+    },
+  ): ThreadMessage {
+    const existing = this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as
+      | ThreadMessageRow
+      | undefined;
+    if (!existing) {
+      throw new Error(`找不到 message：${messageId}`);
+    }
+
+    const content = patch.content ?? existing.content;
+    const model = patch.model !== undefined ? patch.model : existing.model;
+    const tokenUsage = patch.tokenUsage !== undefined ? patch.tokenUsage : existing.token_usage;
+    const now = new Date().toISOString();
+
+    this.db.transaction(() => {
+      this.db
+        .prepare(
+          `UPDATE thread_messages
+           SET content = ?, model = ?, token_usage = ?
+           WHERE id = ?`,
+        )
+        .run(content, model, tokenUsage, messageId);
+      this.db.prepare('UPDATE reading_threads SET updated_at = ? WHERE id = ?').run(now, existing.thread_id);
+    })();
+
+    const row = this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as ThreadMessageRow;
+    return mapMessageRow(row);
+  }
 }

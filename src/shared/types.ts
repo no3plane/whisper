@@ -96,3 +96,27 @@ export interface FollowUpInput {
   threadId: string;
   question: string;
 }
+
+export type AiStreamEvent =
+  | {
+      type: 'started';
+      thread: ReadingThread;
+      messages: ThreadMessage[];
+      assistantMessageId: string;
+    }
+  | {
+      type: 'chunk';
+      threadId: string;
+      messageId: string;
+      chunk: string;
+    }
+  | {
+      type: 'done';
+      thread: ReadingThread;
+      messages: ThreadMessage[];
+    }
+  | {
+      type: 'error';
+      threadId: string;
+      message: string;
+    };

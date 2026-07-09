@@ -1,7 +1,11 @@
 import { createOpenAI } from '@ai-sdk/openai';
-import { generateText } from 'ai';
+import { generateText, streamText } from 'ai';
 import type { AISettings } from '../../shared/types';
 import type { AssembledContext } from './ContextAssembler';
+
+export interface StreamGenerateHandlers {
+  onChunk: (chunk: string) => void;
+}
 
 export class AIProvider {
   async generate(settings: AISettings, input: AssembledContext) {
@@ -19,6 +23,31 @@ export class AIProvider {
     return {
       text: result.text,
       usage: result.usage.totalTokens ?? null,
+    };
+  }
+
+  async streamGenerate(settings: AISettings, input: AssembledContext, handlers: StreamGenerateHandlers) {
+    const openai = createOpenAI({
+      baseURL: settings.baseURL,
+      apiKey: settings.apiKey,
+    });
+
+    const result = streamText({
+      model: openai(settings.model),
+      system: input.system,
+      prompt: input.user,
+    });
+
+    let text = '';
+    for await (const chunk of result.textStream) {
+      text += chunk;
+      handlers.onChunk(chunk);
+    }
+
+    const usage = await result.usage;
+    return {
+      text,
+      usage: usage.totalTokens ?? null,
     };
   }
 

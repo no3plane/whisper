@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { BookDocument, ReadingThread, ThreadMessage } from '../../shared/types';
+import type { AiStreamEvent, BookDocument, ReadingThread, ThreadMessage } from '../../shared/types';
 import { RightAiPanel } from '../components/RightAiPanel';
 import { SelectionMenu } from '../components/SelectionMenu';
 import { whisper } from '../api/whisper';
@@ -9,16 +9,64 @@ interface ReaderPageProps {
   onBack: () => void;
 }
 
+type ThreadItem = { thread: ReadingThread; messages: ThreadMessage[] };
+
 export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const [document, setDocument] = useState<BookDocument | null>(null);
   const [selectedText, setSelectedText] = useState('');
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [threads, setThreads] = useState<Array<{ thread: ReadingThread; messages: ThreadMessage[] }>>([]);
+  const [threads, setThreads] = useState<ThreadItem[]>([]);
   const [error, setError] = useState('');
+  const [streamError, setStreamError] = useState('');
 
   useEffect(() => {
     void whisper.books.open(bookId).then(setDocument);
   }, [bookId]);
+
+  useEffect(() => {
+    return whisper.ai.onStream((event: AiStreamEvent) => {
+      if (event.type === 'started') {
+        setStreamError('');
+        setThreads((current) => upsertThread(current, event.thread, event.messages));
+        setActiveThreadId(event.thread.id);
+        return;
+      }
+
+      if (event.type === 'chunk') {
+        setThreads((current) =>
+          current.map((item) => {
+            if (item.thread.id !== event.threadId) return item;
+            return {
+              ...item,
+              thread: { ...item.thread, status: 'streaming' },
+              messages: item.messages.map((message) =>
+                message.id === event.messageId
+                  ? { ...message, content: message.content + event.chunk }
+                  : message,
+              ),
+            };
+          }),
+        );
+        return;
+      }
+
+      if (event.type === 'done') {
+        setThreads((current) => upsertThread(current, event.thread, event.messages));
+        return;
+      }
+
+      if (event.type === 'error') {
+        setStreamError(event.message);
+        setThreads((current) =>
+          current.map((item) =>
+            item.thread.id === event.threadId
+              ? { ...item, thread: { ...item.thread, status: 'failed' } }
+              : item,
+          ),
+        );
+      }
+    });
+  }, []);
 
   const passageId = useMemo(() => {
     if (!document || !selectedText) return null;
@@ -33,23 +81,22 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     if (!document || !selectedText.trim()) return;
     try {
       setError('');
-      const result = await whisper.ai.runReadingAction({
+      setStreamError('');
+      await whisper.ai.runReadingAction({
         bookId: document.book.id,
         selectedText,
         passageId,
         actionType: 'plain_explanation',
         contextStrategy: 'full_book',
       });
-      setThreads((current) => [...current, result]);
-      setActiveThreadId(result.thread.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
   }
 
   async function followUp(threadId: string, question: string) {
-    const result = await whisper.ai.followUp({ threadId, question });
-    setThreads((current) => current.map((item) => (item.thread.id === threadId ? result : item)));
+    setStreamError('');
+    await whisper.ai.followUp({ threadId, question });
   }
 
   if (!document) return <p className="app-shell">正在打开书籍...</p>;
@@ -79,7 +126,15 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         activeThreadId={activeThreadId}
         onSelectThread={setActiveThreadId}
         onFollowUp={followUp}
+        streamError={streamError}
       />
     </section>
   );
+}
+
+function upsertThread(current: ThreadItem[], thread: ReadingThread, messages: ThreadMessage[]): ThreadItem[] {
+  const next = { thread, messages };
+  const index = current.findIndex((item) => item.thread.id === thread.id);
+  if (index < 0) return [...current, next];
+  return current.map((item, i) => (i === index ? next : item));
 }
