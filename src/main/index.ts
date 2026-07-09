@@ -1,6 +1,9 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { registerIpc } from './ipc/registerIpc';
+import { SettingsService } from './settings/SettingsService';
+import { createDatabase } from './storage/database';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -24,7 +27,13 @@ function createWindow() {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  const db = createDatabase();
+  registerIpc({
+    settings: new SettingsService(db),
+  });
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
