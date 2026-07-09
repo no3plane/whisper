@@ -7,10 +7,10 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "tsc --noEmit && electron-vite build",
-    "predev": "npm run rebuild:native",
-    "rebuild:native": "npm rebuild better-sqlite3 --runtime=electron --target=35.7.5 --disturl=https://electronjs.org/headers",
-    "rebuild:node": "npm rebuild better-sqlite3",
-    "pretest": "npm run rebuild:node",
+    "predev": "pnpm run rebuild:native",
+    "rebuild:native": "npm_config_runtime=electron npm_config_target=35.7.5 npm_config_disturl=https://electronjs.org/headers pnpm rebuild better-sqlite3",
+    "rebuild:node": "pnpm rebuild better-sqlite3",
+    "pretest": "pnpm run rebuild:node",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint:types": "tsc --noEmit"
