@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { registerIpc } from './ipc/registerIpc';
+import { LibraryService } from './library/LibraryService';
 import { SettingsService } from './settings/SettingsService';
 import { createDatabase } from './storage/database';
 
@@ -30,6 +31,7 @@ function createWindow() {
 app.whenReady().then(() => {
   const db = createDatabase();
   registerIpc({
+    library: new LibraryService(db),
     settings: new SettingsService(db),
   });
   createWindow();
