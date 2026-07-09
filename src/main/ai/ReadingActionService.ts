@@ -5,6 +5,7 @@ import type {
   RunReadingActionInput,
 } from '../../shared/types';
 import { ipcChannels } from '../../shared/ipc';
+import { logger } from '../logging/logger';
 import type { LibraryService } from '../library/LibraryService';
 import type { SettingsService } from '../settings/SettingsService';
 import type { ThreadStore } from '../threads/ThreadStore';
@@ -52,6 +53,14 @@ export class ReadingActionService {
       model: null,
       tokenUsage: null,
       contextStrategy: input.contextStrategy,
+    });
+
+    logger.info('threads.create', {
+      bookId: input.bookId,
+      threadId: thread.id,
+      actionType: input.actionType,
+      contextStrategy: input.contextStrategy,
+      selectedText: input.selectedText,
     });
 
     const assistantMessage = this.threads.addMessage({
@@ -120,6 +129,12 @@ export class ReadingActionService {
     const nearbyText = this.getNearbyText(document.passages, thread.passageId, thread.selectedText);
 
     this.threads.updateThreadStatus(input.threadId, 'streaming');
+
+    logger.info('threads.followUp', {
+      bookId: thread.bookId,
+      threadId: input.threadId,
+      question: input.question,
+    });
 
     this.threads.addMessage({
       threadId: input.threadId,

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { ReadingActionService } from './ai/ReadingActionService';
 import { registerIpc } from './ipc/registerIpc';
 import { LibraryService } from './library/LibraryService';
+import { initLogger } from './logging/logger';
 import { SettingsService } from './settings/SettingsService';
 import { createDatabase } from './storage/database';
 import { ThreadStore } from './threads/ThreadStore';
@@ -31,6 +32,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  initLogger();
   const db = createDatabase();
   const settings = new SettingsService(db);
   const library = new LibraryService(db);

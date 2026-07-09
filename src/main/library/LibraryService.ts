@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { Book, BookDocument, Chapter, ContextStrategy, Passage, PreprocessStatus } from '../../shared/types';
+import { logger } from '../logging/logger';
 import { AppDatabase, getAppDataDir } from '../storage/database';
 import { MarkdownParser } from './MarkdownParser';
 
@@ -93,38 +94,39 @@ export class LibraryService {
   constructor(private readonly db: AppDatabase) {}
 
   importMarkdown(filePath: string): Book {
-    const bookId = randomUUID();
-    const fileName = path.basename(filePath);
-    const title = path.basename(filePath, path.extname(filePath));
-    const bookDir = path.join(getAppDataDir(), 'books', bookId);
-    const libraryFilePath = path.join(bookDir, fileName);
+    try {
+      const bookId = randomUUID();
+      const fileName = path.basename(filePath);
+      const title = path.basename(filePath, path.extname(filePath));
+      const bookDir = path.join(getAppDataDir(), 'books', bookId);
+      const libraryFilePath = path.join(bookDir, fileName);
 
-    fs.mkdirSync(bookDir, { recursive: true });
-    fs.copyFileSync(filePath, libraryFilePath);
+      fs.mkdirSync(bookDir, { recursive: true });
+      fs.copyFileSync(filePath, libraryFilePath);
 
-    const markdown = fs.readFileSync(libraryFilePath, 'utf8');
-    const parsed = this.parser.parse({ bookId, markdown });
-    const now = new Date().toISOString();
-    const book: Book = {
-      id: bookId,
-      title,
-      author: null,
-      format: 'markdown',
-      originalFilePath: filePath,
-      libraryFilePath,
-      createdAt: now,
-      updatedAt: now,
-      lastOpenedAt: null,
-      preprocessStatus: 'not_started',
-      tokenEstimate: Math.ceil(parsed.fullText.length / 3),
-      defaultContextStrategy: 'full_book',
-      activeThreadId: null,
-    };
+      const markdown = fs.readFileSync(libraryFilePath, 'utf8');
+      const parsed = this.parser.parse({ bookId, markdown });
+      const now = new Date().toISOString();
+      const book: Book = {
+        id: bookId,
+        title,
+        author: null,
+        format: 'markdown',
+        originalFilePath: filePath,
+        libraryFilePath,
+        createdAt: now,
+        updatedAt: now,
+        lastOpenedAt: null,
+        preprocessStatus: 'not_started',
+        tokenEstimate: Math.ceil(parsed.fullText.length / 3),
+        defaultContextStrategy: 'full_book',
+        activeThreadId: null,
+      };
 
-    const insert = this.db.transaction(() => {
-      this.db
-        .prepare(
-          `INSERT INTO books (
+      const insert = this.db.transaction(() => {
+        this.db
+          .prepare(
+            `INSERT INTO books (
             id,
             title,
             author,
@@ -139,25 +141,25 @@ export class LibraryService {
             default_context_strategy,
             active_thread_id
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        )
-        .run(
-          book.id,
-          book.title,
-          book.author,
-          book.format,
-          book.originalFilePath,
-          book.libraryFilePath,
-          book.createdAt,
-          book.updatedAt,
-          book.lastOpenedAt,
-          book.preprocessStatus,
-          book.tokenEstimate,
-          book.defaultContextStrategy,
-          book.activeThreadId,
-        );
+          )
+          .run(
+            book.id,
+            book.title,
+            book.author,
+            book.format,
+            book.originalFilePath,
+            book.libraryFilePath,
+            book.createdAt,
+            book.updatedAt,
+            book.lastOpenedAt,
+            book.preprocessStatus,
+            book.tokenEstimate,
+            book.defaultContextStrategy,
+            book.activeThreadId,
+          );
 
-      const insertChapter = this.db.prepare(
-        `INSERT INTO chapters (
+        const insertChapter = this.db.prepare(
+          `INSERT INTO chapters (
           id,
           book_id,
           parent_chapter_id,
@@ -168,23 +170,23 @@ export class LibraryService {
           end_passage_id,
           summary
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      );
-      for (const chapter of parsed.chapters) {
-        insertChapter.run(
-          chapter.id,
-          chapter.bookId,
-          chapter.parentChapterId,
-          chapter.title,
-          chapter.level,
-          chapter.order,
-          chapter.startPassageId,
-          chapter.endPassageId,
-          chapter.summary,
         );
-      }
+        for (const chapter of parsed.chapters) {
+          insertChapter.run(
+            chapter.id,
+            chapter.bookId,
+            chapter.parentChapterId,
+            chapter.title,
+            chapter.level,
+            chapter.order,
+            chapter.startPassageId,
+            chapter.endPassageId,
+            chapter.summary,
+          );
+        }
 
-      const insertPassage = this.db.prepare(
-        `INSERT INTO passages (
+        const insertPassage = this.db.prepare(
+          `INSERT INTO passages (
           id,
           book_id,
           chapter_id,
@@ -193,22 +195,35 @@ export class LibraryService {
           source_href,
           source_offset
         ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      );
-      for (const passage of parsed.passages) {
-        insertPassage.run(
-          passage.id,
-          passage.bookId,
-          passage.chapterId,
-          passage.order,
-          passage.text,
-          passage.sourceHref,
-          passage.sourceOffset,
         );
-      }
-    });
+        for (const passage of parsed.passages) {
+          insertPassage.run(
+            passage.id,
+            passage.bookId,
+            passage.chapterId,
+            passage.order,
+            passage.text,
+            passage.sourceHref,
+            passage.sourceOffset,
+          );
+        }
+      });
 
-    insert();
-    return book;
+      insert();
+      logger.info('books.import', {
+        filePath,
+        bookId: book.id,
+        title: book.title,
+      });
+      return book;
+    } catch (error) {
+      logger.error('books.import', {
+        filePath,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+      throw error;
+    }
   }
 
   listBooks(): Book[] {
@@ -219,6 +234,7 @@ export class LibraryService {
   openBook(bookId: string): BookDocument {
     const bookRow = this.db.prepare('SELECT * FROM books WHERE id = ?').get(bookId) as BookRow | undefined;
     if (!bookRow) {
+      logger.error('books.open', { bookId, message: `Book not found: ${bookId}` });
       throw new Error(`Book not found: ${bookId}`);
     }
 
@@ -236,6 +252,8 @@ export class LibraryService {
     const passages = (
       this.db.prepare('SELECT * FROM passages WHERE book_id = ? ORDER BY passage_order ASC').all(bookId) as PassageRow[]
     ).map(mapPassageRow);
+
+    logger.info('books.open', { bookId, title: book.title });
 
     return {
       book,
