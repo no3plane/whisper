@@ -186,4 +186,14 @@ export class ThreadStore {
       .all(bookId) as ReadingThreadRow[];
     return rows.map(mapThreadRow);
   }
+
+  getThread(threadId: string): ReadingThread {
+    const row = this.db.prepare('SELECT * FROM reading_threads WHERE id = ?').get(threadId) as
+      | ReadingThreadRow
+      | undefined;
+    if (!row) {
+      throw new Error(`找不到 thread：${threadId}`);
+    }
+    return mapThreadRow(row);
+  }
 }

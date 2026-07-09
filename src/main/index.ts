@@ -1,10 +1,12 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ReadingActionService } from './ai/ReadingActionService';
 import { registerIpc } from './ipc/registerIpc';
 import { LibraryService } from './library/LibraryService';
 import { SettingsService } from './settings/SettingsService';
 import { createDatabase } from './storage/database';
+import { ThreadStore } from './threads/ThreadStore';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,9 +32,14 @@ function createWindow() {
 
 app.whenReady().then(() => {
   const db = createDatabase();
+  const settings = new SettingsService(db);
+  const library = new LibraryService(db);
+  const threads = new ThreadStore(db);
   registerIpc({
-    library: new LibraryService(db),
-    settings: new SettingsService(db),
+    library,
+    readingActions: new ReadingActionService(settings, library, threads),
+    settings,
+    threads,
   });
   createWindow();
 });
