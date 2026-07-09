@@ -8,6 +8,161 @@ body {
   margin: 0;
 }
 
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 1px solid #c9c1b2;
+  background: #fffaf2;
+  color: #1f2933;
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+input {
+  border: 1px solid #c9c1b2;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fffdf8;
+}
+
 .app-shell {
-  padding: 32px;
+  padding: 24px;
+}
+
+.top-bar {
+  margin-bottom: 18px;
+}
+
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.6fr);
+  gap: 20px;
+}
+
+.settings-panel,
+.library-page {
+  border: 1px solid #ded5c6;
+  background: #fffdf8;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.settings-panel label,
+.import-row {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.button-row,
+.import-row {
+  display: flex;
+  gap: 8px;
+}
+
+.book-list {
+  display: grid;
+  gap: 10px;
+}
+
+.book-item {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}
+
+.reader-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 380px;
+  height: 100vh;
+}
+
+.left-nav,
+.right-panel {
+  border-right: 1px solid #ded5c6;
+  background: #fffaf2;
+  padding: 14px;
+  overflow: auto;
+}
+
+.right-panel {
+  border-right: none;
+  border-left: 1px solid #ded5c6;
+}
+
+.left-nav a {
+  display: block;
+  color: #425466;
+  margin: 8px 0;
+  text-decoration: none;
+}
+
+.reader {
+  position: relative;
+  padding: 42px 64px;
+  overflow: auto;
+  font-size: 18px;
+  line-height: 1.85;
+  background: #fffdf8;
+}
+
+.reader p {
+  max-width: 760px;
+}
+
+.selection-menu {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #d7c8ac;
+  background: #fffaf2;
+  border-radius: 8px;
+  z-index: 1;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tabs .active {
+  background: #1f2933;
+  color: #fff;
+}
+
+.panel-body {
+  display: grid;
+  gap: 12px;
+}
+
+.message {
+  border-top: 1px solid #ded5c6;
+  padding-top: 10px;
+}
+
+.follow-up {
+  display: flex;
+  gap: 8px;
+}
+
+.muted {
+  color: #687789;
+}
+
+.error {
+  color: #a33a2b;
 }
