@@ -80,6 +80,7 @@ input {
   text-align: left;
 }
 
+
 .reader-layout {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr) 380px;
@@ -148,6 +149,7 @@ input {
   display: grid;
   gap: 12px;
 }
+
 
 .thread-chat {
   display: flex;

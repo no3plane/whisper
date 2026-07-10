@@ -12,8 +12,13 @@ import type { ThreadStore } from '../threads/ThreadStore';
 import { AIProvider } from './AIProvider';
 import { ContextAssembler } from './ContextAssembler';
 
-const plainExplanationInstruction =
-  '请用白话解释当前选中文本。要求：先用 1-2 句话说清楚这段在讲什么，再列出最容易卡住的点。不要替代原文，不要输出长篇总结。';
+const actionDefinitions = {
+  plain_explanation: { title: '白话解释', instruction: '先用 1-2 句话说清楚这段在讲什么，再解释最容易卡住的点。' },
+  structure_location: { title: '结构定位', instruction: '解释这段如何服务于全书核心问题、作者主张与论证主干，并引用提供的 passage 锚点。' },
+  concept_explanation: { title: '概念解释', instruction: '识别并解释选文中的关键概念，说明概念之间的关系及作者在本书中的具体用法。' },
+  background_context: { title: '背景补全', instruction: '只补充理解选文必需的历史、人物、学派、术语或时代背景，并区分原书内容和外部背景。' },
+  example_analogy: { title: '举例 / 类比', instruction: '给出准确的现代例子或类比，说明类比对应关系以及类比失效的边界。' },
+} as const;
 
 export class ReadingActionService {
   private readonly assembler = new ContextAssembler();
@@ -26,11 +31,8 @@ export class ReadingActionService {
   ) {}
 
   async runReadingAction(input: RunReadingActionInput, window: BrowserWindow) {
-    if (input.actionType !== 'plain_explanation') {
-      throw new Error(`当前纵向切片只支持 plain_explanation，收到：${input.actionType}`);
-    }
-
     const aiSettings = this.requireSettings();
+    const action = actionDefinitions[input.actionType];
     const document = this.library.openBook(input.bookId);
     const passage = document.passages.find((item) => item.id === input.passageId) ?? null;
     const nearbyText = this.getNearbyText(document.passages, input.passageId, input.selectedText);
@@ -39,7 +41,7 @@ export class ReadingActionService {
       bookId: input.bookId,
       chapterId: passage?.chapterId ?? null,
       passageId: input.passageId,
-      title: '白话解释',
+      title: action.title,
       actionType: input.actionType,
       selectedText: input.selectedText,
       contextStrategy: input.contextStrategy,
@@ -85,8 +87,12 @@ export class ReadingActionService {
       fullText: document.fullText,
       selectedText: input.selectedText,
       nearbyText,
-      actionInstruction: plainExplanationInstruction,
+      actionInstruction: action.instruction,
       threadMessages: [],
+      chapters: document.chapters,
+      passages: document.passages,
+      currentChapterId: passage?.chapterId,
+      contextWindow: aiSettings.contextWindow,
     });
 
     try {
@@ -173,6 +179,10 @@ export class ReadingActionService {
         role: message.role,
         content: message.content,
       })),
+      chapters: document.chapters,
+      passages: document.passages,
+      currentChapterId: thread.chapterId,
+      contextWindow: aiSettings.contextWindow,
     });
 
     try {

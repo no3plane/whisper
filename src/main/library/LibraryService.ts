@@ -5,6 +5,7 @@ import type { Book, BookDocument, Chapter, ContextStrategy, Passage, PreprocessS
 import { logger } from '../logging/logger';
 import { AppDatabase, getAppDataDir } from '../storage/database';
 import { MarkdownParser } from './MarkdownParser';
+import { EpubParser } from './EpubParser';
 
 interface BookRow {
   id: string;
@@ -90,6 +91,7 @@ function mapPassageRow(row: PassageRow): Passage {
 
 export class LibraryService {
   private readonly parser = new MarkdownParser();
+  private readonly epubParser = new EpubParser();
 
   constructor(private readonly db: AppDatabase) {}
 
@@ -226,6 +228,33 @@ export class LibraryService {
     }
   }
 
+  importEpub(filePath: string): Book {
+    const bookId = randomUUID();
+    const fileName = path.basename(filePath);
+    const title = path.basename(filePath, path.extname(filePath));
+    const bookDir = path.join(getAppDataDir(), 'books', bookId);
+    const libraryFilePath = path.join(bookDir, fileName);
+    fs.mkdirSync(bookDir, { recursive: true });
+    fs.copyFileSync(filePath, libraryFilePath);
+    try {
+      const parsed = this.epubParser.parse({ bookId, buffer: fs.readFileSync(libraryFilePath) });
+      const now = new Date().toISOString();
+      const book: Book = { id: bookId, title, author: null, format: 'epub', originalFilePath: filePath, libraryFilePath, createdAt: now, updatedAt: now, lastOpenedAt: null, preprocessStatus: 'not_started', tokenEstimate: Math.ceil(parsed.fullText.length / 3), defaultContextStrategy: 'full_book', activeThreadId: null };
+      this.db.transaction(() => {
+        this.db.prepare(`INSERT INTO books (id,title,author,format,original_file_path,library_file_path,created_at,updated_at,last_opened_at,preprocess_status,token_estimate,default_context_strategy,active_thread_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          .run(book.id, book.title, null, book.format, filePath, libraryFilePath, now, now, null, book.preprocessStatus, book.tokenEstimate, book.defaultContextStrategy, null);
+        const insertChapter = this.db.prepare(`INSERT INTO chapters (id,book_id,parent_chapter_id,title,level,chapter_order,start_passage_id,end_passage_id,summary) VALUES (?,?,?,?,?,?,?,?,?)`);
+        parsed.chapters.forEach((c) => insertChapter.run(c.id,c.bookId,c.parentChapterId,c.title,c.level,c.order,c.startPassageId,c.endPassageId,c.summary));
+        const insertPassage = this.db.prepare(`INSERT INTO passages (id,book_id,chapter_id,passage_order,text,source_href,source_offset) VALUES (?,?,?,?,?,?,?)`);
+        parsed.passages.forEach((p) => insertPassage.run(p.id,p.bookId,p.chapterId,p.order,p.text,p.sourceHref,p.sourceOffset));
+      })();
+      return book;
+    } catch (error) {
+      logger.error('books.import.epub', { filePath, bookId, message: error instanceof Error ? error.message : String(error) });
+      throw error;
+    }
+  }
+
   listBooks(): Book[] {
     const rows = this.db.prepare('SELECT * FROM books ORDER BY created_at DESC').all() as BookRow[];
     return rows.map(mapBookRow);
@@ -270,5 +299,11 @@ export class LibraryService {
     if (result.changes === 0) {
       throw new Error(`Book not found: ${bookId}`);
     }
+  }
+
+  setDefaultContextStrategy(bookId: string, strategy: ContextStrategy): void {
+    const result = this.db.prepare('UPDATE books SET default_context_strategy = ?, updated_at = ? WHERE id = ?')
+      .run(strategy, new Date().toISOString(), bookId);
+    if (result.changes === 0) throw new Error(`Book not found: ${bookId}`);
   }
 }

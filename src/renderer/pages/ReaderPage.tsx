@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { AiStreamEvent, BookDocument, ReadingThread, ThreadMessage } from '../../shared/types';
+import type { AiStreamEvent, BookDocument, ContextStrategy, ReadingActionType, ReadingThread, ThreadMessage } from '../../shared/types';
 import { RightAiPanel } from '../components/RightAiPanel';
 import { SelectionMenu } from '../components/SelectionMenu';
 import { whisper } from '../api/whisper';
@@ -18,6 +18,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const [threads, setThreads] = useState<ThreadItem[]>([]);
   const [error, setError] = useState('');
   const [streamError, setStreamError] = useState('');
+  const [strategy, setStrategy] = useState<ContextStrategy>('full_book');
 
   useEffect(() => {
     let cancelled = false;
@@ -27,6 +28,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         const doc = await whisper.books.open(bookId);
         if (cancelled) return;
         setDocument(doc);
+        setStrategy(doc.book.defaultContextStrategy);
         setError('');
       } catch (err) {
         if (cancelled) return;
@@ -120,7 +122,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     setSelectedText(window.getSelection()?.toString() ?? '');
   }
 
-  async function explain() {
+  async function runAction(actionType: ReadingActionType) {
     if (!document || !selectedText.trim()) return;
     try {
       setError('');
@@ -129,8 +131,8 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         bookId: document.book.id,
         selectedText,
         passageId,
-        actionType: 'plain_explanation',
-        contextStrategy: 'full_book',
+        actionType,
+        contextStrategy: strategy,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -166,7 +168,14 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         ))}
       </nav>
       <article className="reader" onMouseUp={updateSelection} onKeyUp={updateSelection}>
-        <SelectionMenu selectedText={selectedText} onExplain={explain} />
+        <div className="reader-toolbar">
+          <label>上下文策略 <select value={strategy} onChange={(event) => {
+            const next = event.target.value as ContextStrategy;
+            setStrategy(next);
+            void whisper.books.setContextStrategy({ bookId, strategy: next });
+          }}><option value="full_book">完整全书</option><option value="compressed_book">压缩全书</option><option value="hybrid">混合</option></select></label>
+        </div>
+        <SelectionMenu selectedText={selectedText} onAction={(action) => void runAction(action)} />
         {error && <p className="error">{error}</p>}
         {document.passages.map((passage) => (
           <p id={passage.id} key={passage.id}>

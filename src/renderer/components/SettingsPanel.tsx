@@ -57,6 +57,11 @@ export function SettingsPanel() {
           onChange={(event) => setSettings({ ...settings, contextWindow: Number(event.target.value) })}
         />
       </label>
+      <label>默认上下文策略
+        <select value={settings.defaultContextStrategy} onChange={(event) => setSettings({ ...settings, defaultContextStrategy: event.target.value as AISettings['defaultContextStrategy'] })}>
+          <option value="full_book">完整全书</option><option value="compressed_book">压缩全书</option><option value="hybrid">混合</option>
+        </select>
+      </label>
       <div className="button-row">
         <button onClick={save}>保存</button>
         <button onClick={test}>测试连接</button>

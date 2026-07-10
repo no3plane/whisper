@@ -12,6 +12,7 @@ import type {
   RunReadingActionInput,
   SetActiveThreadInput,
   ThreadMessage,
+  ContextStrategy,
 } from '../shared/types';
 
 const whisper = {
@@ -24,10 +25,13 @@ const whisper = {
   books: {
     importMarkdown: (input: ImportBookInput) =>
       ipcRenderer.invoke(ipcChannels.booksImportMarkdown, input) as Promise<Book>,
+    importEpub: (input: ImportBookInput) => ipcRenderer.invoke(ipcChannels.booksImportEpub, input) as Promise<Book>,
     list: () => ipcRenderer.invoke(ipcChannels.booksList) as Promise<Book[]>,
     open: (bookId: string) => ipcRenderer.invoke(ipcChannels.booksOpen, bookId) as Promise<BookDocument>,
     setActiveThread: (input: SetActiveThreadInput) =>
       ipcRenderer.invoke(ipcChannels.booksSetActiveThread, input) as Promise<void>,
+    setContextStrategy: (input: { bookId: string; strategy: ContextStrategy }) =>
+      ipcRenderer.invoke(ipcChannels.booksSetContextStrategy, input) as Promise<void>,
   },
   ai: {
     runReadingAction: (input: RunReadingActionInput) =>

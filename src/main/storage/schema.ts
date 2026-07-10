@@ -71,4 +71,5 @@ CREATE TABLE IF NOT EXISTS thread_messages (
   context_strategy TEXT,
   FOREIGN KEY(thread_id) REFERENCES reading_threads(id)
 );
+
 `;

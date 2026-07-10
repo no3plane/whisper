@@ -43,9 +43,6 @@ export function RightAiPanel({
   return (
     <aside className="right-panel">
       <div className="tabs">
-        <button className={activeThreadId === null ? 'active' : ''} onClick={() => onSelectThread(null)}>
-          问题地图
-        </button>
         {threads.map((item) => (
           <button
             key={item.thread.id}
@@ -59,12 +56,7 @@ export function RightAiPanel({
       </div>
       {active ? (
         <ThreadChat item={active} onFollowUp={onFollowUp} streamError={streamError} />
-      ) : (
-        <div className="panel-body">
-          <h3>问题地图</h3>
-          <p className="muted">纵向切片阶段暂未生成问题地图。下一阶段会在导入后生成全书问题地图。</p>
-        </div>
-      )}
+      ) : <div className="panel-body"><p className="muted">选中原文并选择一个阅读动作。</p></div>}
     </aside>
   );
 }

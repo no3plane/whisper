@@ -1,7 +1,12 @@
 export type BookFormat = 'markdown' | 'epub';
 export type PreprocessStatus = 'not_started' | 'running' | 'ready' | 'failed';
 export type ContextStrategy = 'full_book' | 'compressed_book' | 'hybrid';
-export type ReadingActionType = 'plain_explanation';
+export type ReadingActionType =
+  | 'plain_explanation'
+  | 'structure_location'
+  | 'concept_explanation'
+  | 'background_context'
+  | 'example_analogy';
 
 export interface Book {
   id: string;

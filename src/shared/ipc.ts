@@ -3,6 +3,7 @@ export const ipcChannels = {
   settingsSave: 'settings.save',
   settingsTestConnection: 'settings.testConnection',
   booksImportMarkdown: 'books.importMarkdown',
+  booksImportEpub: 'books.importEpub',
   booksList: 'books.list',
   booksOpen: 'books.open',
   aiRunReadingAction: 'ai.runReadingAction',
@@ -11,4 +12,5 @@ export const ipcChannels = {
   threadsListByBook: 'threads.listByBook',
   threadsListWithMessagesByBook: 'threads.listWithMessagesByBook',
   booksSetActiveThread: 'books.setActiveThread',
+  booksSetContextStrategy: 'books.setContextStrategy',
 } as const;

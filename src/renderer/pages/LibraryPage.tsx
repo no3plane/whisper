@@ -30,6 +30,11 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
     }
   }
 
+  async function importEpub() {
+    try { setError(''); await whisper.books.importEpub({ filePath }); setFilePath(''); await loadBooks(); }
+    catch (err) { setError(err instanceof Error ? err.message : String(err)); }
+  }
+
   return (
     <section className="library-page">
       <div className="page-header">
@@ -40,16 +45,15 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
         <button onClick={importMarkdown} disabled={!filePath.trim()}>
           导入 Markdown
         </button>
+        <button onClick={importEpub} disabled={!filePath.trim()}>导入 EPUB</button>
       </div>
       {error && <p className="error">{error}</p>}
       <div className="book-list">
         {books.map((book) => (
-          <button className="book-item" key={book.id} onClick={() => onOpenBook(book.id)}>
-            <strong>{book.title}</strong>
-            <span>
-              {book.format} · {book.tokenEstimate} tokens 估算 · {book.defaultContextStrategy}
-            </span>
-          </button>
+          <div className="book-item" key={book.id}>
+            <button onClick={() => onOpenBook(book.id)}><strong>{book.title}</strong></button>
+            <span>{book.format} · {book.tokenEstimate} tokens 估算 · {book.defaultContextStrategy}</span>
+          </div>
         ))}
       </div>
     </section>

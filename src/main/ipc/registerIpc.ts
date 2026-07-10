@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { ipcChannels } from '../../shared/ipc';
-import type { AISettings, FollowUpInput, ImportBookInput, RunReadingActionInput, SetActiveThreadInput } from '../../shared/types';
+import type { AISettings, ContextStrategy, FollowUpInput, ImportBookInput, RunReadingActionInput, SetActiveThreadInput } from '../../shared/types';
 import { AIProvider } from '../ai/AIProvider';
 import type { ReadingActionService } from '../ai/ReadingActionService';
 import type { LibraryService } from '../library/LibraryService';
@@ -63,7 +63,16 @@ export function registerIpc(services: IpcServices) {
     ipcChannels.booksImportMarkdown,
     withIpcLog(ipcChannels.booksImportMarkdown, (_event, input: ImportBookInput | string) => {
       const filePath = typeof input === 'string' ? input : input.filePath;
-      return services.library.importMarkdown(filePath);
+      const book = services.library.importMarkdown(filePath);
+      return book;
+    }),
+  );
+
+  ipcMain.handle(
+    ipcChannels.booksImportEpub,
+    withIpcLog(ipcChannels.booksImportEpub, (_event, input: ImportBookInput | string) => {
+      const book = services.library.importEpub(typeof input === 'string' ? input : input.filePath);
+      return book;
     }),
   );
 
@@ -75,6 +84,12 @@ export function registerIpc(services: IpcServices) {
   ipcMain.handle(
     ipcChannels.booksOpen,
     withIpcLog(ipcChannels.booksOpen, (_event, bookId: string) => services.library.openBook(bookId)),
+  );
+
+  ipcMain.handle(
+    ipcChannels.booksSetContextStrategy,
+    withIpcLog(ipcChannels.booksSetContextStrategy, (_event, input: { bookId: string; strategy: ContextStrategy }) =>
+      services.library.setDefaultContextStrategy(input.bookId, input.strategy)),
   );
 
   ipcMain.handle(
