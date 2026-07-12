@@ -1,7 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ThreadHistory } from '../../src/renderer/components/ThreadHistory';
 import type { ReadingThread } from '../../src/shared/types';
+
+afterEach(cleanup);
 
 function thread(id: string, title: string, status: ReadingThread['status'], updatedAt: string): ReadingThread {
   return {

@@ -1,9 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SelectionMenu } from '../../src/renderer/components/SelectionMenu';
 import { TargetPicker } from '../../src/renderer/components/TargetPicker';
 import type { ConversationDraft } from '../../src/renderer/chat/draftState';
 import type { ReadingTarget } from '../../src/shared/types';
+
+afterEach(cleanup);
 
 const selectionTarget: ReadingTarget = {
   type: 'selection', chapterId: 'section', startPassageId: 'p1', endPassageId: 'p1',
@@ -21,6 +23,14 @@ const draft: ConversationDraft = {
 };
 
 describe('SelectionMenu', () => {
+  it('旧调用方式继续显示五个动作并回调 onAction', () => {
+    const onAction = vi.fn();
+    render(<SelectionMenu selectedText="所谓自由" onAction={onAction} />);
+    fireEvent.click(screen.getByRole('button', { name: '解释' }));
+    expect(onAction).toHaveBeenCalledWith('plain_explanation');
+    expect(screen.getAllByRole('button')).toHaveLength(5);
+  });
+
   it('草稿态只显示设为解读目标', () => {
     render(<SelectionMenu mode="draft" selectedText="所谓自由" onSetTarget={vi.fn()} onStartConversation={vi.fn()} onReference={vi.fn()} />);
     expect(screen.getByRole('button', { name: '设为解读目标' })).toBeTruthy();
