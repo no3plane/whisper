@@ -57,6 +57,16 @@ export interface AddMessageInput {
   error?: string | null;
 }
 
+function parseJsonOr<T>(value: string | null, fallback: T, isValid: (parsed: unknown) => boolean): T {
+  if (!value) return fallback;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return isValid(parsed) ? (parsed as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function mapThreadRow(row: ReadingThreadRow): ReadingThread {
   return {
     id: row.id,
@@ -70,7 +80,7 @@ function mapThreadRow(row: ReadingThreadRow): ReadingThread {
       selectedText: row.target_selected_text,
       startOffset: row.target_start_offset,
       endOffset: row.target_end_offset,
-      breadcrumb: JSON.parse(row.target_breadcrumb_json),
+      breadcrumb: parseJsonOr(row.target_breadcrumb_json, [], Array.isArray),
     },
     skillType: row.skill_type,
     contextStrategy: row.context_strategy,
@@ -91,7 +101,7 @@ function mapMessageRow(row: ThreadMessageRow): ThreadMessage {
     model: row.model,
     tokenUsage: row.token_usage,
     contextStrategy: row.context_strategy,
-    reference: row.reference_json ? JSON.parse(row.reference_json) : null,
+    reference: parseJsonOr(row.reference_json, null, (parsed) => typeof parsed === 'object' && parsed !== null),
     status: row.status,
     error: row.error,
   };
@@ -267,7 +277,9 @@ export class ThreadStore {
   }
 
   markMessageFailed(messageId: string, error: string): ThreadMessage {
-    const existing = this.db.prepare('SELECT thread_id FROM thread_messages WHERE id = ?').get(messageId) as { thread_id: string } | undefined;
+    const existing = this.db.prepare('SELECT thread_id FROM thread_messages WHERE id = ?').get(messageId) as
+      | { thread_id: string }
+      | undefined;
     if (!existing) throw new Error(`找不到 message：${messageId}`);
     this.db.transaction(() => {
       this.db.prepare("UPDATE thread_messages SET status = 'failed', error = ? WHERE id = ?").run(error, messageId);
@@ -277,8 +289,11 @@ export class ThreadStore {
   }
 
   resetMessageForRetry(messageId: string): ThreadMessage {
-    const existing = this.db.prepare('SELECT thread_id FROM thread_messages WHERE id = ?').get(messageId) as { thread_id: string } | undefined;
+    const existing = this.db.prepare('SELECT thread_id, role FROM thread_messages WHERE id = ?').get(messageId) as
+      | { thread_id: string; role: ThreadMessage['role'] }
+      | undefined;
     if (!existing) throw new Error(`找不到 message：${messageId}`);
+    if (existing.role !== 'assistant') throw new Error('只能重试 assistant message');
     this.db.transaction(() => {
       this.db.prepare("UPDATE thread_messages SET content = '', status = 'streaming', error = NULL WHERE id = ?").run(messageId);
       this.db.prepare("UPDATE reading_threads SET status = 'streaming', last_error = NULL, updated_at = ? WHERE id = ?").run(new Date().toISOString(), existing.thread_id);

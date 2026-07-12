@@ -133,4 +133,26 @@ describe('ThreadStore', () => {
     expect(retried).toMatchObject({ id: message.id, content: '', status: 'streaming', error: null });
     expect(store.listMessages(thread.id)).toHaveLength(1);
   });
+
+  it('拒绝重试 user message 且不修改原消息', () => {
+    db = new Database(':memory:'); db.exec(schemaSql); insertBook(db);
+    const store = new ThreadStore(db);
+    const thread = store.createThread({ bookId: 'book-1', title: '会话', target: selectionTarget, skillType: null, contextStrategy: 'full_book' });
+    const message = store.addMessage({ threadId: thread.id, role: 'user', content: '原问题' });
+
+    expect(() => store.resetMessageForRetry(message.id)).toThrow('只能重试 assistant message');
+    expect(store.listMessages(thread.id)[0]).toMatchObject({ id: message.id, content: '原问题', status: 'ready' });
+  });
+
+  it('损坏的目标和引用 JSON 不会阻断列表映射', () => {
+    db = new Database(':memory:'); db.exec(schemaSql); insertBook(db);
+    const store = new ThreadStore(db);
+    const thread = store.createThread({ bookId: 'book-1', title: '会话', target: selectionTarget, skillType: null, contextStrategy: 'full_book' });
+    store.addMessage({ threadId: thread.id, role: 'user', content: '问题' });
+    db.prepare('UPDATE reading_threads SET target_breadcrumb_json = ? WHERE id = ?').run('{bad', thread.id);
+    db.prepare('UPDATE thread_messages SET reference_json = ? WHERE thread_id = ?').run('{bad', thread.id);
+
+    expect(store.listThreadsByBook('book-1')[0].target.breadcrumb).toEqual([]);
+    expect(store.listMessages(thread.id)[0].reference).toBeNull();
+  });
 });
