@@ -69,4 +69,38 @@ describe('ContextAssembler', () => {
     expect(result.effectiveStrategy).toBe('hybrid');
     expect(result.degradationReason).toContain('已降级');
   });
+
+  it('压缩表示截断后会把账本外的目标 passage 补入', () => {
+    const longPassage = { ...passages[0], text: `前部-${'长'.repeat(35980)}` };
+    const result = new ContextAssembler().forReadingAction({
+      ...common,
+      strategy: 'compressed_book',
+      chapters,
+      passages: [longPassage, ...passages.slice(1)],
+      target: chapterTarget,
+      fullText: '',
+      contextWindow: 50000,
+    });
+    expect(result.coveredPassageIds).not.toContain('p3');
+    expect(result.messages[0].content).toContain('解读目标补充');
+    expect(result.messages[0].content).toContain('第三章完整文本');
+  });
+
+  it('选区附近已采样 passage 不重复全文', () => {
+    const result = new ContextAssembler().forReadingAction({
+      ...common, strategy: 'compressed_book', target: selectionTarget,
+    });
+    expect(result.messages[0].content.split('第三章完整文本')).toHaveLength(2);
+    expect(result.messages[0].content.split('选区附近段落。')).toHaveLength(2);
+  });
+
+  it('选区 passage 定位失效时仍安全输出精确选区', () => {
+    const invalidTarget: ReadingTarget = {
+      ...selectionTarget, startPassageId: 'missing-start', endPassageId: 'missing-end', selectedText: '孤立选区',
+    };
+    const result = new ContextAssembler().forReadingAction({
+      ...common, strategy: 'compressed_book', target: invalidTarget,
+    });
+    expect(result.messages[0].content).toContain('精确选区：孤立选区');
+  });
 });

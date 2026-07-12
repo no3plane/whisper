@@ -24,7 +24,7 @@ interface ReadingActionContextInput {
 
 interface BookKnowledge {
   text: string;
-  coveredPassageIds?: string[];
+  coveredPassageIds: string[];
 }
 
 export interface AssembledMessage { role: 'user' | 'assistant'; content: string }
@@ -50,18 +50,34 @@ function compressedKnowledge(input: ReadingActionContextInput, excludedChapterId
   }
 
   const includedChapters = input.chapters.filter((chapter) => chapter.id !== excludedChapterId);
-  const samples = includedChapters.flatMap((chapter) => {
+  const blocks: string[] = [];
+  const coveredPassageIds: string[] = [];
+  let truncated = false;
+  for (const chapter of includedChapters) {
     const chapterPassages = passagesInChapter(input, chapter.id);
-    if (chapterPassages.length <= 4) return chapterPassages;
-    return [chapterPassages[0], chapterPassages[Math.floor(chapterPassages.length / 2)], chapterPassages[chapterPassages.length - 1]];
-  });
-  return {
-    text: includedChapters.map((chapter) => {
-      const chapterSamples = samples.filter((passage) => passage.chapterId === chapter.id);
-      return `## ${chapter.title}\n${chapterSamples.map((passage) => `[${passage.id}] ${passage.text}`).join('\n')}`;
-    }).join('\n\n').slice(0, 36000),
-    coveredPassageIds: samples.map((passage) => passage.id),
-  };
+    const samples = chapterPassages.length <= 4
+      ? chapterPassages
+      : [chapterPassages[0], chapterPassages[Math.floor(chapterPassages.length / 2)], chapterPassages[chapterPassages.length - 1]];
+    const heading = `## ${chapter.title}`;
+    const chapterBlocks: string[] = [];
+    for (const passage of samples) {
+      const block = `[${passage.id}] ${passage.text}`;
+      const candidateChapter = `${heading}\n${[...chapterBlocks, block].join('\n')}`;
+      const candidateText = [...blocks, candidateChapter].join('\n\n');
+      if (candidateText.length > 36000) {
+        truncated = true;
+        break;
+      }
+      chapterBlocks.push(block);
+      coveredPassageIds.push(passage.id);
+    }
+    if (chapterBlocks.length > 0) {
+      const chapterBlock = `${heading}\n${chapterBlocks.join('\n')}`;
+      blocks.push(chapterBlock);
+    }
+    if (truncated) break;
+  }
+  return { text: blocks.join('\n\n'), coveredPassageIds };
 }
 
 function buildBookKnowledge(input: ReadingActionContextInput, strategy: ContextStrategy): BookKnowledge {
@@ -106,15 +122,22 @@ function buildTargetSupplement(input: ReadingActionContextInput, coveredIds: Set
 
   // 压缩全书只提供稀疏采样；选区任务仍需显式给出精确选区及相邻原文。
   if (strategy !== 'compressed_book' && missing.length === 0) return '';
+  if (range.length === 0) {
+    return `解读目标补充：\n精确选区：${input.target.selectedText}`;
+  }
   const indices = range.map((passage) => input.passages.indexOf(passage));
-  const start = Math.max(0, Math.min(...indices.filter((index) => index >= 0)) - 1);
-  const end = Math.min(input.passages.length - 1, Math.max(...indices.filter((index) => index >= 0)) + 1);
-  const nearby = start <= end ? input.passages.slice(start, end + 1) : missing;
+  const validIndices = indices.filter((index) => index >= 0);
+  if (validIndices.length === 0) {
+    return `解读目标补充：\n精确选区：${input.target.selectedText}`;
+  }
+  const start = Math.max(0, Math.min(...validIndices) - 1);
+  const end = Math.min(input.passages.length - 1, Math.max(...validIndices) + 1);
+  const nearby = input.passages.slice(start, end + 1).filter((passage) => !coveredIds.has(passage.id));
   return [
     '解读目标补充：',
     `精确选区：${input.target.selectedText}`,
-    nearby.map((passage) => `[${passage.id}] ${passage.text}`).join('\n\n'),
-  ].join('\n');
+    nearby.length > 0 ? nearby.map((passage) => `[${passage.id}] ${passage.text}`).join('\n\n') : '',
+  ].filter(Boolean).join('\n');
 }
 
 function targetDescription(target: ReadingTarget) {
