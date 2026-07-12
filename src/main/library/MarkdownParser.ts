@@ -40,6 +40,8 @@ export class MarkdownParser {
     const slugger = new GithubSlugger();
     const chapters: Chapter[] = [];
     const passages: Passage[] = [];
+    const headingStack: Chapter[] = [];
+    const chapterStartIndexes = new Map<string, number>();
     let currentChapterId: string | null = null;
 
     visit(tree, (node) => {
@@ -49,19 +51,27 @@ export class MarkdownParser {
         const title = textFromChildren(markdownNode.children);
         const fallbackTitle = `未命名章节 ${chapters.length + 1}`;
         const id = `${input.bookId}-chapter-${slugger.slug(title || `chapter-${chapters.length}`)}`;
+        const level = markdownNode.depth ?? 1;
+
+        while (headingStack.at(-1) && headingStack.at(-1)!.level >= level) {
+          headingStack.pop();
+        }
 
         currentChapterId = id;
-        chapters.push({
+        const chapter: Chapter = {
           id,
           bookId: input.bookId,
-          parentChapterId: null,
+          parentChapterId: headingStack.at(-1)?.id ?? null,
           title: title || fallbackTitle,
-          level: markdownNode.depth ?? 1,
+          level,
           order: chapters.length,
           startPassageId: '',
           endPassageId: '',
           summary: null,
-        });
+        };
+        chapters.push(chapter);
+        headingStack.push(chapter);
+        chapterStartIndexes.set(id, passages.length);
       }
 
       if (markdownNode.type === 'paragraph') {
@@ -82,8 +92,13 @@ export class MarkdownParser {
       }
     });
 
-    for (const chapter of chapters) {
-      const chapterPassages = passages.filter((passage) => passage.chapterId === chapter.id);
+    for (const [chapterIndex, chapter] of chapters.entries()) {
+      const startIndex = chapterStartIndexes.get(chapter.id) ?? passages.length;
+      const nextBoundary = chapters
+        .slice(chapterIndex + 1)
+        .find((candidate) => candidate.level <= chapter.level);
+      const endIndex = nextBoundary ? (chapterStartIndexes.get(nextBoundary.id) ?? passages.length) : passages.length;
+      const chapterPassages = passages.slice(startIndex, endIndex);
       chapter.startPassageId = chapterPassages[0]?.id ?? '';
       chapter.endPassageId = chapterPassages.at(-1)?.id ?? '';
     }
