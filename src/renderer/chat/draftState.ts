@@ -17,7 +17,9 @@ export interface ConversationDraft {
   reference: MessageReference | null;
 }
 
-export type DraftValidation = { valid: true } | { valid: false; reason: 'prompt-required' };
+export type DraftValidation =
+  | { valid: true }
+  | { valid: false; reason: 'prompt-required' | 'skill-not-allowed' };
 
 function bookTarget(): ReadingTarget {
   return {
@@ -50,7 +52,10 @@ export function applyAutomaticSelection(
   selection: ReadingTarget,
 ): ConversationDraft {
   if (draft.mode === 'manual') return draft;
-  return { ...draft, target: selection };
+  const skillType = draft.skillType && isSkillAllowed(selection.type, draft.skillType)
+    ? draft.skillType
+    : null;
+  return { ...draft, target: selection, skillType };
 }
 
 export function selectTarget(draft: ConversationDraft, target: ReadingTarget): ConversationDraft {
@@ -69,6 +74,9 @@ export function replaceDraftFromSelection(
 }
 
 export function validateDraft(draft: ConversationDraft): DraftValidation {
+  if (draft.skillType && !isSkillAllowed(draft.target.type, draft.skillType)) {
+    return { valid: false, reason: 'skill-not-allowed' };
+  }
   return draft.skillType || draft.prompt.trim()
     ? { valid: true }
     : { valid: false, reason: 'prompt-required' };

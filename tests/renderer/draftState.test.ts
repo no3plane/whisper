@@ -35,6 +35,14 @@ describe('新会话草稿状态', () => {
     expect(applyAutomaticSelection(draft, selection).target).toEqual(selection);
   });
 
+  it('自动选区会清除与框选目标不兼容的整书技能', () => {
+    const draft = { ...createBookDraft('book-1', 'full_book'), skillType: 'book_summary' as const };
+    expect(applyAutomaticSelection(draft, selection)).toMatchObject({
+      target: selection,
+      skillType: null,
+    });
+  });
+
   it('手动选择章节后新选区不覆盖目标', () => {
     const draft = selectTarget(createBookDraft('book-1', 'full_book'), chapter);
     expect(applyAutomaticSelection(draft, anotherSelection)).toBe(draft);
@@ -70,5 +78,14 @@ describe('新会话草稿状态', () => {
     expect(validateDraft(empty)).toEqual({ valid: false, reason: 'prompt-required' });
     expect(validateDraft({ ...empty, prompt: '  问题  ' })).toEqual({ valid: true });
     expect(validateDraft({ ...empty, skillType: 'book_summary' })).toEqual({ valid: true });
+  });
+
+  it('拒绝发送目标与技能不兼容的外部构造草稿', () => {
+    const draft = {
+      ...createBookDraft('book-1', 'full_book'),
+      target: selection,
+      skillType: 'book_summary' as const,
+    };
+    expect(validateDraft(draft)).toEqual({ valid: false, reason: 'skill-not-allowed' });
   });
 });
