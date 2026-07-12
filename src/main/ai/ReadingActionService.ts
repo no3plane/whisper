@@ -96,10 +96,16 @@ export class ReadingActionService {
     return this.streamIntoMessage(thread, assistant, context, window, [...messages.slice(0, index), assistant]);
   }
 
-  deleteConversation(input: DeleteThreadInput) { this.threads.deleteThread(input.threadId); }
+  deleteConversation(input: DeleteThreadInput) {
+    if (!input || typeof input !== 'object' || typeof input.threadId !== 'string' || !input.threadId.trim()) {
+      throw new Error('删除会话参数无效：threadId 必须是非空字符串。');
+    }
+    this.threads.deleteThread(input.threadId);
+  }
 
   /** @deprecated renderer 迁移期间保留。 */
   runReadingAction(input: RunReadingActionInput, window: BrowserWindow) {
+    if (!input.passageId) throw new Error('旧版框选操作缺少 passageId，请重新框选文本。');
     const document = this.library.openBook(input.bookId);
     const passage = document.passages.find((item) => item.id === input.passageId);
     return this.createConversation({
@@ -107,7 +113,7 @@ export class ReadingActionService {
       target: {
         type: 'selection', chapterId: passage?.chapterId ?? null,
         startPassageId: input.passageId, endPassageId: input.passageId,
-        selectedText: input.selectedText, startOffset: null, endOffset: null, breadcrumb: [],
+        selectedText: input.selectedText, startOffset: 0, endOffset: input.selectedText.length, breadcrumb: [],
       },
       skillType: input.actionType === 'structure_location' ? null : input.actionType,
       prompt: input.actionType === 'structure_location' ? '解释这段在全书结构中的位置。' : '',
@@ -150,6 +156,9 @@ export class ReadingActionService {
     if (!input || typeof input !== 'object') throw new Error('创建会话参数无效。');
     if (typeof input.bookId !== 'string' || !input.bookId.trim()) throw new Error('bookId 必须是非空字符串。');
     if (typeof input.prompt !== 'string') throw new Error('prompt 必须是字符串。');
+    if (!['full_book', 'compressed_book', 'hybrid'].includes(input.contextStrategy)) {
+      throw new Error('全书认知策略无效。');
+    }
     this.validateTarget(input.target);
     if (input.skillType !== null && (typeof input.skillType !== 'string' || !Object.hasOwn(skills, input.skillType))) {
       throw new Error('技能类型无效。');

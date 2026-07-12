@@ -57,6 +57,18 @@ describe('ReadingActionService', () => {
     expect(messages.map(({ role, status }) => ({ role, status }))).toEqual([{ role: 'user', status: 'ready' }, { role: 'assistant', status: 'ready' }]);
   });
 
+  it('旧 runReadingAction 入口把有效选区转换为可创建的 selection target', async () => {
+    const { service, threads, window } = setup();
+    await service.runReadingAction({
+      bookId: 'book-1', passageId: 'p1', selectedText: '原文',
+      actionType: 'plain_explanation', contextStrategy: 'full_book',
+    }, window);
+    expect(threads[0].target).toMatchObject({
+      type: 'selection', startPassageId: 'p1', endPassageId: 'p1',
+      selectedText: '原文', startOffset: 0, endOffset: 2,
+    });
+  });
+
   it('拒绝与目标类型不匹配的技能', async () => {
     const { service, window } = setup();
     await expect(service.createConversation({ bookId: 'book-1', target, skillType: 'book_summary', prompt: '', contextStrategy: 'full_book' }, window)).rejects.toThrow('技能不适用于当前解读目标');
@@ -109,6 +121,7 @@ describe('ReadingActionService', () => {
     [{ bookId: 'book-1', target: { ...target, type: 'unknown' }, skillType: null, prompt: '问题', contextStrategy: 'full_book' }, '解读目标类型无效'],
     [{ bookId: 'book-1', target: { ...target, selectedText: 42 }, skillType: null, prompt: '问题', contextStrategy: 'full_book' }, '解读目标字段无效'],
     [{ bookId: 'book-1', target, skillType: 'unknown', prompt: '', contextStrategy: 'full_book' }, '技能类型无效'],
+    [{ bookId: 'book-1', target, skillType: null, prompt: '问题', contextStrategy: 'invalid' }, '全书认知策略无效'],
   ])('createConversation 拒绝畸形运行时输入 %#', async (input, message) => {
     const { service, window } = setup();
     await expect(service.createConversation(input as any, window)).rejects.toThrow(message);
@@ -142,5 +155,10 @@ describe('ReadingActionService', () => {
     store.deleteThread = (id: string) => { deleted = id; };
     service.deleteConversation({ threadId: 't1' });
     expect(deleted).toBe('t1');
+  });
+
+  it.each([null, {}, { threadId: '' }, { threadId: 1 }])('deleteConversation 拒绝畸形输入 %#', (input) => {
+    const { service } = setup();
+    expect(() => service.deleteConversation(input as any)).toThrow('删除会话参数无效');
   });
 });
