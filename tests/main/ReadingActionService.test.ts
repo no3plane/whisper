@@ -88,6 +88,54 @@ describe('ReadingActionService', () => {
     expect(failed.messages.at(-1)).toMatchObject({ id: assistant.id, content: '重试', status: 'ready' });
   });
 
+  it('retry 上下文只包含失败 assistant 之前的持久化消息', async () => {
+    const failed = setup('failure');
+    await expect(failed.service.createConversation({ bookId: 'book-1', target, skillType: null, prompt: '最初问题', contextStrategy: 'full_book' }, failed.window)).rejects.toThrow();
+    const assistant = failed.messages.at(-1)!;
+    failed.store.addMessage({ threadId: assistant.threadId, role: 'user', content: '失败后的问题' });
+    failed.store.addMessage({ threadId: assistant.threadId, role: 'assistant', content: '失败后的回答' });
+    let context: any;
+    const provider = { async streamGenerate(_s: any, value: any) { context = value; return { text: '重试', usage: 2 }; } };
+    const service = new ReadingActionService((failed.service as any).settings, (failed.service as any).library, failed.store as any, provider as any);
+    await service.retry({ threadId: assistant.threadId, messageId: assistant.id }, failed.window);
+    const contents = context.messages.map((message: any) => message.content).join('\n');
+    expect(contents).toContain('最初问题');
+    expect(contents).not.toContain('失败后的问题');
+    expect(contents).not.toContain('失败后的回答');
+  });
+
+  it.each([
+    [{ bookId: 'book-1', target, skillType: null, contextStrategy: 'full_book' }, 'prompt 必须是字符串'],
+    [{ bookId: 'book-1', target: { ...target, type: 'unknown' }, skillType: null, prompt: '问题', contextStrategy: 'full_book' }, '解读目标类型无效'],
+    [{ bookId: 'book-1', target: { ...target, selectedText: 42 }, skillType: null, prompt: '问题', contextStrategy: 'full_book' }, '解读目标字段无效'],
+    [{ bookId: 'book-1', target, skillType: 'unknown', prompt: '', contextStrategy: 'full_book' }, '技能类型无效'],
+  ])('createConversation 拒绝畸形运行时输入 %#', async (input, message) => {
+    const { service, window } = setup();
+    await expect(service.createConversation(input as any, window)).rejects.toThrow(message);
+  });
+
+  it.each([
+    [{ ...target, type: 'chapter', chapterId: null }, '章节目标必须包含 chapterId'],
+    [{ ...target, type: 'selection', startPassageId: null }, '框选目标必须包含 passage、文本和偏移量'],
+    [{ ...target, type: 'selection', selectedText: '' }, '框选目标必须包含 passage、文本和偏移量'],
+    [{ ...target, type: 'selection', startOffset: null }, '框选目标必须包含 passage、文本和偏移量'],
+  ])('createConversation 拒绝缺少类型必要字段的目标 %#', async (invalidTarget, message) => {
+    const { service, window } = setup();
+    await expect(service.createConversation({
+      bookId: 'book-1', target: invalidTarget as any, skillType: null,
+      prompt: '问题', contextStrategy: 'full_book',
+    }, window)).rejects.toThrow(message);
+  });
+
+  it('followUp 和 retry 对字符串字段做运行时校验', async () => {
+    const { service, window } = setup();
+    await expect(service.followUp({ threadId: 1, question: null } as any, window)).rejects.toThrow('threadId 必须是非空字符串');
+    await expect(service.followUp({ threadId: 't1', question: 1 } as any, window)).rejects.toThrow('question 必须是字符串');
+    await expect(service.followUp({ threadId: 't1', question: '问题', reference: {} } as any, window)).rejects.toThrow('引用字段无效');
+    await expect(service.retry({ threadId: '', messageId: 1 } as any, window)).rejects.toThrow('threadId 必须是非空字符串');
+    await expect(service.retry({ threadId: 't1', messageId: 1 } as any, window)).rejects.toThrow('messageId 必须是非空字符串');
+  });
+
   it('deleteConversation 委托 ThreadStore', () => {
     const { service, store } = setup();
     let deleted = '';

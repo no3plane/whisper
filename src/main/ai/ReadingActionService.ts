@@ -66,7 +66,7 @@ export class ReadingActionService {
   }
 
   async followUp(input: FollowUpInput, window: BrowserWindow) {
-    if (!input.question.trim()) throw new Error('请输入追问内容。');
+    this.validateFollowUp(input);
     const aiSettings = this.requireSettings();
     const thread = this.threads.getThread(input.threadId);
     this.threads.updateThreadStatus(thread.id, 'streaming');
@@ -83,6 +83,7 @@ export class ReadingActionService {
   }
 
   async retry(input: RetryMessageInput, window: BrowserWindow) {
+    this.validateRetry(input);
     const thread = this.threads.getThread(input.threadId);
     const messages = this.threads.listMessages(thread.id);
     const index = messages.findIndex((message) => message.id === input.messageId);
@@ -90,7 +91,8 @@ export class ReadingActionService {
     if (!message || message.threadId !== thread.id) throw new Error('重试消息不属于当前会话。');
     if (message.role !== 'assistant' || message.status !== 'failed') throw new Error('只能重试失败的 assistant message。');
     const assistant = this.threads.resetMessageForRetry(message.id);
-    const context = this.buildContext(thread, assistant, messages[index - 1]?.reference ?? null, index === 1);
+    const history = messages.slice(0, index);
+    const context = this.buildContext(thread, assistant, messages[index - 1]?.reference ?? null, index === 1, history);
     return this.streamIntoMessage(thread, assistant, context, window, [...messages.slice(0, index), assistant]);
   }
 
@@ -145,8 +147,62 @@ export class ReadingActionService {
   }
 
   private validateCreate(input: CreateConversationInput) {
+    if (!input || typeof input !== 'object') throw new Error('创建会话参数无效。');
+    if (typeof input.bookId !== 'string' || !input.bookId.trim()) throw new Error('bookId 必须是非空字符串。');
+    if (typeof input.prompt !== 'string') throw new Error('prompt 必须是字符串。');
+    this.validateTarget(input.target);
+    if (input.skillType !== null && (typeof input.skillType !== 'string' || !Object.hasOwn(skills, input.skillType))) {
+      throw new Error('技能类型无效。');
+    }
     if (!input.skillType && !input.prompt.trim()) throw new Error('请输入问题。');
     if (input.skillType && skills[input.skillType].target !== input.target.type) throw new Error('所选技能不适用于当前解读目标。');
+  }
+
+  private validateTarget(target: CreateConversationInput['target']) {
+    if (!target || typeof target !== 'object') throw new Error('解读目标无效。');
+    if (!['book', 'chapter', 'selection'].includes(target.type)) throw new Error('解读目标类型无效。');
+    const nullableString = (value: unknown) => value === null || typeof value === 'string';
+    const nullableNumber = (value: unknown) => value === null || typeof value === 'number';
+    const validBreadcrumb = Array.isArray(target.breadcrumb) && target.breadcrumb.every((crumb) =>
+      crumb && typeof crumb.chapterId === 'string' && typeof crumb.title === 'string');
+    if (!nullableString(target.chapterId) || !nullableString(target.startPassageId)
+      || !nullableString(target.endPassageId) || typeof target.selectedText !== 'string'
+      || !nullableNumber(target.startOffset) || !nullableNumber(target.endOffset) || !validBreadcrumb) {
+      throw new Error('解读目标字段无效。');
+    }
+    if (target.type === 'chapter' && (!target.chapterId || !target.chapterId.trim())) {
+      throw new Error('章节目标必须包含 chapterId。');
+    }
+    if (target.type === 'selection' && (
+      !target.startPassageId?.trim() || !target.endPassageId?.trim() || !target.selectedText.trim()
+      || target.startOffset === null || target.endOffset === null
+    )) {
+      throw new Error('框选目标必须包含 passage、文本和偏移量。');
+    }
+  }
+
+  private validateFollowUp(input: FollowUpInput) {
+    if (!input || typeof input !== 'object') throw new Error('追问参数无效。');
+    if (typeof input.threadId !== 'string' || !input.threadId.trim()) throw new Error('threadId 必须是非空字符串。');
+    if (typeof input.question !== 'string') throw new Error('question 必须是字符串。');
+    if (!input.question.trim()) throw new Error('请输入追问内容。');
+    if (input.reference !== undefined && input.reference !== null) this.validateReference(input.reference);
+  }
+
+  private validateReference(reference: NonNullable<FollowUpInput['reference']>) {
+    const validBreadcrumb = Array.isArray(reference.breadcrumb) && reference.breadcrumb.every((crumb) =>
+      crumb && typeof crumb.chapterId === 'string' && typeof crumb.title === 'string');
+    if (typeof reference.selectedText !== 'string' || typeof reference.startPassageId !== 'string'
+      || typeof reference.endPassageId !== 'string' || typeof reference.startOffset !== 'number'
+      || typeof reference.endOffset !== 'number' || !validBreadcrumb) {
+      throw new Error('引用字段无效。');
+    }
+  }
+
+  private validateRetry(input: RetryMessageInput) {
+    if (!input || typeof input !== 'object') throw new Error('重试参数无效。');
+    if (typeof input.threadId !== 'string' || !input.threadId.trim()) throw new Error('threadId 必须是非空字符串。');
+    if (typeof input.messageId !== 'string' || !input.messageId.trim()) throw new Error('messageId 必须是非空字符串。');
   }
 
   private emit(window: BrowserWindow, event: AiStreamEvent) {
