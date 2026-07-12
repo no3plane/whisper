@@ -1,117 +1,169 @@
-import { useCallback, useMemo, type FC } from 'react';
+import { useCallback, useMemo, type FormEvent } from 'react';
 import {
   AssistantRuntimeProvider,
-  AuiIf,
   ComposerPrimitive,
-  MessagePrimitive,
   ThreadPrimitive,
   useExternalStoreRuntime,
   type AppendMessage,
   type ThreadMessageLike,
 } from '@assistant-ui/react';
-import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
+import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { ReadingThread, ThreadMessage } from '../../shared/types';
+import { skillsForTarget } from '../../shared/skills';
+import type { CreateConversationInput, MessageReference, ReadingThread, ThreadMessage } from '../../shared/types';
+import type { ConversationDraft } from '../chat/draftState';
+import { validateDraft } from '../chat/draftState';
 import '@assistant-ui/react-markdown/styles/dot.css';
 
-interface RightAiPanelProps {
-  threads: Array<{ thread: ReadingThread; messages: ThreadMessage[] }>;
-  activeThreadId: string | null;
-  onSelectThread: (threadId: string | null) => void;
-  onFollowUp: (threadId: string, question: string) => Promise<void>;
+type ThreadItem = { thread: ReadingThread; messages: ThreadMessage[] };
+export type AiPanelView = { type: 'draft' } | { type: 'thread'; threadId: string } | { type: 'history' } | null;
+
+export interface RightAiPanelProps {
+  threads: ThreadItem[];
+  openThreadIds: string[];
+  activeView: AiPanelView;
+  draft: ConversationDraft;
+  pendingReference: MessageReference | null;
+  onOpenDraft: () => void;
+  onUpdateDraft: (draft: ConversationDraft) => void;
+  onCreate: (input: CreateConversationInput) => Promise<void>;
+  onSelectThread: (threadId: string) => void;
+  onCloseThread: (threadId: string) => void;
+  onOpenHistory: () => void;
+  onFollowUp: (threadId: string, question: string, reference: MessageReference | null) => Promise<void>;
+  onClearReference: () => void;
+  onRetryMessage: (threadId: string, messageId: string) => void;
+  onLocate: (threadId: string, reference?: MessageReference | null) => void;
   streamError?: string;
 }
 
-function toThreadMessageLike(message: ThreadMessage): ThreadMessageLike {
-  return {
-    id: message.id,
-    role: message.role,
-    content: [{ type: 'text', text: message.content }],
-    createdAt: new Date(message.createdAt),
-  };
-}
-
-export function RightAiPanel({
-  threads,
-  activeThreadId,
-  onSelectThread,
-  onFollowUp,
-  streamError,
-}: RightAiPanelProps) {
-  const active = threads.find((item) => item.thread.id === activeThreadId) ?? null;
+export function RightAiPanel(props: RightAiPanelProps) {
+  const openThreads = props.openThreadIds
+    .map((id) => props.threads.find((item) => item.thread.id === id))
+    .filter((item): item is ThreadItem => Boolean(item));
+  const activeThreadId = props.activeView?.type === 'thread' ? props.activeView.threadId : null;
+  const active = activeThreadId
+    ? props.threads.find((item) => item.thread.id === activeThreadId) ?? null
+    : null;
 
   return (
     <aside className="right-panel">
-      <div className="tabs">
-        {threads.map((item) => (
-          <button
-            key={item.thread.id}
-            className={activeThreadId === item.thread.id ? 'active' : ''}
-            onClick={() => onSelectThread(item.thread.id)}
-          >
-            {item.thread.title}
-            {item.thread.status === 'streaming' ? ' ·' : ''}
-          </button>
-        ))}
-      </div>
-      {active ? (
-        <ThreadChat item={active} onFollowUp={onFollowUp} streamError={streamError} />
-      ) : <div className="panel-body"><p className="muted">选中原文并选择一个阅读动作。</p></div>}
+      <ThreadTabs {...props} openThreads={openThreads} />
+      {props.activeView?.type === 'draft' ? (
+        <DraftComposer draft={props.draft} onUpdate={props.onUpdateDraft} onCreate={props.onCreate} />
+      ) : active ? (
+        <ThreadChat item={active} pendingReference={props.pendingReference} onFollowUp={props.onFollowUp}
+          onClearReference={props.onClearReference} onRetryMessage={props.onRetryMessage}
+          onLocate={props.onLocate} streamError={props.streamError} />
+      ) : props.activeView?.type === 'history' ? (
+        <div className="panel-body"><p className="muted">从历史记录中打开会话。</p></div>
+      ) : (
+        <div className="panel-body"><p className="muted">新建会话，或从历史记录继续阅读。</p></div>
+      )}
     </aside>
   );
 }
 
-function ThreadChat({
-  item,
-  onFollowUp,
-  streamError,
-}: {
-  item: { thread: ReadingThread; messages: ThreadMessage[] };
-  onFollowUp: (threadId: string, question: string) => Promise<void>;
+function ThreadTabs(props: RightAiPanelProps & { openThreads: ThreadItem[] }) {
+  return (
+    <nav className="tabs" aria-label="打开的会话">
+      <div className="tabs-scroll">
+        {props.activeView?.type === 'draft' ? <button className="active" onClick={props.onOpenDraft}>新会话</button> : null}
+        {props.openThreads.map(({ thread }) => (
+          <span className="thread-tab" key={thread.id}>
+            <button className={props.activeView?.type === 'thread' && props.activeView.threadId === thread.id ? 'active' : ''}
+              onClick={() => props.onSelectThread(thread.id)}>
+              {thread.title}{thread.status === 'streaming' ? ' ·' : ''}
+            </button>
+            <button aria-label={`关闭“${thread.title}”`} onClick={() => props.onCloseThread(thread.id)}>×</button>
+          </span>
+        ))}
+      </div>
+      <button aria-label="新建会话" onClick={props.onOpenDraft}>+</button>
+      <button onClick={props.onOpenHistory}>历史</button>
+    </nav>
+  );
+}
+
+function DraftComposer({ draft, onUpdate, onCreate }: { draft: ConversationDraft; onUpdate: (draft: ConversationDraft) => void; onCreate: (input: CreateConversationInput) => Promise<void> }) {
+  const validation = validateDraft(draft);
+  const skills = skillsForTarget(draft.target.type);
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!validation.valid) return;
+    await onCreate({ bookId: draft.bookId, target: draft.target, skillType: draft.skillType, prompt: draft.prompt.trim(), contextStrategy: draft.contextStrategy });
+  }
+  return (
+    <form className="draft-composer panel-body" onSubmit={(event) => void submit(event)}>
+      <h3>新会话</h3>
+      <label>全书认知
+        <select value={draft.contextStrategy} onChange={(event) => onUpdate({ ...draft, contextStrategy: event.target.value as ConversationDraft['contextStrategy'], strategySource: 'draft-override' })}>
+          <option value="full_book">完整全书</option><option value="compressed_book">压缩全书</option><option value="hybrid">混合</option>
+        </select>
+      </label>
+      <label>技能
+        <select value={draft.skillType ?? ''} onChange={(event) => onUpdate({ ...draft, skillType: (event.target.value || null) as ConversationDraft['skillType'] })}>
+          <option value="">不使用技能</option>
+          {skills.map((skill) => <option key={skill.id} value={skill.id}>{skill.label}</option>)}
+        </select>
+      </label>
+      <textarea value={draft.prompt} onChange={(event) => onUpdate({ ...draft, prompt: event.target.value })}
+        placeholder={draft.skillType ? '可补充具体要求，也可以直接发送' : '你想了解什么？'} />
+      <button type="submit" aria-label="发送首次问题" disabled={!validation.valid}>发送</button>
+    </form>
+  );
+}
+
+function toMessageLike(message: ThreadMessage): ThreadMessageLike {
+  return { id: message.id, role: message.role, content: [{ type: 'text', text: message.content }], createdAt: new Date(message.createdAt) };
+}
+
+function ThreadChat({ item, pendingReference, onFollowUp, onClearReference, onRetryMessage, onLocate, streamError }: {
+  item: ThreadItem;
+  pendingReference: MessageReference | null;
+  onFollowUp: RightAiPanelProps['onFollowUp'];
+  onClearReference: () => void;
+  onRetryMessage: RightAiPanelProps['onRetryMessage'];
+  onLocate: RightAiPanelProps['onLocate'];
   streamError?: string;
 }) {
-  const isRunning = item.thread.status === 'streaming';
-  const messages = useMemo(() => item.messages.map(toThreadMessageLike), [item.messages]);
-
-  const onNew = useCallback(
-    async (message: AppendMessage) => {
-      const part = message.content[0];
-      if (!part || part.type !== 'text') {
-        throw new Error('当前只支持文本追问。');
-      }
-      const question = part.text.trim();
-      if (!question) return;
-      await onFollowUp(item.thread.id, question);
-    },
-    [item.thread.id, onFollowUp],
-  );
-
-  const runtime = useExternalStoreRuntime({
-    isRunning,
-    messages,
-    convertMessage: (message) => message,
-    onNew,
-  });
-
+  const messages = useMemo(() => item.messages.map(toMessageLike), [item.messages]);
+  const onNew = useCallback(async (message: AppendMessage) => {
+    const part = message.content[0];
+    if (!part || part.type !== 'text') throw new Error('当前只支持文本追问。');
+    const question = part.text.trim();
+    if (!question) throw new Error(pendingReference ? '引用原文后，请输入你的问题。' : '请输入追问内容。');
+    await onFollowUp(item.thread.id, question, pendingReference);
+    if (pendingReference) onClearReference();
+  }, [item.thread.id, onClearReference, onFollowUp, pendingReference]);
+  const runtime = useExternalStoreRuntime({ isRunning: item.thread.status === 'streaming', messages, convertMessage: (message) => message, onNew });
   return (
     <AssistantRuntimeProvider runtime={runtime}>
       <div className="thread-chat">
-        <p className="muted">上下文策略：{item.thread.contextStrategy}</p>
-        <blockquote className="selected-quote">{item.thread.selectedText}</blockquote>
+        <header className="thread-context">
+          <p className="muted">全书认知：{item.thread.contextStrategy}</p>
+          <button onClick={() => onLocate(item.thread.id)}>回到原文</button>
+        </header>
         {streamError ? <p className="error">{streamError}</p> : null}
         <ThreadPrimitive.Root className="aui-thread-root">
           <ThreadPrimitive.Viewport className="aui-thread-viewport" autoScroll>
-            <ThreadPrimitive.Messages>
-              {({ message }) => (message.role === 'user' ? <UserMessage /> : <AssistantMessage />)}
-            </ThreadPrimitive.Messages>
-            <AuiIf condition={(s) => s.thread.isRunning}>
-              <div className="thinking-status" aria-live="polite">
-                <span className="thinking-dot" />
-                模型思考中…
-              </div>
-            </AuiIf>
+            <div className="thread-messages">
+              {item.messages.filter((message) => message.role !== 'system').map((message) => (
+                <article className={`aui-message aui-message-${message.role}`} key={message.id}>
+                  <div className="aui-message-label">{message.role === 'user' ? '你' : '助手'}</div>
+                  {message.reference ? <button onClick={() => onLocate(item.thread.id, message.reference)}>引用：{message.reference.breadcrumb.map((crumb) => crumb.title).join(' > ')}</button> : null}
+                  <div className="aui-message-body aui-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown></div>
+                  {message.status === 'failed' ? <button onClick={() => onRetryMessage(item.thread.id, message.id)}>重试回答</button> : null}
+                </article>
+              ))}
+              {item.thread.status === 'streaming' ? <div className="thinking-status" aria-live="polite">模型思考中…</div> : null}
+            </div>
             <ThreadPrimitive.ViewportFooter>
-              <Composer />
+              {pendingReference ? <aside className="pending-reference"><span>{pendingReference.breadcrumb.map((crumb) => crumb.title).join(' > ')}</span><blockquote>{pendingReference.selectedText}</blockquote><button aria-label="移除引用" onClick={onClearReference}>×</button></aside> : null}
+              <ComposerPrimitive.Root className="aui-composer">
+                <ComposerPrimitive.Input className="aui-composer-input" placeholder={pendingReference ? '结合这段文字追问什么？' : '继续追问这个回答'} rows={1} />
+                <ComposerPrimitive.Send className="aui-composer-send" aria-label="发送追问">发送</ComposerPrimitive.Send>
+              </ComposerPrimitive.Root>
             </ThreadPrimitive.ViewportFooter>
           </ThreadPrimitive.Viewport>
         </ThreadPrimitive.Root>
@@ -119,48 +171,3 @@ function ThreadChat({
     </AssistantRuntimeProvider>
   );
 }
-
-const UserMessage: FC = () => (
-  <MessagePrimitive.Root className="aui-message aui-message-user">
-    <div className="aui-message-label">你</div>
-    <div className="aui-message-body">
-      <MessagePrimitive.Parts>
-        {({ part }) => (part.type === 'text' ? <p className="aui-user-text">{part.text}</p> : null)}
-      </MessagePrimitive.Parts>
-    </div>
-  </MessagePrimitive.Root>
-);
-
-const AssistantMessage: FC = () => (
-  <MessagePrimitive.Root className="aui-message aui-message-assistant">
-    <div className="aui-message-label">助手</div>
-    <div className="aui-message-body aui-markdown">
-      <MessagePrimitive.Parts>
-        {({ part }) =>
-          part.type === 'text' ? (
-            <MarkdownTextPrimitive remarkPlugins={[remarkGfm]} smooth className="aui-md" />
-          ) : null
-        }
-      </MessagePrimitive.Parts>
-      <MessagePrimitive.Error>
-        <p className="error">回答失败，请重试。</p>
-      </MessagePrimitive.Error>
-    </div>
-  </MessagePrimitive.Root>
-);
-
-const Composer: FC = () => (
-  <ComposerPrimitive.Root className="aui-composer">
-    <ComposerPrimitive.Input className="aui-composer-input" placeholder="继续追问这个回答" rows={1} />
-    <div className="aui-composer-actions">
-      <AuiIf condition={(s) => !s.thread.isRunning}>
-        <ComposerPrimitive.Send className="aui-composer-send">发送</ComposerPrimitive.Send>
-      </AuiIf>
-      <AuiIf condition={(s) => s.thread.isRunning}>
-        <ComposerPrimitive.Cancel className="aui-composer-cancel" disabled>
-          生成中
-        </ComposerPrimitive.Cancel>
-      </AuiIf>
-    </div>
-  </ComposerPrimitive.Root>
-);
