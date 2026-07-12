@@ -1,0 +1,75 @@
+import { isSkillAllowed } from '../../shared/skills';
+import type {
+  ContextStrategy,
+  MessageReference,
+  ReadingSkillType,
+  ReadingTarget,
+} from '../../shared/types';
+
+export interface ConversationDraft {
+  bookId: string;
+  target: ReadingTarget;
+  contextStrategy: ContextStrategy;
+  mode: 'auto' | 'manual';
+  strategySource: 'book-default' | 'draft-override';
+  skillType: ReadingSkillType | null;
+  prompt: string;
+  reference: MessageReference | null;
+}
+
+export type DraftValidation = { valid: true } | { valid: false; reason: 'prompt-required' };
+
+function bookTarget(): ReadingTarget {
+  return {
+    type: 'book',
+    chapterId: null,
+    startPassageId: null,
+    endPassageId: null,
+    selectedText: '',
+    startOffset: null,
+    endOffset: null,
+    breadcrumb: [],
+  };
+}
+
+export function createBookDraft(bookId: string, contextStrategy: ContextStrategy): ConversationDraft {
+  return {
+    bookId,
+    target: bookTarget(),
+    contextStrategy,
+    mode: 'auto',
+    strategySource: 'book-default',
+    skillType: null,
+    prompt: '',
+    reference: null,
+  };
+}
+
+export function applyAutomaticSelection(
+  draft: ConversationDraft,
+  selection: ReadingTarget,
+): ConversationDraft {
+  if (draft.mode === 'manual') return draft;
+  return { ...draft, target: selection };
+}
+
+export function selectTarget(draft: ConversationDraft, target: ReadingTarget): ConversationDraft {
+  const skillType = draft.skillType && isSkillAllowed(target.type, draft.skillType)
+    ? draft.skillType
+    : null;
+  return { ...draft, target, skillType, mode: 'manual' };
+}
+
+export function replaceDraftFromSelection(
+  draft: ConversationDraft,
+  selection: ReadingTarget,
+  bookDefaultStrategy: ContextStrategy,
+): ConversationDraft {
+  return { ...createBookDraft(draft.bookId, bookDefaultStrategy), target: selection };
+}
+
+export function validateDraft(draft: ConversationDraft): DraftValidation {
+  return draft.skillType || draft.prompt.trim()
+    ? { valid: true }
+    : { valid: false, reason: 'prompt-required' };
+}
