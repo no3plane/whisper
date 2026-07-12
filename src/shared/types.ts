@@ -1,12 +1,54 @@
 export type BookFormat = 'markdown' | 'epub';
 export type PreprocessStatus = 'not_started' | 'running' | 'ready' | 'failed';
 export type ContextStrategy = 'full_book' | 'compressed_book' | 'hybrid';
+export type ReadingTargetType = 'book' | 'chapter' | 'selection';
+export type ReadingSkillType =
+  | 'book_summary'
+  | 'book_framework'
+  | 'book_critique'
+  | 'chapter_summary'
+  | 'chapter_role'
+  | 'chapter_argument'
+  | 'plain_explanation'
+  | 'concept_explanation'
+  | 'background_context'
+  | 'example_analogy';
+
+/** @deprecated 仅用于旧数据迁移，新业务代码应使用 ReadingSkillType。 */
 export type ReadingActionType =
   | 'plain_explanation'
   | 'structure_location'
   | 'concept_explanation'
   | 'background_context'
   | 'example_analogy';
+
+export interface ChapterCrumb {
+  chapterId: string;
+  title: string;
+}
+
+export interface SelectionSnapshot {
+  selectedText: string;
+  startPassageId: string;
+  endPassageId: string;
+  startOffset: number;
+  endOffset: number;
+}
+
+export interface ReadingTarget {
+  type: ReadingTargetType;
+  chapterId: string | null;
+  startPassageId: string | null;
+  endPassageId: string | null;
+  selectedText: string;
+  startOffset: number | null;
+  endOffset: number | null;
+  breadcrumb: ChapterCrumb[];
+}
+
+export interface MessageReference extends SelectionSnapshot {
+  breadcrumb: ChapterCrumb[];
+}
 
 export interface Book {
   id: string;
@@ -64,15 +106,14 @@ export interface AISettings {
 export interface ReadingThread {
   id: string;
   bookId: string;
-  chapterId: string | null;
-  passageId: string | null;
   title: string;
-  actionType: ReadingActionType;
-  selectedText: string;
+  target: ReadingTarget;
+  skillType: ReadingSkillType | null;
   contextStrategy: ContextStrategy;
   createdAt: string;
   updatedAt: string;
   status: 'streaming' | 'ready' | 'failed';
+  lastError: string | null;
 }
 
 export interface ThreadMessage {
@@ -84,6 +125,9 @@ export interface ThreadMessage {
   model: string | null;
   tokenUsage: number | null;
   contextStrategy: ContextStrategy | null;
+  reference: MessageReference | null;
+  status: 'streaming' | 'ready' | 'failed';
+  error: string | null;
 }
 
 export interface ImportBookInput {
@@ -98,9 +142,27 @@ export interface RunReadingActionInput {
   contextStrategy: ContextStrategy;
 }
 
+export interface CreateConversationInput {
+  bookId: string;
+  target: ReadingTarget;
+  skillType: ReadingSkillType | null;
+  prompt: string;
+  contextStrategy: ContextStrategy;
+}
+
 export interface FollowUpInput {
   threadId: string;
   question: string;
+  reference?: MessageReference | null;
+}
+
+export interface RetryMessageInput {
+  threadId: string;
+  messageId: string;
+}
+
+export interface DeleteThreadInput {
+  threadId: string;
 }
 
 export type AiStreamEvent =
