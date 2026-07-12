@@ -1,37 +1,71 @@
 import { describe, expect, it } from 'vitest';
 import { ContextAssembler } from '../../src/main/ai/ContextAssembler';
+import type { MessageReference, ReadingTarget } from '../../src/shared/types';
+
 const chapters = [
-  { id: 'c1', bookId: 'book-1', parentChapterId: null, title: '第一章', level: 1, order: 0, startPassageId: 'p1', endPassageId: 'p1', summary: null },
-  { id: 'c2', bookId: 'book-1', parentChapterId: null, title: '第二章', level: 1, order: 1, startPassageId: 'p2', endPassageId: 'p2', summary: null },
+  { id: 'c1', bookId: 'book-1', parentChapterId: null, title: '第一章', level: 1, order: 0, startPassageId: 'p1', endPassageId: 'p2', summary: null },
+  { id: 'c2', bookId: 'book-1', parentChapterId: null, title: '第三章', level: 1, order: 1, startPassageId: 'p3', endPassageId: 'p4', summary: null },
 ];
 const passages = [
-  { id: 'p1', bookId: 'book-1', chapterId: 'c1', order: 0, text: '当前章节讨论自由意志。', sourceHref: null, sourceOffset: 0 },
-  { id: 'p2', bookId: 'book-1', chapterId: 'c2', order: 1, text: '后续章节重新讨论自由意志。', sourceHref: null, sourceOffset: 1 },
+  { id: 'p1', bookId: 'book-1', chapterId: 'c1', order: 0, text: '第一章开头。', sourceHref: null, sourceOffset: 0 },
+  { id: 'p2', bookId: 'book-1', chapterId: 'c1', order: 1, text: '第一章结尾。', sourceHref: null, sourceOffset: 1 },
+  { id: 'p3', bookId: 'book-1', chapterId: 'c2', order: 2, text: '第三章完整文本', sourceHref: null, sourceOffset: 2 },
+  { id: 'p4', bookId: 'book-1', chapterId: 'c2', order: 3, text: '选区附近段落。', sourceHref: null, sourceOffset: 3 },
 ];
-const common = { bookTitle: '测试书', fullText: '第一章全文\n\n第二章全文', selectedText: '自由意志', nearbyText: '附近', actionInstruction: '解释', threadMessages: [{ role: 'user' as const, content: '追问' }], chapters, passages, currentChapterId: 'c1', contextWindow: 10000 };
+
+const chapterTarget: ReadingTarget = {
+  type: 'chapter', chapterId: 'c2', startPassageId: 'p3', endPassageId: 'p4', selectedText: '',
+  startOffset: null, endOffset: null, breadcrumb: [{ chapterId: 'c2', title: '第三章' }],
+};
+const selectionTarget: ReadingTarget = {
+  type: 'selection', chapterId: 'c2', startPassageId: 'p3', endPassageId: 'p3', selectedText: '完整文本',
+  startOffset: 3, endOffset: 7, breadcrumb: [{ chapterId: 'c2', title: '第三章' }],
+};
+const common = {
+  bookTitle: '测试书', fullText: passages.map((item) => item.text).join('\n\n'), chapters, passages,
+  target: chapterTarget, reference: null, skillInstruction: '白话解释', isInitialTurn: true,
+  threadMessages: [{ role: 'user' as const, content: '问题' }], contextWindow: 10000,
+};
 
 describe('ContextAssembler', () => {
-  it('full_book 包含完整书籍与 thread 历史', () => {
+  it('完整全书已覆盖目标章节时不重复章节原文', () => {
     const result = new ContextAssembler().forReadingAction({ ...common, strategy: 'full_book' });
-    expect(result.effectiveStrategy).toBe('full_book');
-    expect(result.messages[0]?.content).toContain(common.fullText);
-    expect(result.messages).toContainEqual({ role: 'user', content: '追问' });
+    expect(result.messages[0].content.split('第三章完整文本')).toHaveLength(2);
+    expect(result.coveredPassageIds).toEqual(passages.map((item) => item.id));
   });
 
-  it('compressed_book 使用章节采样而不放入全文', () => {
-    const result = new ContextAssembler().forReadingAction({ ...common, strategy: 'compressed_book' });
-    expect(result.messages[0]?.content).toContain('第一章');
-    expect(result.messages[0]?.content).not.toContain('第二章全文');
+  it('压缩全书为选区补入选区和附近 passage', () => {
+    const result = new ContextAssembler().forReadingAction({ ...common, strategy: 'compressed_book', target: selectionTarget });
+    expect(result.messages[0].content).toContain('解读目标补充');
+    expect(result.messages[0].content).toContain('完整文本');
+    expect(result.messages[0].content).toContain('选区附近段落。');
   });
 
-  it('hybrid 包含压缩表示、当前章节与相关锚点', () => {
+  it('hybrid 已覆盖目标章节时不重复目标原文', () => {
     const result = new ContextAssembler().forReadingAction({ ...common, strategy: 'hybrid' });
-    expect(result.messages[0]?.content).toContain('当前章节讨论自由意志');
-    expect(result.messages[0]?.content).toContain('后续章节重新讨论自由意志');
+    expect(result.messages[0].content.split('第三章完整文本')).toHaveLength(2);
   });
 
-  it('full_book 超预算时降级 hybrid', () => {
-    const result = new ContextAssembler().forReadingAction({ ...common, strategy: 'full_book', fullText: '长'.repeat(5000), contextWindow: 2000, passages: [] });
+  it('只有首次回答追加 skill instruction', () => {
+    const initial = new ContextAssembler().forReadingAction({ ...common, strategy: 'full_book' });
+    const followUp = new ContextAssembler().forReadingAction({ ...common, strategy: 'full_book', isInitialTurn: false });
+    expect(initial.system).toContain('白话解释');
+    expect(followUp.system).not.toContain('白话解释');
+  });
+
+  it('把当轮引用作为独立段落', () => {
+    const reference: MessageReference = {
+      selectedText: '另一处原文', startPassageId: 'p1', endPassageId: 'p1', startOffset: 0, endOffset: 5,
+      breadcrumb: [{ chapterId: 'c1', title: '第一章' }],
+    };
+    const result = new ContextAssembler().forReadingAction({ ...common, strategy: 'full_book', reference });
+    expect(result.messages[0].content).toContain('本轮引用：\n路径：第一章\n另一处原文');
+  });
+
+  it('完整全书超预算时降级 hybrid', () => {
+    const result = new ContextAssembler().forReadingAction({
+      ...common, strategy: 'full_book', fullText: '长'.repeat(5000), contextWindow: 2000, passages: [],
+    });
     expect(result.effectiveStrategy).toBe('hybrid');
     expect(result.degradationReason).toContain('已降级');
   });
