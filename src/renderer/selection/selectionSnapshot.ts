@@ -51,19 +51,11 @@ export function breadcrumbsForSelection(
     .map(({ id, title }) => ({ chapterId: id, title }));
 }
 
-function breadcrumbsFromChapterRanges(startId: string, endId: string, chapters: Chapter[]): ChapterCrumb[] {
-  const candidates = chapters
-    .filter((chapter) => chapter.startPassageId === startId || chapter.endPassageId === endId)
-    .sort((a, b) => b.level - a.level);
-  const start = candidates.find((chapter) => chapter.startPassageId === startId);
-  const end = candidates.find((chapter) => chapter.endPassageId === endId);
-  if (!start || !end) return [];
-  const endIds = new Set(ancestry(end.id, chapters).map((chapter) => chapter.id));
-  return ancestry(start.id, chapters).filter((chapter) => endIds.has(chapter.id))
-    .map(({ id, title }) => ({ chapterId: id, title }));
-}
-
-export function captureSelection(selection: Selection, chapters: Chapter[]): ReadingTarget | null {
+export function captureSelection(
+  selection: Selection,
+  chapters: Chapter[],
+  passages: Passage[],
+): ReadingTarget | null {
   if (!selection.rangeCount || selection.isCollapsed) return null;
   const range = selection.getRangeAt(0);
   const startElement = passageElement(range.startContainer);
@@ -72,7 +64,7 @@ export function captureSelection(selection: Selection, chapters: Chapter[]): Rea
   const startPassageId = startElement.dataset.passageId;
   const endPassageId = endElement.dataset.passageId;
   if (!startPassageId || !endPassageId) return null;
-  const breadcrumb = breadcrumbsFromChapterRanges(startPassageId, endPassageId, chapters);
+  const breadcrumb = breadcrumbsForSelection(startPassageId, endPassageId, chapters, passages);
   return {
     type: 'selection', chapterId: breadcrumb[0]?.chapterId ?? null,
     startPassageId, endPassageId, selectedText: selection.toString(),
@@ -87,9 +79,9 @@ export function locateSnapshot(snapshot: ReadingTarget, root: ParentNode): Range
   const elements = [...root.querySelectorAll<HTMLElement>('[data-passage-id]')];
   const start = elements.find((element) => element.dataset.passageId === snapshot.startPassageId);
   const end = elements.find((element) => element.dataset.passageId === snapshot.endPassageId);
-  if (!start || !end) return null;
+  if (!start) return null;
 
-  if (snapshot.startOffset != null && snapshot.endOffset != null) {
+  if (end && snapshot.startOffset != null && snapshot.endOffset != null) {
     const startPoint = pointAt(start, snapshot.startOffset);
     const endPoint = pointAt(end, snapshot.endOffset);
     if (startPoint && endPoint) {
@@ -100,7 +92,7 @@ export function locateSnapshot(snapshot: ReadingTarget, root: ParentNode): Range
     }
   }
 
-  const found = start.textContent?.indexOf(snapshot.selectedText) ?? -1;
+  const found = snapshot.selectedText ? start.textContent?.indexOf(snapshot.selectedText) ?? -1 : -1;
   if (found >= 0) {
     const from = pointAt(start, found);
     const to = pointAt(start, found + snapshot.selectedText.length);
@@ -111,8 +103,11 @@ export function locateSnapshot(snapshot: ReadingTarget, root: ParentNode): Range
     }
   }
 
-  const fallback = document.createRange();
-  fallback.selectNodeContents(start);
-  fallback.setEnd(end, end.childNodes.length);
-  return fallback;
+  if (end) {
+    const fallback = document.createRange();
+    fallback.selectNodeContents(start);
+    fallback.setEnd(end, end.childNodes.length);
+    return fallback;
+  }
+  return null;
 }
