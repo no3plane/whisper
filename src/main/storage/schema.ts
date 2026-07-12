@@ -51,12 +51,22 @@ CREATE TABLE IF NOT EXISTS reading_threads (
   chapter_id TEXT,
   passage_id TEXT,
   title TEXT NOT NULL,
-  action_type TEXT NOT NULL,
-  selected_text TEXT NOT NULL,
+  action_type TEXT NOT NULL DEFAULT '',
+  selected_text TEXT NOT NULL DEFAULT '',
+  target_type TEXT NOT NULL DEFAULT 'book',
+  target_chapter_id TEXT,
+  target_start_passage_id TEXT,
+  target_end_passage_id TEXT,
+  target_selected_text TEXT NOT NULL DEFAULT '',
+  target_start_offset INTEGER,
+  target_end_offset INTEGER,
+  target_breadcrumb_json TEXT NOT NULL DEFAULT '[]',
+  skill_type TEXT,
   context_strategy TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   status TEXT NOT NULL,
+  last_error TEXT,
   FOREIGN KEY(book_id) REFERENCES books(id)
 );
 
@@ -69,6 +79,9 @@ CREATE TABLE IF NOT EXISTS thread_messages (
   model TEXT,
   token_usage INTEGER,
   context_strategy TEXT,
+  reference_json TEXT,
+  status TEXT NOT NULL DEFAULT 'ready',
+  error TEXT,
   FOREIGN KEY(thread_id) REFERENCES reading_threads(id)
 );
 
