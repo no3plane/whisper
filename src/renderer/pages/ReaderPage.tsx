@@ -1,202 +1,143 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { AiStreamEvent, BookDocument, ContextStrategy, ReadingActionType, ReadingThread, ThreadMessage } from '../../shared/types';
-import { RightAiPanel } from '../components/RightAiPanel';
+import { useEffect, useRef, useState } from 'react';
+import type { AiStreamEvent, BookDocument, CreateConversationInput, MessageReference, ReadingTarget, ReadingThread, ThreadMessage } from '../../shared/types';
+import { createBookDraft, applyAutomaticSelection, replaceDraftFromSelection, type ConversationDraft } from '../chat/draftState';
+import { RightAiPanel, type AiPanelView } from '../components/RightAiPanel';
 import { SelectionMenu } from '../components/SelectionMenu';
+import { captureSelection, locateSnapshot } from '../selection/selectionSnapshot';
 import { whisper } from '../api/whisper';
 
-interface ReaderPageProps {
-  bookId: string;
-  onBack: () => void;
-}
-
+interface ReaderPageProps { bookId: string; onBack: () => void }
 type ThreadItem = { thread: ReadingThread; messages: ThreadMessage[] };
 
 export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const [document, setDocument] = useState<BookDocument | null>(null);
-  const [selectedText, setSelectedText] = useState('');
-  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [threads, setThreads] = useState<ThreadItem[]>([]);
+  const [openThreadIds, setOpenThreadIds] = useState<string[]>([]);
+  const [activeView, setActiveView] = useState<AiPanelView>(null);
+  const [draft, setDraft] = useState<ConversationDraft | null>(null);
+  const [selection, setSelection] = useState<ReadingTarget | null>(null);
+  const [pendingReference, setPendingReference] = useState<MessageReference | null>(null);
   const [error, setError] = useState('');
-  const [streamError, setStreamError] = useState('');
-  const [strategy, setStrategy] = useState<ContextStrategy>('full_book');
+  const [notice, setNotice] = useState('');
+  const articleRef = useRef<HTMLElement>(null);
+  const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-
     void (async () => {
       try {
         const doc = await whisper.books.open(bookId);
-        if (cancelled) return;
-        setDocument(doc);
-        setStrategy(doc.book.defaultContextStrategy);
-        setError('');
-      } catch (err) {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : String(err));
-        return;
-      }
-
-      try {
         const history = await whisper.threads.listWithMessagesByBook(bookId);
         if (cancelled) return;
-        setThreads(history.threads);
-        setActiveThreadId(history.activeThreadId);
-      } catch (err) {
-        if (cancelled) return;
-        setThreads([]);
-        setActiveThreadId(null);
-        setError(err instanceof Error ? err.message : String(err));
-      }
+        setDocument(doc); setThreads(history.threads);
+        const known = new Set(history.threads.map((item) => item.thread.id));
+        const stored = readOpenThreads(bookId).filter((id) => known.has(id));
+        setOpenThreadIds(stored);
+        setActiveView(history.activeThreadId && stored.includes(history.activeThreadId) ? { type: 'thread', threadId: history.activeThreadId } : null);
+        setDraft(createBookDraft(bookId, doc.book.defaultContextStrategy));
+      } catch (reason) { if (!cancelled) setError(messageOf(reason)); }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [bookId]);
 
-  async function persistActiveThread(threadId: string | null) {
-    setActiveThreadId(threadId);
+  useEffect(() => { if (document) localStorage.setItem(openThreadsKey(bookId), JSON.stringify(openThreadIds)); }, [bookId, document, openThreadIds]);
+  useEffect(() => whisper.ai.onStream((event) => updateFromStream(event, setThreads)), []);
+  useEffect(() => () => { if (highlightTimer.current) clearTimeout(highlightTimer.current); }, []);
+
+  function selectThread(threadId: string) {
+    setActiveView({ type: 'thread', threadId });
+    void whisper.books.setActiveThread({ bookId, threadId }).catch(() => undefined);
+  }
+  function openThread(threadId: string) {
+    setOpenThreadIds((ids) => ids.includes(threadId) ? ids : [...ids, threadId]);
+    selectThread(threadId);
+  }
+  function openDraft() {
+    if (document) setDraft(createBookDraft(bookId, document.book.defaultContextStrategy));
+    setPendingReference(null); setActiveView({ type: 'draft' });
+  }
+  async function createConversation(input: CreateConversationInput) {
     try {
-      await whisper.books.setActiveThread({ bookId, threadId });
-    } catch {
-      // 选中态写回失败不打断阅读
-    }
+      const result = await whisper.ai.createConversation(input);
+      setThreads((items) => upsertThread(items, result.thread, result.messages));
+      setOpenThreadIds((ids) => ids.includes(result.thread.id) ? ids : [...ids, result.thread.id]);
+      selectThread(result.thread.id);
+    } catch (reason) { setError(messageOf(reason)); }
   }
-
-  function handleSelectThread(threadId: string | null) {
-    void persistActiveThread(threadId);
+  function closeThread(threadId: string) {
+    setOpenThreadIds((ids) => ids.filter((id) => id !== threadId));
+    if (activeView?.type === 'thread' && activeView.threadId === threadId) setActiveView(null);
   }
-
-  useEffect(() => {
-    return whisper.ai.onStream((event: AiStreamEvent) => {
-      if (event.type === 'started') {
-        setStreamError('');
-        setThreads((current) => upsertThread(current, event.thread, event.messages));
-        setActiveThreadId(event.thread.id);
-        void whisper.books.setActiveThread({ bookId, threadId: event.thread.id }).catch(() => undefined);
-        return;
-      }
-
-      if (event.type === 'chunk') {
-        setThreads((current) =>
-          current.map((item) => {
-            if (item.thread.id !== event.threadId) return item;
-            return {
-              ...item,
-              thread: { ...item.thread, status: 'streaming' },
-              messages: item.messages.map((message) =>
-                message.id === event.messageId
-                  ? { ...message, content: message.content + event.chunk }
-                  : message,
-              ),
-            };
-          }),
-        );
-        return;
-      }
-
-      if (event.type === 'done') {
-        setThreads((current) => upsertThread(current, event.thread, event.messages));
-        return;
-      }
-
-      if (event.type === 'error') {
-        setStreamError(event.message);
-        setThreads((current) =>
-          current.map((item) =>
-            item.thread.id === event.threadId
-              ? { ...item, thread: { ...item.thread, status: 'failed' } }
-              : item,
-          ),
-        );
-      }
-    });
-  }, [bookId]);
-
-  const passageId = useMemo(() => {
-    if (!document || !selectedText) return null;
-    return document.passages.find((passage) => passage.text.includes(selectedText))?.id ?? null;
-  }, [document, selectedText]);
-
+  async function deleteThread(threadId: string) {
+    await whisper.threads.delete({ threadId });
+    setThreads((items) => items.filter((item) => item.thread.id !== threadId));
+    closeThread(threadId);
+  }
+  async function followUp(threadId: string, question: string, reference: MessageReference | null) {
+    const result = await whisper.ai.followUp({ threadId, question, reference });
+    setThreads((items) => upsertThread(items, result.thread, result.messages));
+  }
+  async function retryMessage(threadId: string, messageId: string) {
+    const result = await whisper.ai.retry({ threadId, messageId });
+    setThreads((items) => upsertThread(items, result.thread, result.messages));
+  }
   function updateSelection() {
-    setSelectedText(window.getSelection()?.toString() ?? '');
+    if (!document) return;
+    const selected = window.getSelection();
+    const next = selected ? captureSelection(selected, document.chapters, document.passages) : null;
+    if (!next) return;
+    setSelection(next);
+    if (activeView?.type === 'draft') setDraft((current) => current ? applyAutomaticSelection(current, next) : current);
+  }
+  function startFromSelection() {
+    if (!selection || !document || !draft) return;
+    setDraft(replaceDraftFromSelection(draft, selection, document.book.defaultContextStrategy));
+    setPendingReference(null); setActiveView({ type: 'draft' });
+  }
+  function referenceSelection() {
+    if (!selection) return;
+    setPendingReference({ selectedText: selection.selectedText, startPassageId: selection.startPassageId!, endPassageId: selection.endPassageId!, startOffset: selection.startOffset!, endOffset: selection.endOffset!, breadcrumb: selection.breadcrumb });
+  }
+  function locate(threadId: string, reference?: MessageReference | null) {
+    const item = threads.find(({ thread }) => thread.id === threadId);
+    const snapshot = reference ?? item?.thread.target;
+    if (!snapshot || !articleRef.current) return;
+    const range = locateSnapshot(snapshot as ReadingTarget, articleRef.current);
+    const passage = snapshot.startPassageId
+      ? [...articleRef.current.querySelectorAll<HTMLElement>('[data-passage-id]')].find((element) => element.dataset.passageId === snapshot.startPassageId) ?? null
+      : articleRef.current.querySelector<HTMLElement>('[data-passage-id]');
+    const anchor = range ? (range.startContainer.parentElement?.closest<HTMLElement>('[data-passage-id]') ?? passage) : passage;
+    if (!anchor) { setNotice('无法恢复原文位置。'); return; }
+    anchor.scrollIntoView({ block: 'center' }); anchor.classList.add('temporary-source-highlight');
+    if (!range) setNotice('无法恢复精确选区，已定位到相关段落。');
+    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    highlightTimer.current = setTimeout(() => anchor.classList.remove('temporary-source-highlight'), 2000);
   }
 
-  async function runAction(actionType: ReadingActionType) {
-    if (!document || !selectedText.trim()) return;
-    try {
-      setError('');
-      setStreamError('');
-      await whisper.ai.runReadingAction({
-        bookId: document.book.id,
-        selectedText,
-        passageId,
-        actionType,
-        contextStrategy: strategy,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  async function followUp(threadId: string, question: string) {
-    setStreamError('');
-    await whisper.ai.followUp({ threadId, question });
-  }
-
-  if (!document) {
-    if (error) {
-      return (
-        <main className="app-shell">
-          <p className="error">{error}</p>
-          <button onClick={onBack}>返回书库</button>
-        </main>
-      );
-    }
-    return <p className="app-shell">正在打开书籍...</p>;
-  }
-
-  return (
-    <section className="reader-layout">
-      <nav className="left-nav">
-        <button onClick={onBack}>返回书库</button>
-        <h2>{document.book.title}</h2>
-        {document.chapters.map((chapter) => (
-          <a key={chapter.id} href={`#${chapter.startPassageId}`}>
-            {chapter.title}
-          </a>
-        ))}
-      </nav>
-      <article className="reader" onMouseUp={updateSelection} onKeyUp={updateSelection}>
-        <div className="reader-toolbar">
-          <label>上下文策略 <select value={strategy} onChange={(event) => {
-            const next = event.target.value as ContextStrategy;
-            setStrategy(next);
-            void whisper.books.setContextStrategy({ bookId, strategy: next });
-          }}><option value="full_book">完整全书</option><option value="compressed_book">压缩全书</option><option value="hybrid">混合</option></select></label>
-        </div>
-        <SelectionMenu selectedText={selectedText} onAction={(action) => void runAction(action)} />
-        {error && <p className="error">{error}</p>}
-        {document.passages.map((passage) => (
-          <p id={passage.id} key={passage.id}>
-            {passage.text}
-          </p>
-        ))}
-      </article>
-      <RightAiPanel
-        threads={threads}
-        activeThreadId={activeThreadId}
-        onSelectThread={handleSelectThread}
-        onFollowUp={followUp}
-        streamError={streamError}
-      />
-    </section>
-  );
+  if (!document || !draft) return <main className="app-shell">{error ? <><p className="error">{error}</p><button onClick={onBack}>返回书库</button></> : '正在打开书籍...'}</main>;
+  const activeThread = activeView?.type === 'thread' ? threads.find((item) => item.thread.id === activeView.threadId) : null;
+  const streamError = activeThread?.messages.find((message) => message.status === 'failed')?.error ?? activeThread?.thread.lastError ?? undefined;
+  return <section className="reader-layout">
+    <nav className="left-nav"><button onClick={onBack}>返回书库</button><h2>{document.book.title}</h2>{document.chapters.map((chapter) => <a key={chapter.id} href={`#${chapter.startPassageId}`}>{chapter.title}</a>)}</nav>
+    <article ref={articleRef} className="reader" onMouseUp={updateSelection} onKeyUp={updateSelection}>
+      <SelectionMenu selectedText={selection?.selectedText ?? ''} mode={activeView?.type === 'draft' ? 'draft' : 'thread'} onSetTarget={() => selection && setDraft((current) => current ? applyAutomaticSelection(current, selection) : current)} onStartConversation={startFromSelection} onReference={referenceSelection} />
+      {error ? <p className="error">{error}</p> : null}{notice ? <p role="status">{notice}</p> : null}
+      {document.passages.map((passage) => <p id={passage.id} data-passage-id={passage.id} key={passage.id}>{passage.text}</p>)}
+    </article>
+    <RightAiPanel threads={threads} historyThreads={threads.map(({ thread }) => thread)} openThreadIds={openThreadIds} activeView={activeView} draft={draft} pendingReference={pendingReference}
+      onOpenDraft={openDraft} onUpdateDraft={setDraft} onCreate={createConversation} onSelectThread={selectThread} onCloseThread={closeThread} onOpenHistory={() => setActiveView({ type: 'history' })}
+      onOpenThread={openThread} onDeleteThread={(id) => void deleteThread(id)} onRetryThread={(id) => { const failed = threads.find((item) => item.thread.id === id)?.messages.find((message) => message.status === 'failed'); if (failed) void retryMessage(id, failed.id); }}
+      onFollowUp={followUp} onClearReference={() => setPendingReference(null)} onRetryMessage={(id, messageId) => void retryMessage(id, messageId)} onLocate={locate} streamError={streamError} />
+  </section>;
 }
 
-function upsertThread(current: ThreadItem[], thread: ReadingThread, messages: ThreadMessage[]): ThreadItem[] {
-  const next = { thread, messages };
-  const index = current.findIndex((item) => item.thread.id === thread.id);
-  if (index < 0) return [...current, next];
-  return current.map((item, i) => (i === index ? next : item));
+function updateFromStream(event: AiStreamEvent, setThreads: React.Dispatch<React.SetStateAction<ThreadItem[]>>) {
+  if (event.type === 'started' || event.type === 'done') { setThreads((items) => upsertThread(items, event.thread, event.messages)); return; }
+  setThreads((items) => items.map((item) => item.thread.id !== event.threadId ? item : event.type === 'chunk'
+    ? { ...item, thread: { ...item.thread, status: 'streaming' }, messages: item.messages.map((message) => message.id === event.messageId ? { ...message, content: message.content + event.chunk, status: 'streaming' } : message) }
+    : { ...item, thread: { ...item.thread, status: 'failed', lastError: event.message }, messages: item.messages.map((message) => message.id === event.messageId ? { ...message, status: 'failed', error: event.message } : message) }));
 }
+function upsertThread(items: ThreadItem[], thread: ReadingThread, messages: ThreadMessage[]) { const next = { thread, messages }; return items.some((item) => item.thread.id === thread.id) ? items.map((item) => item.thread.id === thread.id ? next : item) : [...items, next]; }
+function openThreadsKey(bookId: string) { return `whisper.openThreads.${bookId}`; }
+function readOpenThreads(bookId: string): string[] { try { const value = JSON.parse(localStorage.getItem(openThreadsKey(bookId)) ?? '[]'); return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []; } catch { return []; } }
+function messageOf(reason: unknown) { return reason instanceof Error ? reason.message : String(reason); }

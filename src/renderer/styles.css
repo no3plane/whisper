@@ -96,6 +96,7 @@ input {
 }
 
 .right-panel {
+  position: relative;
   border-right: none;
   border-left: 1px solid #ded5c6;
 }
@@ -131,6 +132,39 @@ input {
   background: #fffaf2;
   border-radius: 8px;
   z-index: 1;
+}
+
+.temporary-source-highlight {
+  background: rgba(250, 204, 21, 0.28);
+  transition: background-color 180ms ease;
+}
+
+.pending-reference {
+  position: relative;
+  padding: 10px 36px 10px 12px;
+  border-left: 3px solid #b58a42;
+  background: #fffaf0;
+}
+
+.pending-reference blockquote {
+  margin: 6px 0 0;
+}
+
+.thread-history {
+  position: absolute;
+  inset: 52px 0 0;
+  z-index: 2;
+  overflow: auto;
+  padding: 16px;
+  background: #fffdf8;
+}
+
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 2px solid #8b5e24;
+  outline-offset: 2px;
 }
 
 .tabs {
