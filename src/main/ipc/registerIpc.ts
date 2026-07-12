@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { ipcChannels } from '../../shared/ipc';
-import type { AISettings, ContextStrategy, FollowUpInput, ImportBookInput, RunReadingActionInput, SetActiveThreadInput } from '../../shared/types';
+import type { AISettings, ContextStrategy, CreateConversationInput, DeleteThreadInput, FollowUpInput, ImportBookInput, RetryMessageInput, RunReadingActionInput, SetActiveThreadInput } from '../../shared/types';
 import { AIProvider } from '../ai/AIProvider';
 import type { ReadingActionService } from '../ai/ReadingActionService';
 import type { LibraryService } from '../library/LibraryService';
@@ -93,11 +93,29 @@ export function registerIpc(services: IpcServices) {
   );
 
   ipcMain.handle(
+    ipcChannels.aiCreateConversation,
+    withIpcLog(ipcChannels.aiCreateConversation, (event, input: CreateConversationInput) => {
+      const window = senderWindow(event);
+      if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
+      return services.readingActions.createConversation(input, window);
+    }),
+  );
+
+  ipcMain.handle(
     ipcChannels.aiRunReadingAction,
     withIpcLog(ipcChannels.aiRunReadingAction, (event, input: RunReadingActionInput) => {
       const window = senderWindow(event);
       if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
       return services.readingActions.runReadingAction(input, window);
+    }),
+  );
+
+  ipcMain.handle(
+    ipcChannels.aiRetry,
+    withIpcLog(ipcChannels.aiRetry, (event, input: RetryMessageInput) => {
+      const window = senderWindow(event);
+      if (!window) throw new Error('找不到当前窗口，无法重试回答。');
+      return services.readingActions.retry(input, window);
     }),
   );
 
@@ -108,6 +126,12 @@ export function registerIpc(services: IpcServices) {
       if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
       return services.readingActions.followUp(input, window);
     }),
+  );
+
+  ipcMain.handle(
+    ipcChannels.threadsDelete,
+    withIpcLog(ipcChannels.threadsDelete, (_event, input: DeleteThreadInput) =>
+      services.readingActions.deleteConversation(input)),
   );
 
   ipcMain.handle(

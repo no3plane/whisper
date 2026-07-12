@@ -186,6 +186,7 @@ export type AiStreamEvent =
   | {
       type: 'error';
       threadId: string;
+      messageId: string;
       message: string;
     };
 

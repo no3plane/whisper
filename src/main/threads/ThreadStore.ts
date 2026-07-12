@@ -307,6 +307,8 @@ export class ThreadStore {
       content?: string;
       model?: string | null;
       tokenUsage?: number | null;
+      status?: ThreadMessage['status'];
+      error?: string | null;
     },
   ): ThreadMessage {
     const existing = this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as
@@ -319,16 +321,18 @@ export class ThreadStore {
     const content = patch.content ?? existing.content;
     const model = patch.model !== undefined ? patch.model : existing.model;
     const tokenUsage = patch.tokenUsage !== undefined ? patch.tokenUsage : existing.token_usage;
+    const status = patch.status ?? existing.status;
+    const error = patch.error !== undefined ? patch.error : existing.error;
     const now = new Date().toISOString();
 
     this.db.transaction(() => {
       this.db
         .prepare(
           `UPDATE thread_messages
-           SET content = ?, model = ?, token_usage = ?
+           SET content = ?, model = ?, token_usage = ?, status = ?, error = ?
            WHERE id = ?`,
         )
-        .run(content, model, tokenUsage, messageId);
+        .run(content, model, tokenUsage, status, error, messageId);
       this.db.prepare('UPDATE reading_threads SET updated_at = ? WHERE id = ?').run(now, existing.thread_id);
     })();
 

@@ -7,10 +7,13 @@ export const ipcChannels = {
   booksList: 'books.list',
   booksOpen: 'books.open',
   aiRunReadingAction: 'ai.runReadingAction',
+  aiCreateConversation: 'ai.createConversation',
   aiFollowUp: 'ai.followUp',
+  aiRetry: 'ai.retry',
   aiStream: 'ai.stream',
   threadsListByBook: 'threads.listByBook',
   threadsListWithMessagesByBook: 'threads.listWithMessagesByBook',
+  threadsDelete: 'threads.delete',
   booksSetActiveThread: 'books.setActiveThread',
   booksSetContextStrategy: 'books.setContextStrategy',
 } as const;

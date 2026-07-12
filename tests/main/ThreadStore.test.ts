@@ -131,6 +131,8 @@ describe('ThreadStore', () => {
     expect(store.listMessages(thread.id)[0]).toMatchObject({ id: message.id, status: 'failed', error: '网络错误' });
     const retried = store.resetMessageForRetry(message.id);
     expect(retried).toMatchObject({ id: message.id, content: '', status: 'streaming', error: null });
+    const completed = store.updateMessage(message.id, { content: '重试成功', status: 'ready', error: null });
+    expect(completed).toMatchObject({ id: message.id, content: '重试成功', status: 'ready', error: null });
     expect(store.listMessages(thread.id)).toHaveLength(1);
   });
 

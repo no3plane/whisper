@@ -6,9 +6,12 @@ import type {
   Book,
   BookDocument,
   BookThreadsPayload,
+  CreateConversationInput,
+  DeleteThreadInput,
   FollowUpInput,
   ImportBookInput,
   ReadingThread,
+  RetryMessageInput,
   RunReadingActionInput,
   SetActiveThreadInput,
   ThreadMessage,
@@ -34,6 +37,11 @@ const whisper = {
       ipcRenderer.invoke(ipcChannels.booksSetContextStrategy, input) as Promise<void>,
   },
   ai: {
+    createConversation: (input: CreateConversationInput) =>
+      ipcRenderer.invoke(ipcChannels.aiCreateConversation, input) as Promise<{
+        thread: ReadingThread;
+        messages: ThreadMessage[];
+      }>,
     runReadingAction: (input: RunReadingActionInput) =>
       ipcRenderer.invoke(ipcChannels.aiRunReadingAction, input) as Promise<{
         thread: ReadingThread;
@@ -41,6 +49,8 @@ const whisper = {
       }>,
     followUp: (input: FollowUpInput) =>
       ipcRenderer.invoke(ipcChannels.aiFollowUp, input) as Promise<{ thread: ReadingThread; messages: ThreadMessage[] }>,
+    retry: (input: RetryMessageInput) =>
+      ipcRenderer.invoke(ipcChannels.aiRetry, input) as Promise<{ thread: ReadingThread; messages: ThreadMessage[] }>,
     onStream: (listener: (event: AiStreamEvent) => void) => {
       const handler = (_event: Electron.IpcRendererEvent, payload: AiStreamEvent) => listener(payload);
       ipcRenderer.on(ipcChannels.aiStream, handler);
@@ -50,6 +60,7 @@ const whisper = {
     },
   },
   threads: {
+    delete: (input: DeleteThreadInput) => ipcRenderer.invoke(ipcChannels.threadsDelete, input) as Promise<void>,
     listByBook: (bookId: string) =>
       ipcRenderer.invoke(ipcChannels.threadsListByBook, bookId) as Promise<ReadingThread[]>,
     listWithMessagesByBook: (bookId: string) =>
