@@ -13,6 +13,7 @@ import { skillsForTarget } from '../../shared/skills';
 import type { CreateConversationInput, MessageReference, ReadingThread, ThreadMessage } from '../../shared/types';
 import type { ConversationDraft } from '../chat/draftState';
 import { validateDraft } from '../chat/draftState';
+import { ThreadHistory } from './ThreadHistory';
 import '@assistant-ui/react-markdown/styles/dot.css';
 
 type ThreadItem = { thread: ReadingThread; messages: ThreadMessage[] };
@@ -20,6 +21,7 @@ export type AiPanelView = { type: 'draft' } | { type: 'thread'; threadId: string
 
 export interface RightAiPanelProps {
   threads: ThreadItem[];
+  historyThreads: ReadingThread[];
   openThreadIds: string[];
   activeView: AiPanelView;
   draft: ConversationDraft;
@@ -30,6 +32,9 @@ export interface RightAiPanelProps {
   onSelectThread: (threadId: string) => void;
   onCloseThread: (threadId: string) => void;
   onOpenHistory: () => void;
+  onOpenThread: (threadId: string) => void;
+  onDeleteThread: (threadId: string) => void;
+  onRetryThread: (threadId: string) => void;
   onFollowUp: (threadId: string, question: string, reference: MessageReference | null) => Promise<void>;
   onClearReference: () => void;
   onRetryMessage: (threadId: string, messageId: string) => void;
@@ -56,7 +61,8 @@ export function RightAiPanel(props: RightAiPanelProps) {
           onClearReference={props.onClearReference} onRetryMessage={props.onRetryMessage}
           onLocate={props.onLocate} streamError={props.streamError} />
       ) : props.activeView?.type === 'history' ? (
-        <div className="panel-body"><p className="muted">从历史记录中打开会话。</p></div>
+        <ThreadHistory threads={props.historyThreads} onOpen={props.onOpenThread}
+          onDelete={props.onDeleteThread} onRetry={props.onRetryThread} />
       ) : (
         <div className="panel-body"><p className="muted">新建会话，或从历史记录继续阅读。</p></div>
       )}

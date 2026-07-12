@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { RightAiPanel } from '../../src/renderer/components/RightAiPanel';
 import { createBookDraft } from '../../src/renderer/chat/draftState';
@@ -7,14 +7,19 @@ import type { MessageReference, ReadingThread, ThreadMessage } from '../../src/s
 afterEach(cleanup);
 
 const originalResizeObserver = globalThis.ResizeObserver;
+const originalScrollTo = HTMLElement.prototype.scrollTo;
 beforeAll(() => {
   globalThis.ResizeObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
+  HTMLElement.prototype.scrollTo = vi.fn();
 });
-afterAll(() => { globalThis.ResizeObserver = originalResizeObserver; });
+afterAll(() => {
+  globalThis.ResizeObserver = originalResizeObserver;
+  HTMLElement.prototype.scrollTo = originalScrollTo;
+});
 
 const target = { type: 'book' as const, chapterId: null, startPassageId: null, endPassageId: null, selectedText: '', startOffset: null, endOffset: null, breadcrumb: [] };
 const reference: MessageReference = { selectedText: '另一段原文', startPassageId: 'p2', endPassageId: 'p2', startOffset: 0, endOffset: 5, breadcrumb: [{ chapterId: 'c1', title: '第一章' }] };
@@ -30,15 +35,17 @@ function message(overrides: Partial<ThreadMessage> = {}): ThreadMessage {
 function renderPanel(overrides: Partial<React.ComponentProps<typeof RightAiPanel>> = {}) {
   const props: React.ComponentProps<typeof RightAiPanel> = {
     threads: [{ thread: thread(), messages: [message()] }],
+    historyThreads: [thread()],
     openThreadIds: ['t1'], activeView: { type: 'thread', threadId: 't1' },
     draft: createBookDraft('b1', 'hybrid'), pendingReference: null,
     onOpenDraft: vi.fn(), onUpdateDraft: vi.fn(), onCreate: vi.fn(async () => undefined),
     onSelectThread: vi.fn(), onCloseThread: vi.fn(), onOpenHistory: vi.fn(),
+    onOpenThread: vi.fn(), onDeleteThread: vi.fn(), onRetryThread: vi.fn(),
     onFollowUp: vi.fn(async () => undefined), onClearReference: vi.fn(),
     onRetryMessage: vi.fn(), onLocate: vi.fn(), ...overrides,
   };
-  render(<RightAiPanel {...props} />);
-  return props;
+  const rendered = render(<RightAiPanel {...props} />);
+  return Object.assign(props, { container: rendered.container });
 }
 
 describe('RightAiPanel', () => {
@@ -47,6 +54,29 @@ describe('RightAiPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
     expect(props.onOpenDraft).toHaveBeenCalledOnce();
     expect(props.onCreate).not.toHaveBeenCalled();
+  });
+
+  it('Tab 使用独立横向滚动容器且每项不参与收缩', () => {
+    const { container } = renderPanel();
+    expect(container.querySelector('.tabs-scroll')).not.toBeNull();
+    expect(container.querySelector('.thread-tab')).not.toBeNull();
+  });
+
+  it('历史视图渲染全部会话并转发打开 callback', () => {
+    const onOpenThread = vi.fn();
+    renderPanel({ activeView: { type: 'history' }, onOpenThread });
+    const history = screen.getByRole('region', { name: '历史会话' });
+    fireEvent.click(within(history).getByRole('button', { name: '全书 · 总结' }));
+    expect(onOpenThread).toHaveBeenCalledWith('t1');
+  });
+
+  it('历史视图的删除确认转发 delete callback', () => {
+    const onDeleteThread = vi.fn();
+    renderPanel({ activeView: { type: 'history' }, onDeleteThread });
+    fireEvent.click(screen.getByRole('button', { name: '删除“全书 · 总结”' }));
+    expect(onDeleteThread).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
+    expect(onDeleteThread).toHaveBeenCalledWith('t1');
   });
 
   it('草稿有技能时允许空 prompt 发送', () => {
