@@ -21,6 +21,8 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const [notice, setNotice] = useState('');
   const articleRef = useRef<HTMLElement>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightedPassage = useRef<HTMLElement | null>(null);
+  const highlightedRange = useRef<Range | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,7 +44,17 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
 
   useEffect(() => { if (document) localStorage.setItem(openThreadsKey(bookId), JSON.stringify(openThreadIds)); }, [bookId, document, openThreadIds]);
   useEffect(() => whisper.ai.onStream((event) => updateFromStream(event, setThreads)), []);
-  useEffect(() => () => { if (highlightTimer.current) clearTimeout(highlightTimer.current); }, []);
+  useEffect(() => () => clearSourceHighlight(), []);
+
+  function clearSourceHighlight() {
+    if (highlightTimer.current) { clearTimeout(highlightTimer.current); highlightTimer.current = null; }
+    highlightedPassage.current?.classList.remove('temporary-source-highlight');
+    highlightedPassage.current = null;
+    const createdRange = highlightedRange.current;
+    const browserSelection = window.getSelection();
+    if (createdRange && browserSelection?.rangeCount === 1 && rangesEqual(browserSelection.getRangeAt(0), createdRange)) browserSelection.removeAllRanges();
+    highlightedRange.current = null;
+  }
 
   function selectThread(threadId: string) {
     setPendingReference(null);
@@ -109,6 +121,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     setPendingReference({ selectedText: selection.selectedText, startPassageId: selection.startPassageId!, endPassageId: selection.endPassageId!, startOffset: selection.startOffset!, endOffset: selection.endOffset!, breadcrumb: selection.breadcrumb });
   }
   function locate(threadId: string, reference?: MessageReference | null) {
+    clearSourceHighlight();
     const item = threads.find(({ thread }) => thread.id === threadId);
     const snapshot = reference ?? item?.thread.target;
     if (!snapshot || !articleRef.current) return;
@@ -121,10 +134,12 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     if (!anchor) { setNotice('无法恢复原文位置。'); return; }
     anchor.scrollIntoView({ block: 'center' });
     const browserSelection = window.getSelection();
-    if (exact && browserSelection) { browserSelection.removeAllRanges(); browserSelection.addRange(range!); setNotice(''); }
-    else { anchor.classList.add('temporary-source-highlight'); setNotice('无法恢复精确选区，已定位到相关段落。'); }
-    if (highlightTimer.current) clearTimeout(highlightTimer.current);
-    highlightTimer.current = setTimeout(() => { anchor.classList.remove('temporary-source-highlight'); if (exact) browserSelection?.removeAllRanges(); }, 2000);
+    if (exact && browserSelection) {
+      browserSelection.removeAllRanges(); browserSelection.addRange(range!); highlightedRange.current = range; setNotice('');
+    } else {
+      anchor.classList.add('temporary-source-highlight'); highlightedPassage.current = anchor; setNotice('无法恢复精确选区，已定位到相关段落。');
+    }
+    highlightTimer.current = setTimeout(clearSourceHighlight, 2000);
   }
 
   if (!document || !draft) return <main className="app-shell">{error ? <><p className="error">{error}</p><button onClick={onBack}>返回书库</button></> : '正在打开书籍...'}</main>;
@@ -154,3 +169,4 @@ function upsertThread(items: ThreadItem[], thread: ReadingThread, messages: Thre
 function openThreadsKey(bookId: string) { return `whisper.openThreads.${bookId}`; }
 function readOpenThreads(bookId: string): string[] { try { const value = JSON.parse(localStorage.getItem(openThreadsKey(bookId)) ?? '[]'); return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []; } catch { return []; } }
 function messageOf(reason: unknown) { return reason instanceof Error ? reason.message : String(reason); }
+function rangesEqual(left: Range, right: Range) { return left.startContainer === right.startContainer && left.startOffset === right.startOffset && left.endContainer === right.endContainer && left.endOffset === right.endOffset; }

@@ -117,6 +117,23 @@ describe('ReaderPage 会话编排', () => {
     vi.useRealTimers();
   });
 
+  it('连续定位时先清理上一次降级高亮再创建精确高亮', async () => {
+    const fallbackTarget = { ...target, type: 'selection' as const, chapterId: 'c1', startPassageId: 'p1', endPassageId: 'p1', selectedText: '不存在', startOffset: 0, endOffset: 2, breadcrumb: [{ chapterId: 'c1', title: '第一章' }] };
+    const exactTarget = { ...fallbackTarget, selectedText: '自由', startOffset: 2, endOffset: 4 };
+    const exactThread = { ...thread, id: 't2', title: '精确定位', target: exactTarget, status: 'ready' as const };
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, target: fallbackTarget, status: 'ready' }, messages: [] }, { thread: exactThread, messages: [] }], activeThreadId: 't1' });
+    localStorage.setItem('whisper.openThreads.b1', JSON.stringify(['t1', 't2']));
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByRole('button', { name: '回到原文' });
+    fireEvent.click(screen.getByRole('button', { name: '回到原文' }));
+    const passage = screen.getByText('所谓自由并不是任性。');
+    expect(passage.classList.contains('temporary-source-highlight')).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: '精确定位' }));
+    fireEvent.click(screen.getByRole('button', { name: '回到原文' }));
+    expect(passage.classList.contains('temporary-source-highlight')).toBe(false);
+    expect(window.getSelection()?.toString()).toBe('自由');
+  });
+
   it('切换到历史时清除当前会话的待发送引用', async () => {
     api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, status: 'ready' }, messages: [] }], activeThreadId: 't1' });
     localStorage.setItem('whisper.openThreads.b1', JSON.stringify(['t1']));
