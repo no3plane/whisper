@@ -57,18 +57,6 @@ describe('ReadingActionService', () => {
     expect(messages.map(({ role, status }) => ({ role, status }))).toEqual([{ role: 'user', status: 'ready' }, { role: 'assistant', status: 'ready' }]);
   });
 
-  it('旧 runReadingAction 入口把有效选区转换为可创建的 selection target', async () => {
-    const { service, threads, window } = setup();
-    await service.runReadingAction({
-      bookId: 'book-1', passageId: 'p1', selectedText: '原文',
-      actionType: 'plain_explanation', contextStrategy: 'full_book',
-    }, window);
-    expect(threads[0].target).toMatchObject({
-      type: 'selection', startPassageId: 'p1', endPassageId: 'p1',
-      selectedText: '原文', startOffset: 0, endOffset: 2,
-    });
-  });
-
   it('拒绝与目标类型不匹配的技能', async () => {
     const { service, window } = setup();
     await expect(service.createConversation({ bookId: 'book-1', target, skillType: 'book_summary', prompt: '', contextStrategy: 'full_book' }, window)).rejects.toThrow('技能不适用于当前解读目标');

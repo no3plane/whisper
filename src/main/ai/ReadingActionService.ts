@@ -1,7 +1,7 @@
 import type { BrowserWindow } from 'electron';
 import type {
   AiStreamEvent, CreateConversationInput, DeleteThreadInput, FollowUpInput,
-  ReadingSkillType, ReadingTargetType, ReadingThread, RetryMessageInput, RunReadingActionInput, ThreadMessage,
+  ReadingSkillType, ReadingTargetType, ReadingThread, RetryMessageInput, ThreadMessage,
 } from '../../shared/types';
 import { ipcChannels } from '../../shared/ipc';
 import type { LibraryService } from '../library/LibraryService';
@@ -101,24 +101,6 @@ export class ReadingActionService {
       throw new Error('删除会话参数无效：threadId 必须是非空字符串。');
     }
     this.threads.deleteThread(input.threadId);
-  }
-
-  /** @deprecated renderer 迁移期间保留。 */
-  runReadingAction(input: RunReadingActionInput, window: BrowserWindow) {
-    if (!input.passageId) throw new Error('旧版框选操作缺少 passageId，请重新框选文本。');
-    const document = this.library.openBook(input.bookId);
-    const passage = document.passages.find((item) => item.id === input.passageId);
-    return this.createConversation({
-      bookId: input.bookId,
-      target: {
-        type: 'selection', chapterId: passage?.chapterId ?? null,
-        startPassageId: input.passageId, endPassageId: input.passageId,
-        selectedText: input.selectedText, startOffset: 0, endOffset: input.selectedText.length, breadcrumb: [],
-      },
-      skillType: input.actionType === 'structure_location' ? null : input.actionType,
-      prompt: input.actionType === 'structure_location' ? '解释这段在全书结构中的位置。' : '',
-      contextStrategy: input.contextStrategy,
-    }, window);
   }
 
   private buildContext(thread: ReadingThread, assistant: ThreadMessage, reference: ThreadMessage['reference'], isInitialTurn: boolean, history?: ThreadMessage[]) {

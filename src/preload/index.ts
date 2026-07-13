@@ -12,7 +12,6 @@ import type {
   ImportBookInput,
   ReadingThread,
   RetryMessageInput,
-  RunReadingActionInput,
   SetActiveThreadInput,
   ThreadMessage,
   ContextStrategy,
@@ -39,11 +38,6 @@ const whisper = {
   ai: {
     createConversation: (input: CreateConversationInput) =>
       ipcRenderer.invoke(ipcChannels.aiCreateConversation, input) as Promise<{
-        thread: ReadingThread;
-        messages: ThreadMessage[];
-      }>,
-    runReadingAction: (input: RunReadingActionInput) =>
-      ipcRenderer.invoke(ipcChannels.aiRunReadingAction, input) as Promise<{
         thread: ReadingThread;
         messages: ThreadMessage[];
       }>,

@@ -14,14 +14,6 @@ export type ReadingSkillType =
   | 'background_context'
   | 'example_analogy';
 
-/** @deprecated 仅用于旧数据迁移，新业务代码应使用 ReadingSkillType。 */
-export type ReadingActionType =
-  | 'plain_explanation'
-  | 'structure_location'
-  | 'concept_explanation'
-  | 'background_context'
-  | 'example_analogy';
-
 export interface ChapterCrumb {
   chapterId: string;
   title: string;
@@ -132,14 +124,6 @@ export interface ThreadMessage {
 
 export interface ImportBookInput {
   filePath: string;
-}
-
-export interface RunReadingActionInput {
-  bookId: string;
-  selectedText: string;
-  passageId: string | null;
-  actionType: ReadingActionType;
-  contextStrategy: ContextStrategy;
 }
 
 export interface CreateConversationInput {

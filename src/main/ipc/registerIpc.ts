@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { ipcChannels } from '../../shared/ipc';
-import type { AISettings, ContextStrategy, CreateConversationInput, DeleteThreadInput, FollowUpInput, ImportBookInput, RetryMessageInput, RunReadingActionInput, SetActiveThreadInput } from '../../shared/types';
+import type { AISettings, ContextStrategy, CreateConversationInput, DeleteThreadInput, FollowUpInput, ImportBookInput, RetryMessageInput, SetActiveThreadInput } from '../../shared/types';
 import { AIProvider } from '../ai/AIProvider';
 import type { ReadingActionService } from '../ai/ReadingActionService';
 import type { LibraryService } from '../library/LibraryService';
@@ -98,15 +98,6 @@ export function registerIpc(services: IpcServices) {
       const window = senderWindow(event);
       if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
       return services.readingActions.createConversation(input, window);
-    }),
-  );
-
-  ipcMain.handle(
-    ipcChannels.aiRunReadingAction,
-    withIpcLog(ipcChannels.aiRunReadingAction, (event, input: RunReadingActionInput) => {
-      const window = senderWindow(event);
-      if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
-      return services.readingActions.runReadingAction(input, window);
     }),
   );
 

@@ -117,6 +117,7 @@ export class AIProvider {
       {
         system: '你只需要回答 OK。',
         messages: [{ role: 'user', content: '请回答 OK。' }],
+        coveredPassageIds: [],
       },
       { purpose: 'testConnection' },
     );

@@ -6,7 +6,6 @@ export const ipcChannels = {
   booksImportEpub: 'books.importEpub',
   booksList: 'books.list',
   booksOpen: 'books.open',
-  aiRunReadingAction: 'ai.runReadingAction',
   aiCreateConversation: 'ai.createConversation',
   aiFollowUp: 'ai.followUp',
   aiRetry: 'ai.retry',
