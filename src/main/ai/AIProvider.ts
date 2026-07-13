@@ -20,6 +20,7 @@ export class AIProvider {
       settings: redactSettings(settings),
       systemLength: input.system.length,
       messageCount: input.messages.length,
+      messageLengths: input.messages.map((message) => message.content.length),
     });
 
     try {
@@ -66,6 +67,7 @@ export class AIProvider {
       settings: redactSettings(settings),
       systemLength: input.system.length,
       messageCount: input.messages.length,
+      messageLengths: input.messages.map((message) => message.content.length),
     });
 
     try {
