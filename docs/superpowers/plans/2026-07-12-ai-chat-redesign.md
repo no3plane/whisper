@@ -1,5 +1,7 @@
 # AI Chat 内容与会话交互重设计 Implementation Plan
 
+> **最终决策（2026-07-13）：** 本项目开发阶段不再兼容旧 SQLite schema。旧数据库直接删除重建；本文中关于旧列、幂等迁移和旧会话映射的步骤仅保留为实施历史，不再是当前要求。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将现有“框选即执行动作”的 AI 面板改造成支持固定解读目标、单选技能、唯一草稿、原文引用、可关闭 Tab、历史恢复与失败重试的完整会话系统。

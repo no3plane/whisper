@@ -48,11 +48,7 @@ CREATE TABLE IF NOT EXISTS passages (
 CREATE TABLE IF NOT EXISTS reading_threads (
   id TEXT PRIMARY KEY,
   book_id TEXT NOT NULL,
-  chapter_id TEXT,
-  passage_id TEXT,
   title TEXT NOT NULL,
-  action_type TEXT NOT NULL DEFAULT '',
-  selected_text TEXT NOT NULL DEFAULT '',
   target_type TEXT NOT NULL DEFAULT 'book',
   target_chapter_id TEXT,
   target_start_passage_id TEXT,

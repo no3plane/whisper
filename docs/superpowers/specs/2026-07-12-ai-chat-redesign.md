@@ -267,7 +267,7 @@ interface ReadingTarget {
 - `context_strategy TEXT NOT NULL`
 - `last_error TEXT`
 
-旧字段 `chapter_id`、`passage_id`、`action_type`、`selected_text` 首版迁移时保留兼容读取；新写入只使用新字段。旧会话映射为 `selection` 目标和原动作技能。
+开发阶段不兼容旧版 `reading_threads` 结构。结构变化时删除本地数据库并由当前 schema 重建，不保留 `chapter_id`、`passage_id`、`action_type`、`selected_text` 等旧字段。
 
 ### `thread_messages`
 
@@ -277,7 +277,7 @@ interface ReadingTarget {
 - `status TEXT NOT NULL DEFAULT 'complete'`，取值为 `streaming | complete | failed`
 - `error TEXT`
 
-必须使用启动时幂等列迁移，兼容现有 SQLite 数据。
+当前不提供 SQLite schema 迁移；数据库结构必须与当前版本完全一致。
 
 ## IPC 与服务边界
 
@@ -317,7 +317,7 @@ deleteThread(input: { threadId: string }): Promise<void>
 10. 历史按更新时间倒序、生成中置顶，可恢复、关闭和删除。
 11. 打开历史不自动滚动，点击“回到原文”才定位并高亮。
 12. 重试覆盖失败回答，不创建重复消息。
-13. 旧数据库可迁移，旧会话仍可打开。
+13. 删除旧数据库后，应用可按当前 schema 创建数据库并正常新建会话。
 
 ## 风险与取舍
 
