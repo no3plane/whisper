@@ -20,6 +20,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const articleRef = useRef<HTMLElement>(null);
+  const threadsRef = useRef<ThreadItem[]>([]);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const highlightedPassage = useRef<HTMLElement | null>(null);
   const highlightedRange = useRef<Range | null>(null);
@@ -49,7 +50,15 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   }, [bookId]);
 
   useEffect(() => { if (document) localStorage.setItem(openThreadsKey(bookId), JSON.stringify(openThreadIds)); }, [bookId, document, openThreadIds]);
-  useEffect(() => whisper.ai.onStream((event) => updateFromStream(event, setThreads)), []);
+  useEffect(() => { threadsRef.current = threads; }, [threads]);
+  useEffect(() => whisper.ai.onStream((event) => {
+    const isNewConversation = event.type === 'started'
+      && !threadsRef.current.some((item) => item.thread.id === event.thread.id);
+    updateFromStream(event, setThreads);
+    if (!isNewConversation) return;
+    setOpenThreadIds((ids) => ids.includes(event.thread.id) ? ids : [...ids, event.thread.id]);
+    selectThread(event.thread.id);
+  }), []);
   useEffect(() => () => clearSourceHighlight(), []);
 
   function clearSourceHighlight() {

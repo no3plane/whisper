@@ -71,6 +71,40 @@ describe('ReaderPage 会话编排', () => {
     await waitFor(() => expect(api.ai.createConversation).toHaveBeenCalledOnce());
   });
 
+  it('首次发送在请求完成前打开会话并显示流式内容', async () => {
+    let resolveCreate!: (value: { thread: ReadingThread; messages: ThreadMessage[] }) => void;
+    api.ai.createConversation.mockReturnValueOnce(new Promise((resolve) => { resolveCreate = resolve; }));
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
+    fireEvent.change(screen.getByPlaceholderText('你想了解什么？'), { target: { value: '全书讲了什么？' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送首次问题' }));
+
+    listeners.forEach((listener) => listener({ type: 'started', thread, messages: [assistant], assistantMessageId: assistant.id }));
+    expect(await screen.findByText('模型思考中…')).toBeTruthy();
+
+    listeners.forEach((listener) => listener({ type: 'chunk', threadId: thread.id, messageId: assistant.id, chunk: '部分回答' }));
+    expect(await screen.findByText('部分回答')).toBeTruthy();
+
+    resolveCreate({ thread: { ...thread, status: 'ready' }, messages: [{ ...assistant, content: '部分回答', status: 'complete' }] });
+  });
+
+  it('既有会话的 started 事件不抢占当前视图', async () => {
+    const other = { ...thread, id: 't2', title: '当前查看', status: 'ready' as const };
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({
+      threads: [{ thread, messages: [assistant] }, { thread: other, messages: [] }],
+      activeThreadId: 't2',
+    });
+    localStorage.setItem('whisper.openThreads.b1', JSON.stringify(['t1', 't2']));
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    const activeTab = await screen.findByRole('button', { name: '当前查看' });
+
+    listeners.forEach((listener) => listener({ type: 'started', thread, messages: [assistant], assistantMessageId: assistant.id }));
+
+    expect(activeTab.classList.contains('active')).toBe(true);
+    expect(screen.queryByText('模型思考中…')).toBeNull();
+  });
+
   it('关闭生成中的 Tab 后仍接收 chunk 和 done', async () => {
     api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread, messages: [assistant] }], activeThreadId: 't1' });
     localStorage.setItem('whisper.openThreads.b1', JSON.stringify(['t1']));
