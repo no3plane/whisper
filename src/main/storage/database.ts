@@ -1,10 +1,10 @@
-import Database from 'better-sqlite3';
 import { app } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { schemaSql } from './schema';
+import { openDatabase } from './sqlite';
 
-export type AppDatabase = Database.Database;
+export type { AppDatabase } from './sqlite';
 
 export function getAppDataDir() {
   const dir = path.join(app.getPath('userData'), 'whisper-data');
@@ -13,8 +13,8 @@ export function getAppDataDir() {
 }
 
 export function createDatabase(dbPath = path.join(getAppDataDir(), 'whisper.sqlite')) {
-  const db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
+  const db = openDatabase(dbPath);
+  db.exec('PRAGMA journal_mode = WAL');
   db.exec(schemaSql);
   return db;
 }

@@ -243,14 +243,14 @@ export class ThreadStore {
   listMessages(threadId: string): ThreadMessage[] {
     const rows = this.db
       .prepare('SELECT * FROM thread_messages WHERE thread_id = ? ORDER BY created_at ASC')
-      .all(threadId) as ThreadMessageRow[];
+      .all(threadId) as unknown as ThreadMessageRow[];
     return rows.map(mapMessageRow);
   }
 
   listThreadsByBook(bookId: string): ReadingThread[] {
     const rows = this.db
       .prepare("SELECT * FROM reading_threads WHERE book_id = ? ORDER BY CASE WHEN status = 'streaming' THEN 0 ELSE 1 END, updated_at DESC")
-      .all(bookId) as ReadingThreadRow[];
+      .all(bookId) as unknown as ReadingThreadRow[];
     return rows.map(mapThreadRow);
   }
 
@@ -312,7 +312,7 @@ export class ThreadStore {
       this.db.prepare("UPDATE thread_messages SET status = 'failed', error = ? WHERE id = ?").run(error, messageId);
       this.db.prepare("UPDATE reading_threads SET status = 'failed', last_error = ?, updated_at = ? WHERE id = ?").run(error, new Date().toISOString(), existing.thread_id);
     })();
-    return mapMessageRow(this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as ThreadMessageRow);
+    return mapMessageRow(this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as unknown as ThreadMessageRow);
   }
 
   resetMessageForRetry(messageId: string): ThreadMessage {
@@ -325,7 +325,7 @@ export class ThreadStore {
       this.db.prepare("UPDATE thread_messages SET content = '', status = 'streaming', error = NULL WHERE id = ?").run(messageId);
       this.db.prepare("UPDATE reading_threads SET status = 'streaming', last_error = NULL, updated_at = ? WHERE id = ?").run(new Date().toISOString(), existing.thread_id);
     })();
-    return mapMessageRow(this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as ThreadMessageRow);
+    return mapMessageRow(this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as unknown as ThreadMessageRow);
   }
 
   updateMessage(
@@ -367,7 +367,7 @@ export class ThreadStore {
       this.db.prepare('UPDATE reading_threads SET updated_at = ? WHERE id = ?').run(now, existing.thread_id);
     })();
 
-    const row = this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as ThreadMessageRow;
+    const row = this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as unknown as ThreadMessageRow;
     return mapMessageRow(row);
   }
 }

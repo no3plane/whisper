@@ -1,0 +1,81 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+  "ignorePatterns": [
+    "out/**",
+    "node_modules/**",
+    ".worktrees/**",
+    ".superpowers/**"
+  ],
+  "options": {
+    "denyWarnings": true
+  },
+  "rules": {
+    "no-console": "error",
+    "no-shadow": "off",
+    "no-underscore-dangle": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "unicorn/no-array-sort": "off",
+    "typescript/consistent-type-imports": ["error", { "prefer": "type-imports" }],
+    "typescript/no-explicit-any": "error",
+    "react/react-in-jsx-scope": "off",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "error"
+  },
+  "overrides": [
+    {
+      "files": ["src/main/**/*.ts", "src/preload/**/*.ts"],
+      "env": { "node": true }
+    },
+    {
+      "files": ["src/renderer/**/*.{ts,tsx}"],
+      "env": { "browser": true },
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["node:*", "electron", "**/main/**"],
+                "message": "Renderer 不得访问 Node、Electron 或 Main 实现；请通过 preload API。"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/shared/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["node:*", "electron", "react", "react/*", "**/main/**", "**/renderer/**"],
+                "message": "Shared 只能包含与运行环境无关的契约和纯逻辑。"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["tests/**/*.{ts,tsx}"],
+      "rules": { "typescript/no-explicit-any": "off" }
+    },
+    {
+      "files": ["tests/main/**/*.ts", "scripts/**/*.mjs", "vite.config.ts", "vitest.config.ts", "electron.vite.config.ts"],
+      "env": { "node": true },
+      "rules": { "no-console": "off" }
+    },
+    {
+      "files": ["tests/renderer/**/*.{ts,tsx}"],
+      "env": { "browser": true }
+    }
+  ]
+}

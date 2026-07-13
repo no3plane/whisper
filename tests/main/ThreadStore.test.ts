@@ -1,6 +1,7 @@
-import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ThreadStore } from '../../src/main/threads/ThreadStore';
+import { openDatabase } from '../../src/main/storage/sqlite';
+import type { AppDatabase } from '../../src/main/storage/sqlite';
 import { schemaSql } from '../../src/main/storage/schema';
 
 const selectionTarget = {
@@ -14,14 +15,14 @@ const selectionTarget = {
   breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
 };
 
-function insertBook(db: Database.Database) {
+function insertBook(db: AppDatabase) {
   const now = new Date().toISOString();
   db.prepare(`INSERT OR IGNORE INTO books (id,title,format,original_file_path,library_file_path,created_at,updated_at,preprocess_status,token_estimate,default_context_strategy) VALUES (?,?,?,?,?,?,?,?,?,?)`)
     .run('book-1', '测试书', 'markdown', '/tmp/original.md', '/tmp/library.md', now, now, 'ready', 10, 'full_book');
 }
 
 describe('ThreadStore', () => {
-  let db: Database.Database | null = null;
+  let db: AppDatabase | null = null;
 
   afterEach(() => {
     db?.close();
@@ -29,7 +30,7 @@ describe('ThreadStore', () => {
   });
 
   it('按 thread 隔离消息列表', () => {
-    db = new Database(':memory:');
+    db = openDatabase(':memory:');
     db.exec(schemaSql);
     const now = new Date().toISOString();
     db.prepare(
@@ -76,7 +77,7 @@ describe('ThreadStore', () => {
   });
 
   it('映射结构化目标和消息引用', () => {
-    db = new Database(':memory:');
+    db = openDatabase(':memory:');
     db.exec(schemaSql);
     insertBook(db);
     const store = new ThreadStore(db);
@@ -95,7 +96,7 @@ describe('ThreadStore', () => {
   });
 
   it('生成中的会话置顶，其余按更新时间倒序', () => {
-    db = new Database(':memory:');
+    db = openDatabase(':memory:');
     db.exec(schemaSql);
     insertBook(db);
     const store = new ThreadStore(db);
@@ -107,7 +108,7 @@ describe('ThreadStore', () => {
   });
 
   it('删除会话时同时删除消息并清空书籍活跃会话', () => {
-    db = new Database(':memory:');
+    db = openDatabase(':memory:');
     db.exec(schemaSql);
     const now = new Date().toISOString();
     db.prepare(`INSERT INTO books (id,title,format,original_file_path,library_file_path,created_at,updated_at,preprocess_status,token_estimate,default_context_strategy,active_thread_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run('book-1','书','markdown','a','b',now,now,'ready',1,'full_book',null);
@@ -122,7 +123,7 @@ describe('ThreadStore', () => {
   });
 
   it('失败与重试复用原 assistant message ID', () => {
-    db = new Database(':memory:'); db.exec(schemaSql);
+    db = openDatabase(':memory:'); db.exec(schemaSql);
     insertBook(db);
     const store = new ThreadStore(db);
     const thread = store.createThread({ bookId: 'book-1', title: '会话', target: selectionTarget, skillType: null, contextStrategy: 'full_book' });
@@ -137,7 +138,7 @@ describe('ThreadStore', () => {
   });
 
   it('拒绝重试 user message 且不修改原消息', () => {
-    db = new Database(':memory:'); db.exec(schemaSql); insertBook(db);
+    db = openDatabase(':memory:'); db.exec(schemaSql); insertBook(db);
     const store = new ThreadStore(db);
     const thread = store.createThread({ bookId: 'book-1', title: '会话', target: selectionTarget, skillType: null, contextStrategy: 'full_book' });
     const message = store.addMessage({ threadId: thread.id, role: 'user', content: '原问题' });
@@ -147,7 +148,7 @@ describe('ThreadStore', () => {
   });
 
   it('损坏的目标和引用 JSON 不会阻断列表映射', () => {
-    db = new Database(':memory:'); db.exec(schemaSql); insertBook(db);
+    db = openDatabase(':memory:'); db.exec(schemaSql); insertBook(db);
     const store = new ThreadStore(db);
     const thread = store.createThread({ bookId: 'book-1', title: '会话', target: selectionTarget, skillType: null, contextStrategy: 'full_book' });
     store.addMessage({ threadId: thread.id, role: 'user', content: '问题' });

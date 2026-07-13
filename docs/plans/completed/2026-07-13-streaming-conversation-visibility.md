@@ -124,6 +124,6 @@ Expected: 所有测试通过，TypeScript 无错误，Electron 构建成功。
 - [x] **Step 8: 提交修复**
 
 ```bash
-git add src/renderer/pages/ReaderPage.tsx tests/renderer/ReaderPage.test.tsx docs/superpowers/plans/2026-07-13-streaming-conversation-visibility.md
+git add src/renderer/pages/ReaderPage.tsx tests/renderer/ReaderPage.test.tsx docs/plans/completed/2026-07-13-streaming-conversation-visibility.md
 git commit -m "fix: 首次发送立即显示流式会话"
 ```

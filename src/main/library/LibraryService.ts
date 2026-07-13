@@ -3,7 +3,8 @@ import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { Book, BookDocument, Chapter, ContextStrategy, Passage, PreprocessStatus } from '../../shared/types';
 import { logger } from '../logging/logger';
-import { AppDatabase, getAppDataDir } from '../storage/database';
+import { getAppDataDir } from '../storage/database';
+import type { AppDatabase } from '../storage/database';
 import { MarkdownParser } from './MarkdownParser';
 import { EpubParser } from './EpubParser';
 
@@ -256,7 +257,7 @@ export class LibraryService {
   }
 
   listBooks(): Book[] {
-    const rows = this.db.prepare('SELECT * FROM books ORDER BY created_at DESC').all() as BookRow[];
+    const rows = this.db.prepare('SELECT * FROM books ORDER BY created_at DESC').all() as unknown as BookRow[];
     return rows.map(mapBookRow);
   }
 
@@ -276,10 +277,10 @@ export class LibraryService {
       last_opened_at: openedAt,
     });
     const chapters = (
-      this.db.prepare('SELECT * FROM chapters WHERE book_id = ? ORDER BY chapter_order ASC').all(bookId) as ChapterRow[]
+      this.db.prepare('SELECT * FROM chapters WHERE book_id = ? ORDER BY chapter_order ASC').all(bookId) as unknown as ChapterRow[]
     ).map(mapChapterRow);
     const passages = (
-      this.db.prepare('SELECT * FROM passages WHERE book_id = ? ORDER BY passage_order ASC').all(bookId) as PassageRow[]
+      this.db.prepare('SELECT * FROM passages WHERE book_id = ? ORDER BY passage_order ASC').all(bookId) as unknown as PassageRow[]
     ).map(mapPassageRow);
 
     logger.info('books.open', { bookId, title: book.title });

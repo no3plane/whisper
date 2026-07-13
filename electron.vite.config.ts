@@ -5,7 +5,6 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
-        external: ['better-sqlite3', 'bindings'],
         input: 'src/main/index.ts',
       },
     },

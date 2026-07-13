@@ -57,7 +57,9 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     updateFromStream(event, setThreads);
     if (!isNewConversation) return;
     setOpenThreadIds((ids) => ids.includes(event.thread.id) ? ids : [...ids, event.thread.id]);
-    selectThread(event.thread.id);
+    setPendingReference(null);
+    setActiveView({ type: 'thread', threadId: event.thread.id });
+    void whisper.books.setActiveThread({ bookId: event.thread.bookId, threadId: event.thread.id }).catch(() => undefined);
   }), []);
   useEffect(() => () => clearSourceHighlight(), []);
 

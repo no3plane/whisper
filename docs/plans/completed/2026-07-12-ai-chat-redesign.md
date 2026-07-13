@@ -19,7 +19,7 @@
 - 一轮追问最多引用一处原文，引用时问题必填。
 - 首版不做会话重命名、历史搜索、历史分组、多引用或跨设备同步。
 
-**Spec:** `docs/superpowers/specs/2026-07-12-ai-chat-redesign.md`
+**Spec:** `docs/specs/completed/2026-07-12-ai-chat-redesign.md`
 
 ---
 

@@ -10,7 +10,7 @@
 
 **约束：** 不写自动化测试；每步用手动量验证。不使用 git worktree，直接在主工作区 `main` 分支实现。
 
-**Spec：** `docs/superpowers/specs/2026-07-10-main-process-logging-design.md`
+**Spec：** `docs/specs/completed/2026-07-10-main-process-logging-design.md`
 
 ---
 

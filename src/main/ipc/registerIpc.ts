@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { ipcChannels } from '../../shared/ipc';
+import { ipcInputSchemas, parseIpcInput } from '../../shared/ipcSchemas';
 import type { AISettings, ContextStrategy, CreateConversationInput, DeleteThreadInput, FollowUpInput, ImportBookInput, RetryMessageInput, SetActiveThreadInput } from '../../shared/types';
 import { AIProvider } from '../ai/AIProvider';
 import type { ReadingActionService } from '../ai/ReadingActionService';
@@ -39,6 +40,15 @@ function withIpcLog<Args extends unknown[], Result>(
   };
 }
 
+function validated<T, Result>(
+  channel: string,
+  schema: Parameters<typeof parseIpcInput<T>>[1],
+  handler: (event: Electron.IpcMainInvokeEvent, input: T) => Result | Promise<Result>,
+) {
+  return withIpcLog(channel, (event, input: unknown) =>
+    handler(event, parseIpcInput(channel, schema, input)));
+}
+
 export function registerIpc(services: IpcServices) {
   ipcMain.handle(
     ipcChannels.settingsGet,
@@ -47,21 +57,21 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(
     ipcChannels.settingsSave,
-    withIpcLog(ipcChannels.settingsSave, (_event, settings: AISettings) => {
+    validated(ipcChannels.settingsSave, ipcInputSchemas.aiSettings, (_event, settings: AISettings) => {
       services.settings.saveAISettings(settings);
     }),
   );
 
   ipcMain.handle(
     ipcChannels.settingsTestConnection,
-    withIpcLog(ipcChannels.settingsTestConnection, (_event, settings: AISettings) =>
+    validated(ipcChannels.settingsTestConnection, ipcInputSchemas.aiSettings, (_event, settings: AISettings) =>
       aiProvider.testConnection(settings),
     ),
   );
 
   ipcMain.handle(
     ipcChannels.booksImportMarkdown,
-    withIpcLog(ipcChannels.booksImportMarkdown, (_event, input: ImportBookInput | string) => {
+    validated(ipcChannels.booksImportMarkdown, ipcInputSchemas.importBook, (_event, input: ImportBookInput | string) => {
       const filePath = typeof input === 'string' ? input : input.filePath;
       const book = services.library.importMarkdown(filePath);
       return book;
@@ -70,7 +80,7 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(
     ipcChannels.booksImportEpub,
-    withIpcLog(ipcChannels.booksImportEpub, (_event, input: ImportBookInput | string) => {
+    validated(ipcChannels.booksImportEpub, ipcInputSchemas.importBook, (_event, input: ImportBookInput | string) => {
       const book = services.library.importEpub(typeof input === 'string' ? input : input.filePath);
       return book;
     }),
@@ -83,18 +93,18 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(
     ipcChannels.booksOpen,
-    withIpcLog(ipcChannels.booksOpen, (_event, bookId: string) => services.library.openBook(bookId)),
+    validated(ipcChannels.booksOpen, ipcInputSchemas.bookId, (_event, bookId: string) => services.library.openBook(bookId)),
   );
 
   ipcMain.handle(
     ipcChannels.booksSetContextStrategy,
-    withIpcLog(ipcChannels.booksSetContextStrategy, (_event, input: { bookId: string; strategy: ContextStrategy }) =>
+    validated(ipcChannels.booksSetContextStrategy, ipcInputSchemas.setContextStrategy, (_event, input: { bookId: string; strategy: ContextStrategy }) =>
       services.library.setDefaultContextStrategy(input.bookId, input.strategy)),
   );
 
   ipcMain.handle(
     ipcChannels.aiCreateConversation,
-    withIpcLog(ipcChannels.aiCreateConversation, (event, input: CreateConversationInput) => {
+    validated(ipcChannels.aiCreateConversation, ipcInputSchemas.createConversation, (event, input: CreateConversationInput) => {
       const window = senderWindow(event);
       if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
       return services.readingActions.createConversation(input, window);
@@ -103,7 +113,7 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(
     ipcChannels.aiRetry,
-    withIpcLog(ipcChannels.aiRetry, (event, input: RetryMessageInput) => {
+    validated(ipcChannels.aiRetry, ipcInputSchemas.retry, (event, input: RetryMessageInput) => {
       const window = senderWindow(event);
       if (!window) throw new Error('找不到当前窗口，无法重试回答。');
       return services.readingActions.retry(input, window);
@@ -112,7 +122,7 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(
     ipcChannels.aiFollowUp,
-    withIpcLog(ipcChannels.aiFollowUp, (event, input: FollowUpInput) => {
+    validated(ipcChannels.aiFollowUp, ipcInputSchemas.followUp, (event, input: FollowUpInput) => {
       const window = senderWindow(event);
       if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
       return services.readingActions.followUp(input, window);
@@ -121,27 +131,27 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(
     ipcChannels.threadsDelete,
-    withIpcLog(ipcChannels.threadsDelete, (_event, input: DeleteThreadInput) =>
+    validated(ipcChannels.threadsDelete, ipcInputSchemas.deleteThread, (_event, input: DeleteThreadInput) =>
       services.readingActions.deleteConversation(input)),
   );
 
   ipcMain.handle(
     ipcChannels.threadsListByBook,
-    withIpcLog(ipcChannels.threadsListByBook, (_event, bookId: string) =>
+    validated(ipcChannels.threadsListByBook, ipcInputSchemas.bookId, (_event, bookId: string) =>
       services.threads.listThreadsByBook(bookId),
     ),
   );
 
   ipcMain.handle(
     ipcChannels.threadsListWithMessagesByBook,
-    withIpcLog(ipcChannels.threadsListWithMessagesByBook, (_event, bookId: string) =>
+    validated(ipcChannels.threadsListWithMessagesByBook, ipcInputSchemas.bookId, (_event, bookId: string) =>
       services.threads.listThreadsWithMessagesByBook(bookId),
     ),
   );
 
   ipcMain.handle(
     ipcChannels.booksSetActiveThread,
-    withIpcLog(ipcChannels.booksSetActiveThread, (_event, input: SetActiveThreadInput) => {
+    validated(ipcChannels.booksSetActiveThread, ipcInputSchemas.setActiveThread, (_event, input: SetActiveThreadInput) => {
       services.library.setActiveThread(input.bookId, input.threadId);
     }),
   );
