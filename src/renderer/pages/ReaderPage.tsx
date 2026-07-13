@@ -34,7 +34,10 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         setDocument(doc); setThreads(history.threads);
         const known = new Set(history.threads.map((item) => item.thread.id));
         const saved = readOpenThreads(bookId);
-        const defaults = [...new Set([history.activeThreadId, history.threads[0]?.thread.id].filter((id): id is string => typeof id === 'string'))];
+        const defaultThreadId = history.activeThreadId && known.has(history.activeThreadId)
+          ? history.activeThreadId
+          : history.threads[0]?.thread.id;
+        const defaults = defaultThreadId ? [defaultThreadId] : [];
         const stored = (saved ?? defaults).filter((id) => known.has(id));
         setOpenThreadIds(stored);
         const initial = history.activeThreadId && stored.includes(history.activeThreadId) ? history.activeThreadId : stored[0];

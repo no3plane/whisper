@@ -45,6 +45,15 @@ describe('ReaderPage 会话编排', () => {
     expect(await screen.findByRole('button', { name: '回到原文' })).toBeTruthy();
   });
 
+  it('activeThreadId 与历史首条不同时只打开 active 会话', async () => {
+    const first = { ...thread, id: 'first', title: '首条会话', status: 'ready' as const };
+    const active = { ...thread, id: 'active', title: '活跃会话', status: 'ready' as const };
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: first, messages: [] }, { thread: active, messages: [] }], activeThreadId: 'active' });
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    expect(await screen.findByRole('button', { name: '关闭“活跃会话”' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '关闭“首条会话”' })).toBeNull();
+  });
+
   it('保存的空 Tab 数组保持全部关闭', async () => {
     localStorage.setItem('whisper.openThreads.b1', '[]');
     api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, status: 'ready' }, messages: [] }], activeThreadId: 't1' });
