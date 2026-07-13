@@ -31,6 +31,8 @@ interface ThreadMessageRow {
   model: string | null;
   token_usage: number | null;
   context_strategy: ContextStrategy | null;
+  effective_context_strategy: ContextStrategy | null;
+  degradation_reason: string | null;
   reference_json: string | null;
   status: ThreadMessage['status'];
   error: string | null;
@@ -69,6 +71,8 @@ export interface AddMessageInput {
   model?: string | null;
   tokenUsage?: number | null;
   contextStrategy?: ContextStrategy | null;
+  effectiveContextStrategy?: ContextStrategy | null;
+  degradationReason?: string | null;
   reference?: MessageReference | null;
   status?: ThreadMessage['status'];
   error?: string | null;
@@ -118,8 +122,10 @@ function mapMessageRow(row: ThreadMessageRow): ThreadMessage {
     model: row.model,
     tokenUsage: row.token_usage,
     contextStrategy: row.context_strategy,
+    effectiveContextStrategy: row.effective_context_strategy,
+    degradationReason: row.degradation_reason,
     reference: parseJsonOr(row.reference_json, null, (parsed) => typeof parsed === 'object' && parsed !== null),
-    status: row.status,
+    status: (row.status as string) === 'ready' ? 'complete' : row.status,
     error: row.error,
   };
 }
@@ -190,8 +196,10 @@ export class ThreadStore {
       model: input.model ?? null,
       tokenUsage: input.tokenUsage ?? null,
       contextStrategy: input.contextStrategy ?? null,
+      effectiveContextStrategy: input.effectiveContextStrategy ?? null,
+      degradationReason: input.degradationReason ?? null,
       reference: input.reference ?? null,
-      status: input.status ?? 'ready',
+      status: input.status ?? 'complete',
       error: input.error ?? null,
     };
 
@@ -206,8 +214,8 @@ export class ThreadStore {
             created_at,
             model,
             token_usage,
-            context_strategy, reference_json, status, error
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            context_strategy, effective_context_strategy, degradation_reason, reference_json, status, error
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           message.id,
@@ -218,6 +226,8 @@ export class ThreadStore {
           message.model,
           message.tokenUsage,
           message.contextStrategy,
+          message.effectiveContextStrategy,
+          message.degradationReason,
           message.reference ? JSON.stringify(message.reference) : null,
           message.status,
           message.error,
@@ -326,6 +336,8 @@ export class ThreadStore {
       tokenUsage?: number | null;
       status?: ThreadMessage['status'];
       error?: string | null;
+      effectiveContextStrategy?: ContextStrategy | null;
+      degradationReason?: string | null;
     },
   ): ThreadMessage {
     const existing = this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as
@@ -340,16 +352,18 @@ export class ThreadStore {
     const tokenUsage = patch.tokenUsage !== undefined ? patch.tokenUsage : existing.token_usage;
     const status = patch.status ?? existing.status;
     const error = patch.error !== undefined ? patch.error : existing.error;
+    const effective = patch.effectiveContextStrategy !== undefined ? patch.effectiveContextStrategy : existing.effective_context_strategy;
+    const degradation = patch.degradationReason !== undefined ? patch.degradationReason : existing.degradation_reason;
     const now = new Date().toISOString();
 
     this.db.transaction(() => {
       this.db
         .prepare(
           `UPDATE thread_messages
-           SET content = ?, model = ?, token_usage = ?, status = ?, error = ?
+           SET content = ?, model = ?, token_usage = ?, status = ?, error = ?, effective_context_strategy = ?, degradation_reason = ?
            WHERE id = ?`,
         )
-        .run(content, model, tokenUsage, status, error, messageId);
+        .run(content, model, tokenUsage, status, error, effective, degradation, messageId);
       this.db.prepare('UPDATE reading_threads SET updated_at = ? WHERE id = ?').run(now, existing.thread_id);
     })();
 

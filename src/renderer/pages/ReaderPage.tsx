@@ -33,9 +33,12 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         if (cancelled) return;
         setDocument(doc); setThreads(history.threads);
         const known = new Set(history.threads.map((item) => item.thread.id));
-        const stored = readOpenThreads(bookId).filter((id) => known.has(id));
+        const saved = readOpenThreads(bookId);
+        const defaults = [...new Set([history.activeThreadId, history.threads[0]?.thread.id].filter((id): id is string => typeof id === 'string'))];
+        const stored = (saved ?? defaults).filter((id) => known.has(id));
         setOpenThreadIds(stored);
-        setActiveView(history.activeThreadId && stored.includes(history.activeThreadId) ? { type: 'thread', threadId: history.activeThreadId } : null);
+        const initial = history.activeThreadId && stored.includes(history.activeThreadId) ? history.activeThreadId : stored[0];
+        setActiveView(initial ? { type: 'thread', threadId: initial } : null);
         setDraft(createBookDraft(bookId, doc.book.defaultContextStrategy));
       } catch (reason) { if (!cancelled) setError(messageOf(reason)); }
     })();
@@ -148,7 +151,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   return <section className="reader-layout">
     <nav className="left-nav"><button onClick={onBack}>返回书库</button><h2>{document.book.title}</h2>{document.chapters.map((chapter) => <a key={chapter.id} href={`#${chapter.startPassageId}`}>{chapter.title}</a>)}</nav>
     <article ref={articleRef} className="reader" onMouseUp={updateSelection} onKeyUp={updateSelection}>
-      <SelectionMenu selectedText={selection?.selectedText ?? ''} mode={activeView?.type === 'draft' ? 'draft' : 'thread'} onSetTarget={() => selection && setDraft((current) => current ? applyAutomaticSelection(current, selection) : current)} onStartConversation={startFromSelection} onReference={referenceSelection} />
+      {activeView?.type === 'draft' || activeView?.type === 'thread' ? <SelectionMenu selectedText={selection?.selectedText ?? ''} mode={activeView.type} onSetTarget={() => selection && setDraft((current) => current ? applyAutomaticSelection(current, selection) : current)} onStartConversation={startFromSelection} onReference={referenceSelection} /> : null}
       {error ? <p className="error">{error}</p> : null}{notice ? <p role="status">{notice}</p> : null}
       {document.passages.map((passage) => <p id={passage.id} data-passage-id={passage.id} key={passage.id}>{passage.text}</p>)}
     </article>
@@ -167,6 +170,6 @@ function updateFromStream(event: AiStreamEvent, setThreads: React.Dispatch<React
 }
 function upsertThread(items: ThreadItem[], thread: ReadingThread, messages: ThreadMessage[]) { const next = { thread, messages }; return items.some((item) => item.thread.id === thread.id) ? items.map((item) => item.thread.id === thread.id ? next : item) : [...items, next]; }
 function openThreadsKey(bookId: string) { return `whisper.openThreads.${bookId}`; }
-function readOpenThreads(bookId: string): string[] { try { const value = JSON.parse(localStorage.getItem(openThreadsKey(bookId)) ?? '[]'); return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []; } catch { return []; } }
+function readOpenThreads(bookId: string): string[] | null { try { const raw = localStorage.getItem(openThreadsKey(bookId)); if (raw === null) return null; const value = JSON.parse(raw); return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []; } catch { return []; } }
 function messageOf(reason: unknown) { return reason instanceof Error ? reason.message : String(reason); }
 function rangesEqual(left: Range, right: Range) { return left.startContainer === right.startContainer && left.startOffset === right.startOffset && left.endContainer === right.endContainer && left.endOffset === right.endOffset; }

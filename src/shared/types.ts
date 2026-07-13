@@ -117,8 +117,10 @@ export interface ThreadMessage {
   model: string | null;
   tokenUsage: number | null;
   contextStrategy: ContextStrategy | null;
+  effectiveContextStrategy: ContextStrategy | null;
+  degradationReason: string | null;
   reference: MessageReference | null;
-  status: 'streaming' | 'ready' | 'failed';
+  status: 'streaming' | 'complete' | 'failed';
   error: string | null;
 }
 

@@ -29,7 +29,7 @@ function thread(status: ReadingThread['status'] = 'ready'): ReadingThread {
 }
 
 function message(overrides: Partial<ThreadMessage> = {}): ThreadMessage {
-  return { id: 'm1', threadId: 't1', role: 'assistant', content: '回答', createdAt: '2026-07-13T00:00:00Z', model: null, tokenUsage: null, contextStrategy: null, reference: null, status: 'ready', error: null, ...overrides };
+  return { id: 'm1', threadId: 't1', role: 'assistant', content: '回答', createdAt: '2026-07-13T00:00:00Z', model: null, tokenUsage: null, contextStrategy: null, effectiveContextStrategy: null, degradationReason: null, reference: null, status: 'complete', error: null, ...overrides };
 }
 
 function renderPanel(overrides: Partial<React.ComponentProps<typeof RightAiPanel>> = {}) {

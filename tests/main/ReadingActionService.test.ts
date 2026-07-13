@@ -21,9 +21,9 @@ function setup(providerResult: 'success' | 'failure' = 'success') {
   const store = {
     createThread(input: any) { const item = { ...input, id: `t${++nextId}`, createdAt: '', updatedAt: '', lastError: null }; threads.push(item); return item; },
     getThread(id: string) { const item = threads.find((thread) => thread.id === id); if (!item) throw new Error(`找不到 thread：${id}`); return item; },
-    addMessage(input: any) { const item = { ...input, id: `m${++nextId}`, createdAt: '', model: input.model ?? null, tokenUsage: null, contextStrategy: input.contextStrategy ?? null, reference: input.reference ?? null, status: input.status ?? 'ready', error: null }; messages.push(item); return item; },
+    addMessage(input: any) { const item = { ...input, id: `m${++nextId}`, createdAt: '', model: input.model ?? null, tokenUsage: null, contextStrategy: input.contextStrategy ?? null, effectiveContextStrategy: null, degradationReason: null, reference: input.reference ?? null, status: input.status ?? 'complete', error: null }; messages.push(item); return item; },
     listMessages(threadId: string) { return messages.filter((message) => message.threadId === threadId); },
-    updateMessage(id: string, patch: any) { Object.assign(messages.find((message) => message.id === id)!, patch, { status: 'ready', error: null }); },
+    updateMessage(id: string, patch: any) { Object.assign(messages.find((message) => message.id === id)!, patch); },
     updateThreadStatus(id: string, status: string) { Object.assign(threads.find((thread) => thread.id === id), { status }); },
     markMessageFailed(id: string, error: string) { const message = messages.find((item) => item.id === id)!; Object.assign(message, { status: 'failed', error }); Object.assign(threads.find((thread) => thread.id === message.threadId), { status: 'failed', lastError: error }); return message; },
     resetMessageForRetry(id: string) { const message = messages.find((item) => item.id === id)!; if (message.role !== 'assistant') throw new Error('只能重试 assistant message'); Object.assign(message, { content: '', status: 'streaming', error: null }); return message; },
@@ -54,7 +54,7 @@ describe('ReadingActionService', () => {
   it('有效首次请求只创建一组 user/assistant message', async () => {
     const { service, messages, window } = setup();
     await service.createConversation({ bookId: 'book-1', target, skillType: 'plain_explanation', prompt: '', contextStrategy: 'full_book' }, window);
-    expect(messages.map(({ role, status }) => ({ role, status }))).toEqual([{ role: 'user', status: 'ready' }, { role: 'assistant', status: 'ready' }]);
+    expect(messages.map(({ role, status }) => ({ role, status }))).toEqual([{ role: 'user', status: 'complete' }, { role: 'assistant', status: 'complete' }]);
   });
 
   it('拒绝与目标类型不匹配的技能', async () => {
@@ -76,6 +76,26 @@ describe('ReadingActionService', () => {
     expect(messages.at(-1)).toMatchObject({ role: 'assistant', status: 'failed', error: '网络错误' });
   });
 
+  it('上下文组装失败也会把占位消息和会话标记为失败', async () => {
+    const fixture = setup();
+    (fixture.service as any).settings = { getAISettings: () => ({ baseURL: '', apiKey: '', model: 'test', contextWindow: 1, defaultContextStrategy: 'full_book' }) };
+    await expect(fixture.service.createConversation({ bookId: 'book-1', target, skillType: 'plain_explanation', prompt: '', contextStrategy: 'full_book' }, fixture.window)).rejects.toThrow('超过模型窗口');
+    expect(fixture.messages.at(-1)).toMatchObject({ status: 'failed' });
+    expect(fixture.threads[0]).toMatchObject({ status: 'failed' });
+  });
+
+  it('同一会话生成中拒绝并发追问', async () => {
+    const fixture = setup();
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const provider = { async streamGenerate() { await pending; return { text: '回答', usage: 1 }; } };
+    const service = new ReadingActionService((fixture.service as any).settings, (fixture.service as any).library, fixture.store as any, provider as any);
+    const first = service.createConversation({ bookId: 'book-1', target, skillType: 'plain_explanation', prompt: '', contextStrategy: 'full_book' }, fixture.window);
+    await Promise.resolve();
+    await expect(service.followUp({ threadId: fixture.threads[0].id, question: '并发问题' }, fixture.window)).rejects.toThrow('正在生成回答');
+    release(); await first;
+  });
+
   it('retry 复用失败 assistant message ID 且不新增 message', async () => {
     const failed = setup('failure');
     await expect(failed.service.createConversation({ bookId: 'book-1', target, skillType: 'plain_explanation', prompt: '', contextStrategy: 'full_book' }, failed.window)).rejects.toThrow();
@@ -85,7 +105,7 @@ describe('ReadingActionService', () => {
     const before = failed.messages.length;
     await service.retry({ threadId: assistant.threadId, messageId: assistant.id }, failed.window);
     expect(failed.messages).toHaveLength(before);
-    expect(failed.messages.at(-1)).toMatchObject({ id: assistant.id, content: '重试', status: 'ready' });
+    expect(failed.messages.at(-1)).toMatchObject({ id: assistant.id, content: '重试', status: 'complete' });
   });
 
   it('retry 上下文只包含失败 assistant 之前的持久化消息', async () => {
@@ -138,11 +158,17 @@ describe('ReadingActionService', () => {
   });
 
   it('deleteConversation 委托 ThreadStore', () => {
-    const { service, store } = setup();
+    const { service, store, threads } = setup();
+    threads.push({ id: 't1', status: 'ready' });
     let deleted = '';
     store.deleteThread = (id: string) => { deleted = id; };
     service.deleteConversation({ threadId: 't1' });
     expect(deleted).toBe('t1');
+  });
+
+  it('拒绝删除生成中的会话', () => {
+    const { service, threads } = setup(); threads.push({ id: 't1', status: 'streaming' });
+    expect(() => service.deleteConversation({ threadId: 't1' })).toThrow('生成中的会话不能删除');
   });
 
   it.each([null, {}, { threadId: '' }, { threadId: 1 }])('deleteConversation 拒绝畸形输入 %#', (input) => {

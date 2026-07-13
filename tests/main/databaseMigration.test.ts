@@ -21,6 +21,7 @@ describe('数据库迁移', () => {
     legacy.prepare('INSERT INTO reading_threads VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('thread-1','book-1','chapter-1','passage-1','旧会话','plain_explanation','旧选区','full_book','2020','2020','ready');
     legacy.prepare('INSERT INTO reading_threads VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('thread-2','book-1','chapter-1','passage-1','旧定位会话','structure_location','旧选区','full_book','2020','2020','ready');
     legacy.prepare('INSERT INTO reading_threads VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('thread-3','book-1','chapter-1','passage-1','未知旧会话','unknown_action','旧选区','full_book','2020','2020','ready');
+    legacy.prepare('INSERT INTO thread_messages VALUES (?,?,?,?,?,?,?,?)').run('message-1','thread-1','assistant','旧回答','2020',null,null,'full_book');
     legacy.close();
 
     const db = createDatabase(dbPath);
@@ -31,6 +32,7 @@ describe('数据库迁移', () => {
     });
     expect(new ThreadStore(db).getThread('thread-2').skillType).toBeNull();
     expect(new ThreadStore(db).getThread('thread-3').skillType).toBeNull();
+    expect(new ThreadStore(db).listMessages('thread-1')[0].status).toBe('complete');
     db.close();
   });
 });

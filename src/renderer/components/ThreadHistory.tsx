@@ -25,7 +25,7 @@ export function ThreadHistory({ threads, onOpen, onDelete, onRetry, retryableThr
             <button onClick={() => onOpen(thread.id)}>{thread.title}</button>
             {thread.status === 'streaming' ? <span>生成中</span> : null}
             {(retryableThreadIds ? retryableThreadIds.has(thread.id) : thread.status === 'failed') ? <button aria-label={`重试“${thread.title}”`} onClick={() => onRetry(thread.id)}>重试</button> : null}
-            <button aria-label={`删除“${thread.title}”`} onClick={() => setDeleting(thread)}>删除</button>
+            {thread.status !== 'streaming' ? <button aria-label={`删除“${thread.title}”`} onClick={() => setDeleting(thread)}>删除</button> : null}
           </li>
         ))}
       </ul>

@@ -88,10 +88,10 @@ describe('ThreadStore', () => {
       selectedText: '引用', startPassageId: 'passage-2', endPassageId: 'passage-2',
       startOffset: 1, endOffset: 3, breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
     };
-    const message = store.addMessage({ threadId: thread.id, role: 'user', content: '为什么？', reference });
+    const message = store.addMessage({ threadId: thread.id, role: 'user', content: '为什么？', reference, effectiveContextStrategy: 'compressed_book', degradationReason: '预算降级' });
 
     expect(store.getThread(thread.id)).toMatchObject({ target: selectionTarget, skillType: 'plain_explanation', lastError: null });
-    expect(store.listMessages(thread.id)[0]).toMatchObject({ id: message.id, reference, status: 'ready', error: null });
+    expect(store.listMessages(thread.id)[0]).toMatchObject({ id: message.id, reference, status: 'complete', effectiveContextStrategy: 'compressed_book', degradationReason: '预算降级', error: null });
   });
 
   it('生成中的会话置顶，其余按更新时间倒序', () => {
@@ -131,8 +131,8 @@ describe('ThreadStore', () => {
     expect(store.listMessages(thread.id)[0]).toMatchObject({ id: message.id, status: 'failed', error: '网络错误' });
     const retried = store.resetMessageForRetry(message.id);
     expect(retried).toMatchObject({ id: message.id, content: '', status: 'streaming', error: null });
-    const completed = store.updateMessage(message.id, { content: '重试成功', status: 'ready', error: null });
-    expect(completed).toMatchObject({ id: message.id, content: '重试成功', status: 'ready', error: null });
+    const completed = store.updateMessage(message.id, { content: '重试成功', status: 'complete', error: null });
+    expect(completed).toMatchObject({ id: message.id, content: '重试成功', status: 'complete', error: null });
     expect(store.listMessages(thread.id)).toHaveLength(1);
   });
 
@@ -143,7 +143,7 @@ describe('ThreadStore', () => {
     const message = store.addMessage({ threadId: thread.id, role: 'user', content: '原问题' });
 
     expect(() => store.resetMessageForRetry(message.id)).toThrow('只能重试 assistant message');
-    expect(store.listMessages(thread.id)[0]).toMatchObject({ id: message.id, content: '原问题', status: 'ready' });
+    expect(store.listMessages(thread.id)[0]).toMatchObject({ id: message.id, content: '原问题', status: 'complete' });
   });
 
   it('损坏的目标和引用 JSON 不会阻断列表映射', () => {

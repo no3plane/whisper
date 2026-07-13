@@ -22,6 +22,7 @@ describe('ThreadHistory', () => {
     const items = screen.getAllByRole('listitem');
     expect(items[0].textContent).toContain('较早生成');
     expect(screen.queryByText('今天')).toBeNull();
+    expect(screen.queryByRole('button', { name: '删除“较早生成”' })).toBeNull();
     expect(screen.queryByText('昨天')).toBeNull();
   });
 

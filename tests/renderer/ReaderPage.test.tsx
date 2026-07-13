@@ -14,7 +14,7 @@ const { listeners, api } = vi.hoisted(() => {
 });
 const target = { type: 'book' as const, chapterId: null, startPassageId: null, endPassageId: null, selectedText: '', startOffset: null, endOffset: null, breadcrumb: [] };
 const thread: ReadingThread = { id: 't1', bookId: 'b1', title: '全书 · 问题', target, skillType: null, contextStrategy: 'hybrid', createdAt: '2026-07-13T00:00:00Z', updatedAt: '2026-07-13T00:00:00Z', status: 'streaming', lastError: null };
-const assistant: ThreadMessage = { id: 'a1', threadId: 't1', role: 'assistant', content: '', createdAt: '2026-07-13T00:00:00Z', model: null, tokenUsage: null, contextStrategy: null, reference: null, status: 'streaming', error: null };
+const assistant: ThreadMessage = { id: 'a1', threadId: 't1', role: 'assistant', content: '', createdAt: '2026-07-13T00:00:00Z', model: null, tokenUsage: null, contextStrategy: null, effectiveContextStrategy: null, degradationReason: null, reference: null, status: 'streaming', error: null };
 const bookDocument: BookDocument = {
   book: { id: 'b1', title: '测试书', author: null, format: 'markdown', originalFilePath: '', libraryFilePath: '', createdAt: '', updatedAt: '', lastOpenedAt: null, preprocessStatus: 'ready', tokenEstimate: 1, defaultContextStrategy: 'hybrid', activeThreadId: null },
   chapters: [{ id: 'c1', bookId: 'b1', parentChapterId: null, title: '第一章', level: 1, order: 0, startPassageId: 'p1', endPassageId: 'p1', summary: null }],
@@ -39,6 +39,19 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('ReaderPage 会话编排', () => {
+  it('没有保存过 Tab 状态时默认打开有效的 activeThreadId', async () => {
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, status: 'ready' }, messages: [] }], activeThreadId: 't1' });
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    expect(await screen.findByRole('button', { name: '回到原文' })).toBeTruthy();
+  });
+
+  it('保存的空 Tab 数组保持全部关闭', async () => {
+    localStorage.setItem('whisper.openThreads.b1', '[]');
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, status: 'ready' }, messages: [] }], activeThreadId: 't1' });
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    expect(screen.queryByRole('button', { name: '回到原文' })).toBeNull();
+  });
   it('点击加号不创建会话，首次发送才创建', async () => {
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
     await screen.findByText('所谓自由并不是任性。');
@@ -56,7 +69,7 @@ describe('ReaderPage 会话编排', () => {
     await screen.findByRole('button', { name: '关闭“全书 · 问题”' });
     fireEvent.click(screen.getByRole('button', { name: '关闭“全书 · 问题”' }));
     listeners.forEach((listener) => listener({ type: 'chunk', threadId: 't1', messageId: 'a1', chunk: '后台回答' }));
-    listeners.forEach((listener) => listener({ type: 'done', thread: { ...thread, status: 'ready' }, messages: [{ ...assistant, content: '后台回答', status: 'ready' }] }));
+    listeners.forEach((listener) => listener({ type: 'done', thread: { ...thread, status: 'ready' }, messages: [{ ...assistant, content: '后台回答', status: 'complete' }] }));
     fireEvent.click(screen.getByRole('button', { name: '历史' }));
     await waitFor(() => expect(screen.getByText('全书 · 问题')).toBeTruthy());
     fireEvent.click(screen.getAllByRole('button', { name: '全书 · 问题' }).at(-1)!);
@@ -66,7 +79,8 @@ describe('ReaderPage 会话编排', () => {
   it('打开历史会话不滚动，点击回到原文才滚动', async () => {
     const scroll = vi.fn();
     HTMLElement.prototype.scrollIntoView = scroll;
-    api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, status: 'ready' }, messages: [{ ...assistant, status: 'ready' }] }], activeThreadId: null });
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, status: 'ready' }, messages: [{ ...assistant, status: 'complete' }] }], activeThreadId: null });
+    localStorage.setItem('whisper.openThreads.b1', '[]');
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
     await screen.findByText('所谓自由并不是任性。');
     fireEvent.click(screen.getByRole('button', { name: '历史' }));

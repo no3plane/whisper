@@ -79,8 +79,10 @@ CREATE TABLE IF NOT EXISTS thread_messages (
   model TEXT,
   token_usage INTEGER,
   context_strategy TEXT,
+  effective_context_strategy TEXT,
+  degradation_reason TEXT,
   reference_json TEXT,
-  status TEXT NOT NULL DEFAULT 'ready',
+  status TEXT NOT NULL DEFAULT 'complete',
   error TEXT,
   FOREIGN KEY(thread_id) REFERENCES reading_threads(id)
 );

@@ -32,10 +32,13 @@ function migrateSchema(db: AppDatabase) {
   ensureColumn(db, 'reading_threads', 'skill_type', 'TEXT');
   ensureColumn(db, 'reading_threads', 'last_error', 'TEXT');
   ensureColumn(db, 'thread_messages', 'reference_json', 'TEXT');
+  ensureColumn(db, 'thread_messages', 'effective_context_strategy', 'TEXT');
+  ensureColumn(db, 'thread_messages', 'degradation_reason', 'TEXT');
   ensureColumn(db, 'thread_messages', 'status', "TEXT NOT NULL DEFAULT 'ready'");
   ensureColumn(db, 'thread_messages', 'error', 'TEXT');
 
   db.transaction(() => {
+    db.exec("UPDATE thread_messages SET status = 'complete' WHERE status = 'ready'");
     db.exec(`UPDATE reading_threads SET
       target_type = 'selection',
       target_chapter_id = chapter_id,

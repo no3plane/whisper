@@ -9,6 +9,7 @@ import type { SettingsService } from '../settings/SettingsService';
 import type { ThreadStore } from '../threads/ThreadStore';
 import { AIProvider } from './AIProvider';
 import { ContextAssembler } from './ContextAssembler';
+import { buildThreadTitle } from '../../shared/skills';
 
 const skills: Record<ReadingSkillType, { title: string; target: ReadingTargetType; instruction: string }> = {
   book_summary: { title: '总结全书', target: 'book', instruction: '总结全书的核心内容。' },
@@ -27,6 +28,7 @@ type Provider = Pick<AIProvider, 'streamGenerate'>;
 
 export class ReadingActionService {
   private readonly assembler = new ContextAssembler();
+  private readonly inFlight = new Set<string>();
 
   constructor(
     private readonly settings: SettingsService,
@@ -41,11 +43,11 @@ export class ReadingActionService {
     const document = this.library.openBook(input.bookId);
     const skill = input.skillType ? skills[input.skillType] : null;
     const prompt = input.prompt.trim();
-    const targetTitle = input.target.type === 'book'
-      ? '全书'
-      : input.target.breadcrumb.at(-1)?.title || input.target.selectedText.slice(0, 12) || '解读目标';
+    const targetTitle = input.target.type === 'book' ? '全书'
+      : input.target.type === 'chapter' ? input.target.breadcrumb[0]?.title || '章节'
+        : input.target.selectedText.slice(0, 12) || '解读目标';
     const thread = this.threads.createThread({
-      bookId: input.bookId, title: `${targetTitle} · ${skill?.title ?? prompt.slice(0, 12)}`,
+      bookId: input.bookId, title: buildThreadTitle({ targetLabel: targetTitle, skillLabel: skill?.title ?? null, question: prompt }),
       target: input.target, skillType: input.skillType, contextStrategy: input.contextStrategy, status: 'streaming',
     });
     this.threads.addMessage({
@@ -56,19 +58,21 @@ export class ReadingActionService {
       threadId: thread.id, role: 'assistant', content: '', model: aiSettings.model,
       contextStrategy: input.contextStrategy, status: 'streaming',
     });
-    const context = this.assembler.forReadingAction({
+    this.acquire(thread.id);
+    return this.run(thread, assistant, window, () => this.assembler.forReadingAction({
       strategy: input.contextStrategy, bookTitle: document.book.title, fullText: document.fullText,
       target: input.target, reference: null, skillInstruction: skill?.instruction ?? null, isInitialTurn: true,
       threadMessages: this.threads.listMessages(thread.id).filter((message) => message.id !== assistant.id),
       chapters: document.chapters, passages: document.passages, contextWindow: aiSettings.contextWindow,
-    });
-    return this.streamIntoMessage(thread, assistant, context, window);
+    }));
   }
 
   async followUp(input: FollowUpInput, window: BrowserWindow) {
     this.validateFollowUp(input);
     const aiSettings = this.requireSettings();
     const thread = this.threads.getThread(input.threadId);
+    this.acquire(thread.id);
+    try {
     this.threads.updateThreadStatus(thread.id, 'streaming');
     this.threads.addMessage({
       threadId: thread.id, role: 'user', content: input.question.trim(), reference: input.reference ?? null,
@@ -78,13 +82,15 @@ export class ReadingActionService {
       threadId: thread.id, role: 'assistant', content: '', model: aiSettings.model,
       contextStrategy: thread.contextStrategy, status: 'streaming',
     });
-    const context = this.buildContext(thread, assistant, input.reference ?? null, false);
-    return this.streamIntoMessage(thread, assistant, context, window);
+    return await this.run(thread, assistant, window, () => this.buildContext(thread, assistant, input.reference ?? null, false));
+    } finally { this.inFlight.delete(thread.id); }
   }
 
   async retry(input: RetryMessageInput, window: BrowserWindow) {
     this.validateRetry(input);
     const thread = this.threads.getThread(input.threadId);
+    this.acquire(thread.id);
+    try {
     const messages = this.threads.listMessages(thread.id);
     const index = messages.findIndex((message) => message.id === input.messageId);
     const message = messages[index];
@@ -92,14 +98,16 @@ export class ReadingActionService {
     if (message.role !== 'assistant' || message.status !== 'failed') throw new Error('只能重试失败的 assistant message。');
     const assistant = this.threads.resetMessageForRetry(message.id);
     const history = messages.slice(0, index);
-    const context = this.buildContext(thread, assistant, messages[index - 1]?.reference ?? null, index === 1, history);
-    return this.streamIntoMessage(thread, assistant, context, window, [...messages.slice(0, index), assistant]);
+    return await this.run(thread, assistant, window, () => this.buildContext(thread, assistant, messages[index - 1]?.reference ?? null, index === 1, history), [...messages.slice(0, index), assistant]);
+    } finally { this.inFlight.delete(thread.id); }
   }
 
   deleteConversation(input: DeleteThreadInput) {
     if (!input || typeof input !== 'object' || typeof input.threadId !== 'string' || !input.threadId.trim()) {
       throw new Error('删除会话参数无效：threadId 必须是非空字符串。');
     }
+    const thread = this.threads.getThread(input.threadId);
+    if (thread.status === 'streaming' || this.inFlight.has(thread.id)) throw new Error('生成中的会话不能删除。');
     this.threads.deleteThread(input.threadId);
   }
 
@@ -114,14 +122,16 @@ export class ReadingActionService {
     });
   }
 
-  private async streamIntoMessage(thread: ReadingThread, assistant: ThreadMessage, context: Parameters<Provider['streamGenerate']>[1], window: BrowserWindow, startedMessages?: ThreadMessage[]) {
+  private async run(thread: ReadingThread, assistant: ThreadMessage, window: BrowserWindow, assemble: () => Parameters<Provider['streamGenerate']>[1], startedMessages?: ThreadMessage[]) {
     const aiSettings = this.requireSettings();
     this.emit(window, { type: 'started', thread: this.threads.getThread(thread.id), messages: startedMessages ?? this.threads.listMessages(thread.id), assistantMessageId: assistant.id });
     try {
+      const context = assemble();
+      this.threads.updateMessage(assistant.id, { effectiveContextStrategy: context.effectiveStrategy ?? thread.contextStrategy, degradationReason: context.degradationReason ?? null });
       const output = await this.provider.streamGenerate(aiSettings, context, {
         onChunk: (chunk) => this.emit(window, { type: 'chunk', threadId: thread.id, messageId: assistant.id, chunk }),
       });
-      this.threads.updateMessage(assistant.id, { content: output.text, model: aiSettings.model, tokenUsage: output.usage, status: 'ready', error: null });
+      this.threads.updateMessage(assistant.id, { content: output.text, model: aiSettings.model, tokenUsage: output.usage, status: 'complete', error: null });
       this.threads.updateThreadStatus(thread.id, 'ready');
       const result = { thread: this.threads.getThread(thread.id), messages: this.threads.listMessages(thread.id) };
       this.emit(window, { type: 'done', ...result });
@@ -131,7 +141,14 @@ export class ReadingActionService {
       this.threads.markMessageFailed(assistant.id, message);
       this.emit(window, { type: 'error', threadId: thread.id, messageId: assistant.id, message });
       throw error;
+    } finally {
+      this.inFlight.delete(thread.id);
     }
+  }
+
+  private acquire(threadId: string) {
+    if (this.inFlight.has(threadId)) throw new Error('该会话正在生成回答，请稍后再试。');
+    this.inFlight.add(threadId);
   }
 
   private validateCreate(input: CreateConversationInput) {
