@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AiStreamEvent, BookDocument, CreateConversationInput, MessageReference, ReadingTarget, ReadingThread, ThreadMessage } from '../../shared/types';
-import { createBookDraft, applyAutomaticSelection, replaceDraftFromSelection, type ConversationDraft } from '../chat/draftState';
+import { createBookDraft, applyAutomaticSelection, replaceDraftFromSelection, selectTarget, type ConversationDraft } from '../chat/draftState';
 import { RightAiPanel, type AiPanelView } from '../components/RightAiPanel';
 import { SelectionMenu } from '../components/SelectionMenu';
 import { captureSelection, locateSnapshot } from '../selection/selectionSnapshot';
@@ -45,6 +45,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   useEffect(() => () => { if (highlightTimer.current) clearTimeout(highlightTimer.current); }, []);
 
   function selectThread(threadId: string) {
+    setPendingReference(null);
     setActiveView({ type: 'thread', threadId });
     void whisper.books.setActiveThread({ bookId, threadId }).catch(() => undefined);
   }
@@ -65,8 +66,17 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     } catch (reason) { setError(messageOf(reason)); }
   }
   function closeThread(threadId: string) {
-    setOpenThreadIds((ids) => ids.filter((id) => id !== threadId));
-    if (activeView?.type === 'thread' && activeView.threadId === threadId) setActiveView(null);
+    setPendingReference(null);
+    setOpenThreadIds((ids) => {
+      const index = ids.indexOf(threadId);
+      const next = ids.filter((id) => id !== threadId);
+      if (activeView?.type === 'thread' && activeView.threadId === threadId) {
+        const neighbor = next[Math.min(index, next.length - 1)];
+        setActiveView(neighbor ? { type: 'thread', threadId: neighbor } : null);
+        if (neighbor) void whisper.books.setActiveThread({ bookId, threadId: neighbor }).catch(() => undefined);
+      }
+      return next;
+    });
   }
   async function deleteThread(threadId: string) {
     await whisper.threads.delete({ threadId });
@@ -106,12 +116,15 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     const passage = snapshot.startPassageId
       ? [...articleRef.current.querySelectorAll<HTMLElement>('[data-passage-id]')].find((element) => element.dataset.passageId === snapshot.startPassageId) ?? null
       : articleRef.current.querySelector<HTMLElement>('[data-passage-id]');
-    const anchor = range ? (range.startContainer.parentElement?.closest<HTMLElement>('[data-passage-id]') ?? passage) : passage;
+    const exact = Boolean(range && (!snapshot.selectedText || range.toString() === snapshot.selectedText));
+    const anchor = exact ? (range!.startContainer.parentElement?.closest<HTMLElement>('[data-passage-id]') ?? passage) : passage;
     if (!anchor) { setNotice('无法恢复原文位置。'); return; }
-    anchor.scrollIntoView({ block: 'center' }); anchor.classList.add('temporary-source-highlight');
-    if (!range) setNotice('无法恢复精确选区，已定位到相关段落。');
+    anchor.scrollIntoView({ block: 'center' });
+    const browserSelection = window.getSelection();
+    if (exact && browserSelection) { browserSelection.removeAllRanges(); browserSelection.addRange(range!); setNotice(''); }
+    else { anchor.classList.add('temporary-source-highlight'); setNotice('无法恢复精确选区，已定位到相关段落。'); }
     if (highlightTimer.current) clearTimeout(highlightTimer.current);
-    highlightTimer.current = setTimeout(() => anchor.classList.remove('temporary-source-highlight'), 2000);
+    highlightTimer.current = setTimeout(() => { anchor.classList.remove('temporary-source-highlight'); if (exact) browserSelection?.removeAllRanges(); }, 2000);
   }
 
   if (!document || !draft) return <main className="app-shell">{error ? <><p className="error">{error}</p><button onClick={onBack}>返回书库</button></> : '正在打开书籍...'}</main>;
@@ -125,9 +138,9 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
       {document.passages.map((passage) => <p id={passage.id} data-passage-id={passage.id} key={passage.id}>{passage.text}</p>)}
     </article>
     <RightAiPanel threads={threads} historyThreads={threads.map(({ thread }) => thread)} openThreadIds={openThreadIds} activeView={activeView} draft={draft} pendingReference={pendingReference}
-      onOpenDraft={openDraft} onUpdateDraft={setDraft} onCreate={createConversation} onSelectThread={selectThread} onCloseThread={closeThread} onOpenHistory={() => setActiveView({ type: 'history' })}
-      onOpenThread={openThread} onDeleteThread={(id) => void deleteThread(id)} onRetryThread={(id) => { const failed = threads.find((item) => item.thread.id === id)?.messages.find((message) => message.status === 'failed'); if (failed) void retryMessage(id, failed.id); }}
-      onFollowUp={followUp} onClearReference={() => setPendingReference(null)} onRetryMessage={(id, messageId) => void retryMessage(id, messageId)} onLocate={locate} streamError={streamError} />
+      onOpenDraft={openDraft} onUpdateDraft={setDraft} onSelectDraftTarget={(target) => setDraft((current) => current ? selectTarget(current, target) : current)} onCreate={createConversation} onSelectThread={selectThread} onCloseThread={closeThread} onOpenHistory={() => { setPendingReference(null); setActiveView({ type: 'history' }); }}
+      onOpenThread={openThread} onDeleteThread={(id) => void deleteThread(id)} onRetryThread={(id) => { const failed = threads.find((item) => item.thread.id === id)?.messages.find((message) => message.role === 'assistant' && message.status === 'failed'); if (failed) void retryMessage(id, failed.id); }}
+      onFollowUp={followUp} onClearReference={() => setPendingReference(null)} onRetryMessage={(id, messageId) => void retryMessage(id, messageId)} onLocate={locate} retryableThreadIds={new Set(threads.filter((item) => item.messages.some((message) => message.role === 'assistant' && message.status === 'failed')).map((item) => item.thread.id))} streamError={streamError} />
   </section>;
 }
 

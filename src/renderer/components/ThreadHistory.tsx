@@ -6,9 +6,10 @@ interface ThreadHistoryProps {
   onOpen: (threadId: string) => void;
   onDelete: (threadId: string) => void;
   onRetry: (threadId: string) => void;
+  retryableThreadIds?: Set<string>;
 }
 
-export function ThreadHistory({ threads, onOpen, onDelete, onRetry }: ThreadHistoryProps) {
+export function ThreadHistory({ threads, onOpen, onDelete, onRetry, retryableThreadIds }: ThreadHistoryProps) {
   const [deleting, setDeleting] = useState<ReadingThread | null>(null);
   const sorted = useMemo(() => [...threads].sort((left, right) => {
     if (left.status === 'streaming' && right.status !== 'streaming') return -1;
@@ -23,7 +24,7 @@ export function ThreadHistory({ threads, onOpen, onDelete, onRetry }: ThreadHist
           <li key={thread.id}>
             <button onClick={() => onOpen(thread.id)}>{thread.title}</button>
             {thread.status === 'streaming' ? <span>生成中</span> : null}
-            {thread.status === 'failed' ? <button aria-label={`重试“${thread.title}”`} onClick={() => onRetry(thread.id)}>重试</button> : null}
+            {(retryableThreadIds ? retryableThreadIds.has(thread.id) : thread.status === 'failed') ? <button aria-label={`重试“${thread.title}”`} onClick={() => onRetry(thread.id)}>重试</button> : null}
             <button aria-label={`删除“${thread.title}”`} onClick={() => setDeleting(thread)}>删除</button>
           </li>
         ))}

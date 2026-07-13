@@ -9,11 +9,11 @@ import {
 } from '@assistant-ui/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { skillsForTarget } from '../../shared/skills';
 import type { CreateConversationInput, MessageReference, ReadingThread, ThreadMessage } from '../../shared/types';
 import type { ConversationDraft } from '../chat/draftState';
 import { validateDraft } from '../chat/draftState';
 import { ThreadHistory } from './ThreadHistory';
+import { TargetPicker } from './TargetPicker';
 import '@assistant-ui/react-markdown/styles/dot.css';
 
 type ThreadItem = { thread: ReadingThread; messages: ThreadMessage[] };
@@ -28,6 +28,7 @@ export interface RightAiPanelProps {
   pendingReference: MessageReference | null;
   onOpenDraft: () => void;
   onUpdateDraft: (draft: ConversationDraft) => void;
+  onSelectDraftTarget?: (target: ConversationDraft['target']) => void;
   onCreate: (input: CreateConversationInput) => Promise<void>;
   onSelectThread: (threadId: string) => void;
   onCloseThread: (threadId: string) => void;
@@ -39,6 +40,7 @@ export interface RightAiPanelProps {
   onClearReference: () => void;
   onRetryMessage: (threadId: string, messageId: string) => void;
   onLocate: (threadId: string, reference?: MessageReference | null) => void;
+  retryableThreadIds?: Set<string>;
   streamError?: string;
 }
 
@@ -55,14 +57,15 @@ export function RightAiPanel(props: RightAiPanelProps) {
     <aside className="right-panel">
       <ThreadTabs {...props} openThreads={openThreads} />
       {props.activeView?.type === 'draft' ? (
-        <DraftComposer draft={props.draft} onUpdate={props.onUpdateDraft} onCreate={props.onCreate} />
+        <DraftComposer draft={props.draft} onUpdate={props.onUpdateDraft}
+          onSelectTarget={props.onSelectDraftTarget ?? ((target) => props.onUpdateDraft({ ...props.draft, target }))} onCreate={props.onCreate} />
       ) : active ? (
         <ThreadChat item={active} pendingReference={props.pendingReference} onFollowUp={props.onFollowUp}
           onClearReference={props.onClearReference} onRetryMessage={props.onRetryMessage}
           onLocate={props.onLocate} streamError={props.streamError} />
       ) : props.activeView?.type === 'history' ? (
         <ThreadHistory threads={props.historyThreads} onOpen={props.onOpenThread}
-          onDelete={props.onDeleteThread} onRetry={props.onRetryThread} />
+          onDelete={props.onDeleteThread} onRetry={props.onRetryThread} retryableThreadIds={props.retryableThreadIds} />
       ) : (
         <div className="panel-body"><p className="muted">新建会话，或从历史记录继续阅读。</p></div>
       )}
@@ -91,9 +94,8 @@ function ThreadTabs(props: RightAiPanelProps & { openThreads: ThreadItem[] }) {
   );
 }
 
-function DraftComposer({ draft, onUpdate, onCreate }: { draft: ConversationDraft; onUpdate: (draft: ConversationDraft) => void; onCreate: (input: CreateConversationInput) => Promise<void> }) {
+function DraftComposer({ draft, onUpdate, onSelectTarget, onCreate }: { draft: ConversationDraft; onUpdate: (draft: ConversationDraft) => void; onSelectTarget: (target: ConversationDraft['target']) => void; onCreate: (input: CreateConversationInput) => Promise<void> }) {
   const validation = validateDraft(draft);
-  const skills = skillsForTarget(draft.target.type);
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!validation.valid) return;
@@ -102,17 +104,10 @@ function DraftComposer({ draft, onUpdate, onCreate }: { draft: ConversationDraft
   return (
     <form className="draft-composer panel-body" onSubmit={(event) => void submit(event)}>
       <h3>新会话</h3>
-      <label>全书认知
-        <select value={draft.contextStrategy} onChange={(event) => onUpdate({ ...draft, contextStrategy: event.target.value as ConversationDraft['contextStrategy'], strategySource: 'draft-override' })}>
-          <option value="full_book">完整全书</option><option value="compressed_book">压缩全书</option><option value="hybrid">混合</option>
-        </select>
-      </label>
-      <label>技能
-        <select value={draft.skillType ?? ''} onChange={(event) => onUpdate({ ...draft, skillType: (event.target.value || null) as ConversationDraft['skillType'] })}>
-          <option value="">不使用技能</option>
-          {skills.map((skill) => <option key={skill.id} value={skill.id}>{skill.label}</option>)}
-        </select>
-      </label>
+      <TargetPicker draft={draft}
+        onTargetChange={onSelectTarget}
+        onSkillChange={(skillType) => onUpdate({ ...draft, skillType })}
+        onStrategyChange={(contextStrategy) => onUpdate({ ...draft, contextStrategy, strategySource: 'draft-override' })} />
       <textarea value={draft.prompt} onChange={(event) => onUpdate({ ...draft, prompt: event.target.value })}
         placeholder={draft.skillType ? '可补充具体要求，也可以直接发送' : '你想了解什么？'} />
       <button type="submit" aria-label="发送首次问题" disabled={!validation.valid}>发送</button>

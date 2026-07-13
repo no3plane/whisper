@@ -44,12 +44,12 @@ export function TargetPicker({ draft, onTargetChange, onSkillChange, onStrategyC
     <section className="target-picker" aria-label="解读设置">
       <div className="target-picker-breadcrumb" aria-label="解读目标">
         {draft.target.type === 'selection' ? (
-          <button aria-pressed>框选内容</button>
+          <button type="button" aria-pressed>框选内容</button>
         ) : draft.target.type === 'book' ? (
-          <button aria-pressed>整本书</button>
+          <button type="button" aria-pressed>整本书</button>
         ) : null}
         {draft.target.breadcrumb.map((crumb, index) => (
-          <button key={crumb.chapterId} onClick={() => selectChapter(index)}>{crumb.title}</button>
+          <button type="button" key={crumb.chapterId} onClick={() => selectChapter(index)}>{crumb.title}</button>
         ))}
       </div>
 
@@ -59,6 +59,7 @@ export function TargetPicker({ draft, onTargetChange, onSkillChange, onStrategyC
         <legend>技能</legend>
         {skillsForTarget(draft.target.type).map((skill) => (
           <button
+            type="button"
             key={skill.id}
             aria-pressed={draft.skillType === skill.id}
             onClick={() => onSkillChange(draft.skillType === skill.id ? null : skill.id)}

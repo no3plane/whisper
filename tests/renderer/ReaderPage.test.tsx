@@ -15,7 +15,7 @@ const { listeners, api } = vi.hoisted(() => {
 const target = { type: 'book' as const, chapterId: null, startPassageId: null, endPassageId: null, selectedText: '', startOffset: null, endOffset: null, breadcrumb: [] };
 const thread: ReadingThread = { id: 't1', bookId: 'b1', title: '全书 · 问题', target, skillType: null, contextStrategy: 'hybrid', createdAt: '2026-07-13T00:00:00Z', updatedAt: '2026-07-13T00:00:00Z', status: 'streaming', lastError: null };
 const assistant: ThreadMessage = { id: 'a1', threadId: 't1', role: 'assistant', content: '', createdAt: '2026-07-13T00:00:00Z', model: null, tokenUsage: null, contextStrategy: null, reference: null, status: 'streaming', error: null };
-const document: BookDocument = {
+const bookDocument: BookDocument = {
   book: { id: 'b1', title: '测试书', author: null, format: 'markdown', originalFilePath: '', libraryFilePath: '', createdAt: '', updatedAt: '', lastOpenedAt: null, preprocessStatus: 'ready', tokenEstimate: 1, defaultContextStrategy: 'hybrid', activeThreadId: null },
   chapters: [{ id: 'c1', bookId: 'b1', parentChapterId: null, title: '第一章', level: 1, order: 0, startPassageId: 'p1', endPassageId: 'p1', summary: null }],
   passages: [{ id: 'p1', bookId: 'b1', chapterId: 'c1', order: 0, text: '所谓自由并不是任性。', sourceHref: null, sourceOffset: 0 }], fullText: '所谓自由并不是任性。',
@@ -32,7 +32,7 @@ beforeAll(() => {
 afterAll(() => { globalThis.ResizeObserver = originalResizeObserver; HTMLElement.prototype.scrollTo = originalScrollTo; });
 beforeEach(() => {
   localStorage.clear(); listeners.clear(); vi.clearAllMocks();
-  api.books.open.mockResolvedValue(document); api.books.setActiveThread.mockResolvedValue(undefined); api.books.setContextStrategy.mockResolvedValue(undefined);
+  api.books.open.mockResolvedValue(bookDocument); api.books.setActiveThread.mockResolvedValue(undefined); api.books.setContextStrategy.mockResolvedValue(undefined);
   api.threads.listWithMessagesByBook.mockResolvedValue({ threads: [], activeThreadId: null }); api.threads.listByBook.mockResolvedValue([]); api.threads.delete.mockResolvedValue(undefined);
   api.ai.createConversation.mockResolvedValue({ thread, messages: [assistant] }); api.ai.followUp.mockResolvedValue({ thread, messages: [assistant] }); api.ai.retry.mockResolvedValue({ thread, messages: [assistant] });
 });
@@ -59,7 +59,7 @@ describe('ReaderPage 会话编排', () => {
     listeners.forEach((listener) => listener({ type: 'done', thread: { ...thread, status: 'ready' }, messages: [{ ...assistant, content: '后台回答', status: 'ready' }] }));
     fireEvent.click(screen.getByRole('button', { name: '历史' }));
     await waitFor(() => expect(screen.getByText('全书 · 问题')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: '全书 · 问题' }));
+    fireEvent.click(screen.getAllByRole('button', { name: '全书 · 问题' }).at(-1)!);
     expect(await screen.findByText('后台回答')).toBeTruthy();
   });
 
@@ -74,5 +74,70 @@ describe('ReaderPage 会话编排', () => {
     expect(scroll).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: '回到原文' }));
     expect(scroll).toHaveBeenCalledOnce();
+  });
+
+  it('手动选择章节目标后以章节目标创建会话', async () => {
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
+    const text = screen.getByText('所谓自由并不是任性。').firstChild!;
+    const range = document.createRange();
+    range.setStart(text, 0); range.setEnd(text, 4);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges(); selection.addRange(range);
+    fireEvent.mouseUp(screen.getByText('所谓自由并不是任性。'));
+    fireEvent.click(await screen.findByRole('button', { name: '第一章' }));
+    fireEvent.change(screen.getByPlaceholderText('你想了解什么？'), { target: { value: '解释本章' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送首次问题' }));
+    await waitFor(() => expect(api.ai.createConversation).toHaveBeenCalledWith(expect.objectContaining({ target: expect.objectContaining({ type: 'chapter', chapterId: 'c1' }) })));
+  });
+
+  it('关闭活动 Tab 后激活相邻 Tab 并清除待发送引用', async () => {
+    const t2 = { ...thread, id: 't2', title: '第二个会话', status: 'ready' as const };
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, status: 'ready' }, messages: [] }, { thread: t2, messages: [] }], activeThreadId: 't2' });
+    localStorage.setItem('whisper.openThreads.b1', JSON.stringify(['t1', 't2']));
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('第二个会话');
+    fireEvent.click(screen.getByRole('button', { name: '关闭“第二个会话”' }));
+    expect(await screen.findByText('全书认知：hybrid')).toBeTruthy();
+  });
+
+  it('精确选区定位时恢复 Range，2 秒后清理且不提示降级', async () => {
+    const selectionTarget = { ...target, type: 'selection' as const, chapterId: 'c1', startPassageId: 'p1', endPassageId: 'p1', selectedText: '自由', startOffset: 2, endOffset: 4, breadcrumb: [{ chapterId: 'c1', title: '第一章' }] };
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, target: selectionTarget, status: 'ready' }, messages: [] }], activeThreadId: 't1' });
+    localStorage.setItem('whisper.openThreads.b1', JSON.stringify(['t1']));
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByRole('button', { name: '回到原文' });
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: '回到原文' }));
+    expect(window.getSelection()?.toString()).toBe('自由');
+    expect(screen.queryByText('无法恢复精确选区，已定位到相关段落。')).toBeNull();
+    vi.advanceTimersByTime(2000);
+    expect(window.getSelection()?.rangeCount).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it('切换到历史时清除当前会话的待发送引用', async () => {
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, status: 'ready' }, messages: [] }], activeThreadId: 't1' });
+    localStorage.setItem('whisper.openThreads.b1', JSON.stringify(['t1']));
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    const text = screen.getByText('所谓自由并不是任性。').firstChild!;
+    const range = document.createRange(); range.setStart(text, 0); range.setEnd(text, 2);
+    window.getSelection()!.removeAllRanges(); window.getSelection()!.addRange(range);
+    fireEvent.mouseUp(screen.getByText('所谓自由并不是任性。'));
+    fireEvent.click(screen.getByRole('button', { name: '引用到当前会话' }));
+    expect(document.querySelector('.pending-reference blockquote')?.textContent).toBe('所谓');
+    fireEvent.click(screen.getByRole('button', { name: '历史' }));
+    fireEvent.click(screen.getAllByRole('button', { name: '全书 · 问题' }).at(-1)!);
+    expect(document.querySelector('.pending-reference')).toBeNull();
+  });
+
+  it('历史中仅当存在失败的助手消息时展示重试', async () => {
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({ threads: [{ thread: { ...thread, status: 'failed' }, messages: [{ ...assistant, role: 'user', status: 'failed' }] }], activeThreadId: null });
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    fireEvent.click(screen.getByRole('button', { name: '历史' }));
+    expect(screen.queryByRole('button', { name: '重试“全书 · 问题”' })).toBeNull();
   });
 });

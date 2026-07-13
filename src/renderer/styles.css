@@ -139,6 +139,11 @@ input {
   transition: background-color 180ms ease;
 }
 
+.reader ::selection {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  color: inherit;
+}
+
 .pending-reference {
   position: relative;
   padding: 10px 36px 10px 12px;
