@@ -151,10 +151,11 @@ describe('ThreadStore', () => {
     const store = new ThreadStore(db);
     const thread = store.createThread({ bookId: 'book-1', title: '会话', target: selectionTarget, skillType: null, contextStrategy: 'full_book' });
     store.addMessage({ threadId: thread.id, role: 'user', content: '问题' });
-    db.prepare('UPDATE reading_threads SET target_breadcrumb_json = ? WHERE id = ?').run('{bad', thread.id);
+    db.prepare('UPDATE reading_threads SET target_breadcrumb_json = ?, skill_type = ? WHERE id = ?').run('{bad', 'unknown_action', thread.id);
     db.prepare('UPDATE thread_messages SET reference_json = ? WHERE thread_id = ?').run('{bad', thread.id);
 
     expect(store.listThreadsByBook('book-1')[0].target.breadcrumb).toEqual([]);
+    expect(store.listThreadsByBook('book-1')[0].skillType).toBeNull();
     expect(store.listMessages(thread.id)[0].reference).toBeNull();
   });
 });

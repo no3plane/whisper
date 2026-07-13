@@ -19,6 +19,8 @@ describe('数据库迁移', () => {
       CREATE TABLE thread_messages (id TEXT PRIMARY KEY, thread_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL, model TEXT, token_usage INTEGER, context_strategy TEXT);
     `);
     legacy.prepare('INSERT INTO reading_threads VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('thread-1','book-1','chapter-1','passage-1','旧会话','plain_explanation','旧选区','full_book','2020','2020','ready');
+    legacy.prepare('INSERT INTO reading_threads VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('thread-2','book-1','chapter-1','passage-1','旧定位会话','structure_location','旧选区','full_book','2020','2020','ready');
+    legacy.prepare('INSERT INTO reading_threads VALUES (?,?,?,?,?,?,?,?,?,?,?)').run('thread-3','book-1','chapter-1','passage-1','未知旧会话','unknown_action','旧选区','full_book','2020','2020','ready');
     legacy.close();
 
     const db = createDatabase(dbPath);
@@ -27,6 +29,8 @@ describe('数据库迁移', () => {
       target: { type: 'selection', chapterId: 'chapter-1', startPassageId: 'passage-1', endPassageId: 'passage-1', selectedText: '旧选区', breadcrumb: [] },
       skillType: 'plain_explanation', lastError: null,
     });
+    expect(new ThreadStore(db).getThread('thread-2').skillType).toBeNull();
+    expect(new ThreadStore(db).getThread('thread-3').skillType).toBeNull();
     db.close();
   });
 });

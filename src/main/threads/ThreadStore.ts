@@ -36,6 +36,23 @@ interface ThreadMessageRow {
   error: string | null;
 }
 
+const readingSkillTypes = new Set<string>([
+  'book_summary',
+  'book_framework',
+  'book_critique',
+  'chapter_summary',
+  'chapter_role',
+  'chapter_argument',
+  'plain_explanation',
+  'concept_explanation',
+  'background_context',
+  'example_analogy',
+]);
+
+function safeSkillType(value: unknown): ReadingSkillType | null {
+  return typeof value === 'string' && readingSkillTypes.has(value) ? value as ReadingSkillType : null;
+}
+
 export interface CreateThreadInput {
   bookId: string;
   title: string;
@@ -82,7 +99,7 @@ function mapThreadRow(row: ReadingThreadRow): ReadingThread {
       endOffset: row.target_end_offset,
       breadcrumb: parseJsonOr(row.target_breadcrumb_json, [], Array.isArray),
     },
-    skillType: row.skill_type,
+    skillType: safeSkillType(row.skill_type),
     contextStrategy: row.context_strategy,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

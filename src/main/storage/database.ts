@@ -42,7 +42,13 @@ function migrateSchema(db: AppDatabase) {
       target_start_passage_id = passage_id,
       target_end_passage_id = passage_id,
       target_selected_text = selected_text,
-      skill_type = action_type
+      skill_type = CASE action_type
+        WHEN 'plain_explanation' THEN action_type
+        WHEN 'concept_explanation' THEN action_type
+        WHEN 'background_context' THEN action_type
+        WHEN 'example_analogy' THEN action_type
+        ELSE NULL
+      END
       WHERE action_type <> '' AND target_type = 'book'`);
   })();
 }
