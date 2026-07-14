@@ -20,8 +20,8 @@ export function SelectionMenu({
   }
 
   return (
-    <div className={styles.menu}>
-      <span>
+    <div className={styles.menu} role="toolbar" aria-label="选区操作">
+      <span className={styles.summary}>
         {selectedText.slice(0, 24)}
         {selectedText.length > 24 ? '...' : ''}
       </span>

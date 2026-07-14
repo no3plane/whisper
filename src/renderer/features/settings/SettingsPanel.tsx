@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Field } from '@base-ui/react/field';
 import type { AISettings } from '../../../shared/types';
 import { whisper } from '../../api/whisper';
 import styles from './SettingsPanel.module.css';
@@ -43,6 +44,7 @@ export function SettingsPanel() {
 
   async function run(operation: () => Promise<void>) {
     setError('');
+    setMessage('');
     try {
       await operation();
     } catch (reason) {
@@ -51,63 +53,81 @@ export function SettingsPanel() {
   }
 
   return (
-    <section className={styles.panel}>
-      <h2>模型设置</h2>
-      <label>
-        Base URL
-        <input
-          value={settings.baseURL}
-          onChange={(event) => setSettings({ ...settings, baseURL: event.target.value })}
-        />
-      </label>
-      <label>
-        API Key
-        <input
-          type="password"
-          value={settings.apiKey}
-          onChange={(event) => setSettings({ ...settings, apiKey: event.target.value })}
-        />
-      </label>
-      <label>
-        Model
-        <input
-          value={settings.model}
-          onChange={(event) => setSettings({ ...settings, model: event.target.value })}
-        />
-      </label>
-      <label>
-        Context Window
-        <input
-          type="number"
-          value={settings.contextWindow}
-          onChange={(event) =>
-            setSettings({ ...settings, contextWindow: Number(event.target.value) })
-          }
-        />
-      </label>
-      <label>
-        默认上下文策略
-        <select
-          value={settings.defaultContextStrategy}
-          onChange={(event) =>
-            setSettings({
-              ...settings,
-              defaultContextStrategy: event.target.value as AISettings['defaultContextStrategy'],
-            })
-          }
-        >
-          <option value="full_book">完整全书</option>
-          <option value="compressed_book">压缩全书</option>
-          <option value="hybrid">混合</option>
-        </select>
-      </label>
-      <div className={styles.buttonRow}>
-        <button onClick={save}>保存</button>
-        <button onClick={test}>测试连接</button>
+    <aside className={styles.panel} aria-labelledby="settings-title">
+      <header className={styles.header}>
+        <span>WORKBENCH</span>
+        <h2 id="settings-title">模型设置</h2>
+        <p>连接你的模型服务，并选择阅读时默认使用的上下文。</p>
+      </header>
+      <div className={styles.fields}>
+        <Field.Root className={styles.field}>
+          <Field.Label>Base URL</Field.Label>
+          <Field.Control
+            value={settings.baseURL}
+            onChange={(event) => setSettings({ ...settings, baseURL: event.target.value })}
+          />
+        </Field.Root>
+        <Field.Root className={styles.field}>
+          <Field.Label>API Key</Field.Label>
+          <Field.Control
+            type="password"
+            value={settings.apiKey}
+            onChange={(event) => setSettings({ ...settings, apiKey: event.target.value })}
+          />
+        </Field.Root>
+        <Field.Root className={styles.field}>
+          <Field.Label>Model</Field.Label>
+          <Field.Control
+            value={settings.model}
+            onChange={(event) => setSettings({ ...settings, model: event.target.value })}
+          />
+        </Field.Root>
+        <Field.Root className={styles.field}>
+          <Field.Label>Context Window</Field.Label>
+          <Field.Control
+            type="number"
+            value={settings.contextWindow}
+            onChange={(event) =>
+              setSettings({ ...settings, contextWindow: Number(event.target.value) })
+            }
+          />
+        </Field.Root>
+        <label className={styles.field}>
+          默认上下文策略
+          <select
+            value={settings.defaultContextStrategy}
+            onChange={(event) =>
+              setSettings({
+                ...settings,
+                defaultContextStrategy: event.target.value as AISettings['defaultContextStrategy'],
+              })
+            }
+          >
+            <option value="full_book">完整全书</option>
+            <option value="compressed_book">压缩全书</option>
+            <option value="hybrid">混合</option>
+          </select>
+        </label>
       </div>
-      {message && <p className="muted">{message}</p>}
-      {error && <p className="error">{error}</p>}
-    </section>
+      <div className={styles.buttonRow}>
+        <button className={styles.primaryButton} onClick={save}>
+          保存
+        </button>
+        <button className={styles.secondaryButton} onClick={test}>
+          测试连接
+        </button>
+      </div>
+      {message ? (
+        <p className={styles.status} role="status">
+          {message}
+        </p>
+      ) : null}
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
+    </aside>
   );
 }
 

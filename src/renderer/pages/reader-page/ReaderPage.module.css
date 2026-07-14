@@ -1,36 +1,162 @@
 .layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 380px;
+  grid-template-columns: clamp(168px, 15vw, 220px) minmax(34rem, 1fr) clamp(300px, 27vw, 380px);
   height: 100vh;
+  min-width: 900px;
+  background: var(--color-canvas-desk);
 }
+
 .leftNav {
-  border-right: 1px solid #ded5c6;
-  background: #fffaf2;
-  padding: 14px;
+  box-sizing: border-box;
   overflow: auto;
+  padding: var(--space-6) var(--space-4);
+  border-right: 1px solid rgb(255 255 255 / 8%);
+  color: var(--color-text-inverse);
+  background: var(--color-structure-walnut);
 }
-.leftNav a {
+
+.backButton {
+  width: 100%;
+  border-color: rgb(255 255 255 / 18%);
+  color: var(--color-text-inverse);
+  background: transparent;
+}
+
+.navEyebrow {
+  margin: var(--space-8) 0 var(--space-2);
+  color: var(--color-border-subtle);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.leftNav h2 {
+  margin: 0;
+  font-family: var(--font-reading);
+  font-size: 1.2rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.chapterList {
+  margin-top: var(--space-6);
+}
+
+.chapterList a {
   display: block;
-  color: #425466;
-  margin: 8px 0;
+  padding: var(--space-2) 0;
+  color: var(--color-border-subtle);
+  font-size: 0.88rem;
+  line-height: 1.45;
   text-decoration: none;
 }
-.reader {
-  position: relative;
-  padding: 42px 64px;
+
+.chapterList a:hover {
+  color: var(--color-text-inverse);
+}
+
+.readerStage {
+  min-width: 0;
   overflow: auto;
-  font-size: 18px;
-  line-height: 1.85;
-  background: #fffdf8;
+  padding: clamp(18px, 3vw, 42px);
+  background: var(--color-canvas-desk);
 }
-.reader p {
-  max-width: 760px;
+
+.readerPaper {
+  position: relative;
+  box-sizing: border-box;
+  width: min(100%, calc(var(--reader-measure) + 7rem));
+  min-height: 100%;
+  margin: 0 auto;
+  padding: clamp(38px, 6vw, 72px);
+  color: var(--color-text-primary);
+  background: var(--color-surface-paper);
+  box-shadow: var(--shadow-paper);
+  font-family: var(--font-reading);
+  font-size: 1.08rem;
+  line-height: 1.95;
 }
-.reader ::selection {
-  background: color-mix(in srgb, var(--accent) 32%, transparent);
+
+.readerHeader {
+  max-width: var(--reader-measure);
+  margin: 0 auto clamp(36px, 6vw, 68px);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.readerHeader span {
+  color: var(--color-text-secondary);
+  font-family: var(--font-interface);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.readerHeader h1 {
+  margin: var(--space-3) 0 0;
+  font-size: clamp(2rem, 4vw, 3.35rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+}
+
+.readerPaper p {
+  max-width: var(--reader-measure);
+  margin: 0 auto 1.2em;
+}
+
+.readerPaper ::selection {
   color: inherit;
+  background: color-mix(in srgb, var(--color-accent-amber) 48%, transparent);
 }
+
 .temporarySourceHighlight {
-  background: rgba(250, 204, 21, 0.28);
-  transition: background-color 180ms ease;
+  background: color-mix(in srgb, var(--color-accent-amber) 42%, transparent);
+  transition: background-color var(--duration-normal) ease;
+}
+
+.loadingShell {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: var(--space-8);
+  background: var(--color-surface-workbench);
+}
+
+.loadingPaper {
+  box-sizing: border-box;
+  width: min(100%, 34rem);
+  min-height: 12rem;
+  display: grid;
+  place-items: center;
+  padding: var(--space-8);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-paper);
+  box-shadow: var(--shadow-paper);
+  text-align: center;
+}
+
+.loadingPaper .backButton {
+  width: auto;
+  border-color: var(--color-border-subtle);
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 1100px) {
+  .layout {
+    grid-template-columns: 140px minmax(31.25rem, 1fr) 260px;
+  }
+
+  .leftNav {
+    padding: var(--space-4) var(--space-3);
+  }
+
+  .readerStage {
+    padding: var(--space-4);
+  }
+
+  .readerPaper {
+    padding: var(--space-8);
+  }
 }

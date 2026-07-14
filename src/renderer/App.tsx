@@ -13,7 +13,7 @@ export function App() {
   } catch (error) {
     return (
       <main className={styles.shell}>
-        <h1>Whisper Reading Copilot</h1>
+        <h1>Whisper</h1>
         <p className="error">{error instanceof Error ? error.message : String(error)}</p>
       </main>
     );
@@ -26,7 +26,8 @@ export function App() {
   return (
     <main className={styles.shell}>
       <header className={styles.topBar}>
-        <h1>Whisper Reading Copilot</h1>
+        <span>WHISPER READING COMPANION</span>
+        <h1>我的书房</h1>
       </header>
       <div className={styles.homeGrid}>
         <LibraryPage onOpenBook={setActiveBookId} />

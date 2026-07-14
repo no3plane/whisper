@@ -34,6 +34,11 @@ const draft: ConversationDraft = {
 };
 
 describe('SelectionMenu', () => {
+  it('选区操作以命名工具条呈现', () => {
+    render(<SelectionMenu selectedText="一段原文" mode="thread" />);
+    expect(screen.getByRole('toolbar', { name: '选区操作' })).toBeTruthy();
+  });
+
   it('草稿态只显示设为解读目标', () => {
     render(
       <SelectionMenu

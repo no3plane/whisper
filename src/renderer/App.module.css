@@ -1,11 +1,40 @@
 .shell {
-  padding: 24px;
+  min-height: 100vh;
+  padding: clamp(20px, 4vw, 48px);
+  background: var(--color-surface-workbench);
 }
+
 .topBar {
-  margin-bottom: 18px;
+  max-width: 90rem;
+  margin: 0 auto var(--space-6);
 }
+
+.topBar span {
+  color: var(--color-accent-amber-strong);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.topBar h1 {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-reading);
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
 .homeGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.6fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) clamp(280px, 28vw, 360px);
+  gap: var(--space-6);
+  max-width: 90rem;
+  margin: 0 auto;
+}
+
+@media (max-width: 840px) {
+  .homeGrid {
+    grid-template-columns: 1fr;
+  }
 }

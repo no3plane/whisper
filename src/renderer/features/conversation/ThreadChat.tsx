@@ -94,7 +94,10 @@ export function ThreadChat({
             {item.messages
               .filter((message) => message.role !== 'system')
               .map((message) => (
-                <article className={styles.message} key={message.id}>
+                <article
+                  className={`${styles.message} ${message.role === 'user' ? styles.userMessage : ''}`}
+                  key={message.id}
+                >
                   <div className={styles.messageLabel}>
                     {message.role === 'user' ? '你' : '助手'}
                   </div>

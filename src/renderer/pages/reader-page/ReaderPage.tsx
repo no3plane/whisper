@@ -13,7 +13,6 @@ import { SelectionMenu } from '../../features/reading-selection/SelectionMenu';
 import { captureSelection } from '../../features/reading-selection/selectionSnapshot';
 import { useSourceLocator } from '../../features/reading-selection/useSourceLocator';
 import { whisper } from '../../api/whisper';
-import appStyles from '../../App.module.css';
 import styles from './ReaderPage.module.css';
 
 interface ReaderPageProps {
@@ -102,57 +101,75 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
 
   if (!document || !draft) {
     return (
-      <main className={appStyles.shell}>
+      <main className={styles.loadingShell} aria-busy={!error}>
         {error ? (
-          <>
-            <p className="error">{error}</p>
-            <button onClick={onBack}>返回书库</button>
-          </>
+          <div className={styles.loadingPaper}>
+            <p role="alert" className="error">
+              {error}
+            </p>
+            <button className={styles.backButton} onClick={onBack}>
+              返回书库
+            </button>
+          </div>
         ) : (
-          '正在打开书籍...'
+          <div className={styles.loadingPaper}>
+            <p role="status">正在打开书籍…</p>
+          </div>
         )}
       </main>
     );
   }
   return (
     <section className={styles.layout}>
-      <nav className={styles.leftNav}>
-        <button onClick={onBack}>返回书库</button>
-        <h2>{document.book.title}</h2>
-        {document.chapters.map((chapter) => (
-          <a key={chapter.id} href={`#${chapter.startPassageId}`}>
-            {chapter.title}
-          </a>
-        ))}
+      <nav className={styles.leftNav} aria-label="书籍目录">
+        <button className={styles.backButton} onClick={onBack}>
+          返回书库
+        </button>
+        <p className={styles.navEyebrow}>正在阅读</p>
+        <h2 aria-hidden="true">{document.book.title}</h2>
+        <div className={styles.chapterList}>
+          {document.chapters.map((chapter) => (
+            <a key={chapter.id} href={`#${chapter.startPassageId}`}>
+              {chapter.title}
+            </a>
+          ))}
+        </div>
       </nav>
-      <article
-        ref={articleRef}
-        className={styles.reader}
-        onMouseUp={updateSelection}
-        onKeyUp={updateSelection}
-      >
-        {activeView?.type === 'draft' || activeView?.type === 'thread' ? (
-          <SelectionMenu
-            selectedText={selection?.selectedText ?? ''}
-            mode={activeView.type}
-            onSetTarget={() =>
-              selection &&
-              setDraft((current) =>
-                current ? applyAutomaticSelection(current, selection) : current,
-              )
-            }
-            onStartConversation={startFromSelection}
-            onReference={referenceSelection}
-          />
-        ) : null}
-        {error ? <p className="error">{error}</p> : null}
-        {notice ? <p role="status">{notice}</p> : null}
-        {document.passages.map((passage) => (
-          <p id={passage.id} data-passage-id={passage.id} key={passage.id}>
-            {passage.text}
-          </p>
-        ))}
-      </article>
+      <main className={styles.readerStage}>
+        <article
+          ref={articleRef}
+          className={styles.readerPaper}
+          aria-label="阅读正文"
+          onMouseUp={updateSelection}
+          onKeyUp={updateSelection}
+        >
+          <header className={styles.readerHeader}>
+            <span>WHISPER READING</span>
+            <h1>{document.book.title}</h1>
+          </header>
+          {activeView?.type === 'draft' || activeView?.type === 'thread' ? (
+            <SelectionMenu
+              selectedText={selection?.selectedText ?? ''}
+              mode={activeView.type}
+              onSetTarget={() =>
+                selection &&
+                setDraft((current) =>
+                  current ? applyAutomaticSelection(current, selection) : current,
+                )
+              }
+              onStartConversation={startFromSelection}
+              onReference={referenceSelection}
+            />
+          ) : null}
+          {error ? <p className="error">{error}</p> : null}
+          {notice ? <p role="status">{notice}</p> : null}
+          {document.passages.map((passage) => (
+            <p id={passage.id} data-passage-id={passage.id} key={passage.id}>
+              {passage.text}
+            </p>
+          ))}
+        </article>
+      </main>
       <RightAiPanel
         conversation={conversation}
         draft={{

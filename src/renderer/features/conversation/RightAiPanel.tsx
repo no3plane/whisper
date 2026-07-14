@@ -35,7 +35,11 @@ export function RightAiPanel({ conversation, draft, onLocate }: RightAiPanelProp
     : null;
 
   return (
-    <aside className={styles.panel}>
+    <aside className={styles.panel} aria-label="书旁低语">
+      <header className={styles.panelHeader}>
+        <span>WHISPER</span>
+        <strong>书旁低语</strong>
+      </header>
       <ThreadTabs
         activeView={workspace.activeView}
         openThreads={openThreads}

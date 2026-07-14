@@ -70,6 +70,40 @@ describe('ThreadHistory', () => {
     expect(onDelete).toHaveBeenCalledWith('ready');
   });
 
+  it('取消删除会关闭确认框且不调用 callback', () => {
+    const onDelete = vi.fn();
+    render(
+      <ThreadHistory
+        threads={[thread('ready', '待删除', 'ready', '2026-07-12T10:00:00Z')]}
+        onOpen={vi.fn()}
+        onDelete={onDelete}
+        onRetry={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '删除“待删除”' }));
+    expect(screen.getByRole('dialog', { name: '确认删除会话' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+    expect(screen.queryByRole('dialog', { name: '确认删除会话' })).toBeNull();
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it('Escape 关闭确认框并将焦点还给删除入口', () => {
+    render(
+      <ThreadHistory
+        threads={[thread('ready', '待删除', 'ready', '2026-07-12T10:00:00Z')]}
+        onOpen={vi.fn()}
+        onDelete={vi.fn()}
+        onRetry={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole('button', { name: '删除“待删除”' });
+    trigger.focus();
+    fireEvent.click(trigger);
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: '确认删除会话' })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it('失败会话显示重试入口', () => {
     const onRetry = vi.fn();
     render(

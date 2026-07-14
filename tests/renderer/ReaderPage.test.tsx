@@ -140,6 +140,28 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('ReaderPage 会话编排', () => {
+  it('以原书为主区域并保留目录和 AI 辅助区域', async () => {
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    expect(await screen.findByRole('article', { name: '阅读正文' })).toBeTruthy();
+    expect(screen.getByRole('navigation', { name: '书籍目录' })).toBeTruthy();
+    expect(screen.getAllByRole('complementary', { name: '书旁低语' })).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: bookDocument.book.title })).toBeTruthy();
+  });
+
+  it('打开书籍期间显示与阅读面一致的加载状态', () => {
+    api.books.open.mockReturnValueOnce(new Promise(() => undefined));
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    expect(screen.getByRole('status').textContent).toContain('正在打开书籍');
+  });
+
+  it('打开书籍失败后结束忙碌状态并展示错误', async () => {
+    api.books.open.mockRejectedValueOnce(new Error('书籍损坏'));
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+
+    expect((await screen.findByRole('alert')).textContent).toContain('书籍损坏');
+    expect(screen.getByRole('main').getAttribute('aria-busy')).toBe('false');
+  });
+
   it('没有保存过 Tab 状态时默认打开有效的 activeThreadId', async () => {
     api.threads.listWithMessagesByBook.mockResolvedValueOnce({
       threads: [{ thread: { ...thread, status: 'ready' }, messages: [] }],

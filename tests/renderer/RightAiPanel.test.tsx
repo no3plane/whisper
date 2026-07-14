@@ -1,9 +1,12 @@
+import { readFileSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { RightAiPanel } from '../../src/renderer/features/conversation/RightAiPanel';
 import { createBookDraft } from '../../src/renderer/features/conversation/draftState';
 import type { MessageReference, ReadingThread, ThreadMessage } from '../../src/shared/types';
 import styles from '../../src/renderer/features/conversation/RightAiPanel.module.css';
+
+const panelCss = readFileSync('src/renderer/features/conversation/RightAiPanel.module.css', 'utf8');
 
 afterEach(cleanup);
 
@@ -137,6 +140,17 @@ function renderPanel(options: PanelOptions = {}) {
 }
 
 describe('RightAiPanel', () => {
+  it('面板为绝对定位的历史层提供 containing block', () => {
+    expect(panelCss).toMatch(/\.panel\s*\{[^}]*position:\s*relative;/);
+  });
+
+  it('AI 面板以辅助区域呈现并保留现有入口', () => {
+    renderPanel();
+    expect(screen.getByRole('complementary', { name: '书旁低语' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '新建会话' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '历史' })).toBeTruthy();
+  });
+
   it('+ 只打开草稿而不创建会话', () => {
     const props = renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
@@ -158,11 +172,15 @@ describe('RightAiPanel', () => {
     expect(onOpenThread).toHaveBeenCalledWith('t1');
   });
 
-  it('历史视图的删除确认转发 delete callback', () => {
+  it('历史视图取消删除后仍可确认并转发 delete callback', () => {
     const onDeleteThread = vi.fn();
     renderPanel({ activeView: { type: 'history' }, onDeleteThread });
     fireEvent.click(screen.getByRole('button', { name: '删除“全书 · 总结”' }));
     expect(onDeleteThread).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '取消' }));
+    expect(screen.queryByRole('dialog', { name: '确认删除会话' })).toBeNull();
+    expect(onDeleteThread).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '删除“全书 · 总结”' }));
     fireEvent.click(screen.getByRole('button', { name: '确认删除' }));
     expect(onDeleteThread).toHaveBeenCalledWith('t1');
   });

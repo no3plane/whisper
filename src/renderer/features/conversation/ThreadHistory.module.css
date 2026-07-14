@@ -3,6 +3,113 @@
   inset: 52px 0 0;
   z-index: 2;
   overflow: auto;
-  padding: 16px;
-  background: #fffdf8;
+  padding: var(--space-4);
+  background: var(--color-surface-paper);
+}
+
+.list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.openButton {
+  overflow: hidden;
+  border-color: transparent;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.streaming {
+  color: var(--color-accent-amber-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.retryButton {
+  color: var(--color-accent-amber-strong);
+}
+
+.deleteButton {
+  color: var(--color-feedback-danger);
+}
+
+.empty {
+  margin: var(--space-8) 0;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.backdrop {
+  position: fixed;
+  z-index: 20;
+  inset: 0;
+  background: rgb(49 41 32 / 38%);
+  transition: opacity var(--duration-fast) ease-out;
+}
+
+.dialog {
+  position: fixed;
+  z-index: 21;
+  top: 50%;
+  left: 50%;
+  box-sizing: border-box;
+  width: min(88vw, 360px);
+  padding: var(--space-6);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-overlay);
+  transform: translate(-50%, -50%) scale(1);
+  transition:
+    opacity var(--duration-fast) ease-out,
+    transform var(--duration-fast) ease-out;
+}
+
+.backdrop[data-starting-style],
+.backdrop[data-ending-style] {
+  opacity: 0;
+}
+
+.dialog[data-starting-style],
+.dialog[data-ending-style] {
+  opacity: 0;
+  transform: translate(-50%, -48%) scale(0.98);
+}
+
+.dialogTitle {
+  margin: 0;
+  font-family: var(--font-reading);
+  font-size: 1.1rem;
+}
+
+.dialogDescription {
+  margin: var(--space-3) 0 var(--space-6);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.dangerButton {
+  border-color: var(--color-feedback-danger);
+  color: var(--color-text-inverse);
+  background: var(--color-feedback-danger);
 }

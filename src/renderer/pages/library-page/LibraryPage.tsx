@@ -11,9 +11,15 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
   const [books, setBooks] = useState<Book[]>([]);
   const [filePath, setFilePath] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   async function loadBooks() {
-    setBooks(await whisper.books.list());
+    setIsLoading(true);
+    try {
+      setBooks(await whisper.books.list());
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -43,13 +49,17 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
   }
 
   return (
-    <section className={styles.page}>
-      <div>
-        <h2>书库</h2>
-      </div>
+    <section className={styles.page} aria-labelledby="library-title">
+      <header className={styles.header}>
+        <div>
+          <span>YOUR READING ROOM</span>
+          <h2 id="library-title">我的书房</h2>
+        </div>
+      </header>
       <div className={styles.importRow}>
         <input
-          placeholder="输入本机 markdown 文件路径"
+          aria-label="本机书籍文件路径"
+          placeholder="输入本机书籍文件路径"
           value={filePath}
           onChange={(event) => setFilePath(event.target.value)}
         />
@@ -60,19 +70,37 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
           导入 EPUB
         </button>
       </div>
-      {error && <p className="error">{error}</p>}
-      <div className={styles.bookList}>
-        {books.map((book) => (
-          <div className={styles.bookItem} key={book.id}>
-            <button onClick={() => onOpenBook(book.id)}>
+      {error ? (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {isLoading ? (
+        <div className={styles.loadingState} role="status">
+          正在整理书房…
+        </div>
+      ) : books.length === 0 ? (
+        <div className={styles.emptyState}>
+          <h3>书房还是空的</h3>
+          <p>输入本机 Markdown 或 EPUB 路径开始阅读。</p>
+        </div>
+      ) : (
+        <div className={styles.bookList}>
+          {books.map((book, index) => (
+            <article className={styles.bookItem} key={book.id}>
+              <button aria-label={`打开《${book.title}》`} onClick={() => onOpenBook(book.id)}>
+                <span className={styles.cover} data-cover-variant={(index % 3) + 1}>
+                  {book.title}
+                </span>
+              </button>
               <strong>{book.title}</strong>
-            </button>
-            <span>
-              {book.format} · {book.tokenEstimate} tokens 估算 · {book.defaultContextStrategy}
-            </span>
-          </div>
-        ))}
-      </div>
+              <span>
+                {book.author ?? '作者未知'} · {book.format.toUpperCase()}
+              </span>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
