@@ -16,7 +16,8 @@ describe('日志脱敏', () => {
   });
 
   it('遮盖字符串中的凭据和 Bearer token', () => {
-    expect(sanitizeForLog('Authorization: Bearer abc123 apiKey=sk-live'))
-      .toBe('Authorization: *** *** apiKey=***');
+    expect(sanitizeForLog('Authorization: Bearer abc123 apiKey=sk-live')).toBe(
+      'Authorization: *** *** apiKey=***',
+    );
   });
 });

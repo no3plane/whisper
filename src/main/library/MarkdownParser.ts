@@ -97,7 +97,9 @@ export class MarkdownParser {
       const nextBoundary = chapters
         .slice(chapterIndex + 1)
         .find((candidate) => candidate.level <= chapter.level);
-      const endIndex = nextBoundary ? (chapterStartIndexes.get(nextBoundary.id) ?? passages.length) : passages.length;
+      const endIndex = nextBoundary
+        ? (chapterStartIndexes.get(nextBoundary.id) ?? passages.length)
+        : passages.length;
       const chapterPassages = passages.slice(startIndex, endIndex);
       chapter.startPassageId = chapterPassages[0]?.id ?? '';
       chapter.endPassageId = chapterPassages.at(-1)?.id ?? '';

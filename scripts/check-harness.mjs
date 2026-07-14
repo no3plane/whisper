@@ -46,18 +46,23 @@ for (const file of sourceFiles) {
   if (name.startsWith('src/preload/') && /from\s+['"]\.\.\/main\//.test(content)) {
     fail(`${name}：preload 不得依赖 main 实现；只允许依赖 shared 契约。`);
   }
-  if (!name.endsWith('src/main/logging/logger.ts') && /console\.(log|debug|info|warn|error)\s*\(/.test(content)) {
+  if (
+    !name.endsWith('src/main/logging/logger.ts') &&
+    /console\.(log|debug|info|warn|error)\s*\(/.test(content)
+  ) {
     fail(`${name}：生产代码禁止直接使用 console；主进程请使用统一 logger。`);
   }
 }
 
 const markdownFiles = walk(root).filter((file) => {
   const name = relative(file);
-  return name.endsWith('.md')
-    && !name.startsWith('node_modules/')
-    && !name.startsWith('.git/')
-    && !name.startsWith('.worktrees/')
-    && !name.startsWith('.superpowers/');
+  return (
+    name.endsWith('.md') &&
+    !name.startsWith('node_modules/') &&
+    !name.startsWith('.git/') &&
+    !name.startsWith('.worktrees/') &&
+    !name.startsWith('.superpowers/')
+  );
 });
 
 for (const file of markdownFiles) {
@@ -76,4 +81,6 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`Harness 检查通过：${sourceFiles.length} 个源码文件，${markdownFiles.length} 个文档文件。`);
+console.log(
+  `Harness 检查通过：${sourceFiles.length} 个源码文件，${markdownFiles.length} 个文档文件。`,
+);

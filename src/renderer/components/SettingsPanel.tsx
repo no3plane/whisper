@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AISettings } from '../../shared/types';
 import { whisper } from '../api/whisper';
+import styles from './SettingsPanel.module.css';
 
 const defaultSettings: AISettings = {
   baseURL: '',
@@ -31,11 +32,14 @@ export function SettingsPanel() {
   }
 
   return (
-    <section className="settings-panel">
+    <section className={styles.panel}>
       <h2>模型设置</h2>
       <label>
         Base URL
-        <input value={settings.baseURL} onChange={(event) => setSettings({ ...settings, baseURL: event.target.value })} />
+        <input
+          value={settings.baseURL}
+          onChange={(event) => setSettings({ ...settings, baseURL: event.target.value })}
+        />
       </label>
       <label>
         API Key
@@ -47,22 +51,38 @@ export function SettingsPanel() {
       </label>
       <label>
         Model
-        <input value={settings.model} onChange={(event) => setSettings({ ...settings, model: event.target.value })} />
+        <input
+          value={settings.model}
+          onChange={(event) => setSettings({ ...settings, model: event.target.value })}
+        />
       </label>
       <label>
         Context Window
         <input
           type="number"
           value={settings.contextWindow}
-          onChange={(event) => setSettings({ ...settings, contextWindow: Number(event.target.value) })}
+          onChange={(event) =>
+            setSettings({ ...settings, contextWindow: Number(event.target.value) })
+          }
         />
       </label>
-      <label>默认上下文策略
-        <select value={settings.defaultContextStrategy} onChange={(event) => setSettings({ ...settings, defaultContextStrategy: event.target.value as AISettings['defaultContextStrategy'] })}>
-          <option value="full_book">完整全书</option><option value="compressed_book">压缩全书</option><option value="hybrid">混合</option>
+      <label>
+        默认上下文策略
+        <select
+          value={settings.defaultContextStrategy}
+          onChange={(event) =>
+            setSettings({
+              ...settings,
+              defaultContextStrategy: event.target.value as AISettings['defaultContextStrategy'],
+            })
+          }
+        >
+          <option value="full_book">完整全书</option>
+          <option value="compressed_book">压缩全书</option>
+          <option value="hybrid">混合</option>
         </select>
       </label>
-      <div className="button-row">
+      <div className={styles.buttonRow}>
         <button onClick={save}>保存</button>
         <button onClick={test}>测试连接</button>
       </div>

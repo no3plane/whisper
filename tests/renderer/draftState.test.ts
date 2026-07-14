@@ -9,24 +9,45 @@ import {
 } from '../../src/renderer/chat/draftState';
 
 const selection: ReadingTarget = {
-  type: 'selection', chapterId: 'chapter-1', startPassageId: 'p1', endPassageId: 'p1',
-  selectedText: '选中的原文', startOffset: 0, endOffset: 6,
+  type: 'selection',
+  chapterId: 'chapter-1',
+  startPassageId: 'p1',
+  endPassageId: 'p1',
+  selectedText: '选中的原文',
+  startOffset: 0,
+  endOffset: 6,
   breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
 };
 
-const anotherSelection: ReadingTarget = { ...selection, selectedText: '另一段原文', startOffset: 7, endOffset: 12 };
+const anotherSelection: ReadingTarget = {
+  ...selection,
+  selectedText: '另一段原文',
+  startOffset: 7,
+  endOffset: 12,
+};
 
 const chapter: ReadingTarget = {
-  type: 'chapter', chapterId: 'chapter-1', startPassageId: 'p1', endPassageId: 'p9',
-  selectedText: '', startOffset: null, endOffset: null,
+  type: 'chapter',
+  chapterId: 'chapter-1',
+  startPassageId: 'p1',
+  endPassageId: 'p9',
+  selectedText: '',
+  startOffset: null,
+  endOffset: null,
   breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
 };
 
 describe('新会话草稿状态', () => {
   it('默认以整本书为解读目标并继承书籍策略', () => {
     expect(createBookDraft('book-1', 'hybrid')).toMatchObject({
-      bookId: 'book-1', target: { type: 'book' }, contextStrategy: 'hybrid',
-      mode: 'auto', strategySource: 'book-default', skillType: null, prompt: '', reference: null,
+      bookId: 'book-1',
+      target: { type: 'book' },
+      contextStrategy: 'hybrid',
+      mode: 'auto',
+      strategySource: 'book-default',
+      skillType: null,
+      prompt: '',
+      reference: null,
     });
   });
 
@@ -50,22 +71,41 @@ describe('新会话草稿状态', () => {
 
   it('围绕新选区会从书籍默认值重建草稿并清空旧输入', () => {
     const reference: MessageReference = {
-      selectedText: '引用', startPassageId: 'p2', endPassageId: 'p2', startOffset: 0, endOffset: 2, breadcrumb: [],
+      selectedText: '引用',
+      startPassageId: 'p2',
+      endPassageId: 'p2',
+      startOffset: 0,
+      endOffset: 2,
+      breadcrumb: [],
     };
     const old = {
-      ...createBookDraft('book-1', 'full_book'), target: selection, mode: 'manual' as const,
-      skillType: 'plain_explanation' as const, prompt: '补充要求', reference,
-      contextStrategy: 'compressed_book' as const, strategySource: 'draft-override' as const,
+      ...createBookDraft('book-1', 'full_book'),
+      target: selection,
+      mode: 'manual' as const,
+      skillType: 'plain_explanation' as const,
+      prompt: '补充要求',
+      reference,
+      contextStrategy: 'compressed_book' as const,
+      strategySource: 'draft-override' as const,
     };
 
     expect(replaceDraftFromSelection(old, anotherSelection, 'hybrid')).toEqual({
-      ...createBookDraft('book-1', 'hybrid'), target: anotherSelection,
+      ...createBookDraft('book-1', 'hybrid'),
+      target: anotherSelection,
     });
   });
 
   it('目标改变时清除不兼容技能', () => {
-    const draft = { ...createBookDraft('book-1', 'full_book'), target: selection, skillType: 'plain_explanation' as const };
-    expect(selectTarget(draft, chapter)).toMatchObject({ target: chapter, skillType: null, mode: 'manual' });
+    const draft = {
+      ...createBookDraft('book-1', 'full_book'),
+      target: selection,
+      skillType: 'plain_explanation' as const,
+    };
+    expect(selectTarget(draft, chapter)).toMatchObject({
+      target: chapter,
+      skillType: null,
+      mode: 'manual',
+    });
   });
 
   it('目标改变时保留仍兼容的技能', () => {

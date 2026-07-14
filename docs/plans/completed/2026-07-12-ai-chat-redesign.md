@@ -25,38 +25,40 @@
 
 ## 文件结构
 
-| 文件 | 职责 |
-|---|---|
-| `src/shared/types.ts` | 目标、选区、技能、引用、会话和 IPC 输入类型 |
-| `src/shared/skills.ts` | 三类技能定义、校验和标题生成 |
-| `src/main/library/MarkdownParser.ts` | Markdown 章节父子关系和父章节范围 |
-| `src/main/storage/schema.ts` | 新库字段 |
-| `src/main/storage/database.ts` | 旧库幂等列迁移 |
-| `src/main/threads/ThreadStore.ts` | 会话/消息映射、删除、失败状态和重试存储 |
-| `src/main/ai/ContextAssembler.ts` | 全书认知覆盖记录与目标去重补足 |
-| `src/main/ai/ReadingActionService.ts` | 创建会话、追问、重试和流式生命周期 |
-| `src/shared/ipc.ts` | retry/delete channel |
-| `src/main/ipc/registerIpc.ts` | 主进程 handler |
-| `src/preload/index.ts` | renderer API |
-| `src/renderer/selection/selectionSnapshot.ts` | DOM Selection 到 passage/offset 快照及恢复 |
-| `src/renderer/chat/draftState.ts` | 唯一草稿状态转换和校验 |
-| `src/renderer/components/SelectionMenu.tsx` | 两个选区意图入口 |
-| `src/renderer/components/TargetPicker.tsx` | 目标面包屑和技能选择 |
-| `src/renderer/components/ThreadHistory.tsx` | 历史列表、恢复和删除 |
-| `src/renderer/components/RightAiPanel.tsx` | 横向 Tab、草稿 Composer、正式聊天和引用附件 |
-| `src/renderer/pages/ReaderPage.tsx` | 页面编排、后台流事件、打开 Tab 和原文定位 |
-| `src/renderer/styles.css` | 新交互样式与高亮 |
+| 文件                                          | 职责                                        |
+| --------------------------------------------- | ------------------------------------------- |
+| `src/shared/types.ts`                         | 目标、选区、技能、引用、会话和 IPC 输入类型 |
+| `src/shared/skills.ts`                        | 三类技能定义、校验和标题生成                |
+| `src/main/library/MarkdownParser.ts`          | Markdown 章节父子关系和父章节范围           |
+| `src/main/storage/schema.ts`                  | 新库字段                                    |
+| `src/main/storage/database.ts`                | 旧库幂等列迁移                              |
+| `src/main/threads/ThreadStore.ts`             | 会话/消息映射、删除、失败状态和重试存储     |
+| `src/main/ai/ContextAssembler.ts`             | 全书认知覆盖记录与目标去重补足              |
+| `src/main/ai/ReadingActionService.ts`         | 创建会话、追问、重试和流式生命周期          |
+| `src/shared/ipc.ts`                           | retry/delete channel                        |
+| `src/main/ipc/registerIpc.ts`                 | 主进程 handler                              |
+| `src/preload/index.ts`                        | renderer API                                |
+| `src/renderer/selection/selectionSnapshot.ts` | DOM Selection 到 passage/offset 快照及恢复  |
+| `src/renderer/chat/draftState.ts`             | 唯一草稿状态转换和校验                      |
+| `src/renderer/components/SelectionMenu.tsx`   | 两个选区意图入口                            |
+| `src/renderer/components/TargetPicker.tsx`    | 目标面包屑和技能选择                        |
+| `src/renderer/components/ThreadHistory.tsx`   | 历史列表、恢复和删除                        |
+| `src/renderer/components/RightAiPanel.tsx`    | 横向 Tab、草稿 Composer、正式聊天和引用附件 |
+| `src/renderer/pages/ReaderPage.tsx`           | 页面编排、后台流事件、打开 Tab 和原文定位   |
+| `src/renderer/styles.css`                     | 新交互样式与高亮                            |
 
 ---
 
 ### Task 1: 建立共享领域类型与三类技能目录
 
 **Files:**
+
 - Create: `src/shared/skills.ts`
 - Modify: `src/shared/types.ts`
 - Test: `tests/shared/skills.test.ts`
 
 **Interfaces:**
+
 - Produces: `ReadingTarget`, `SelectionSnapshot`, `ReadingSkillType`, `MessageReference`, `CreateConversationInput`, `RetryMessageInput`, `DeleteThreadInput`
 - Produces: `skillsForTarget(type)`, `isSkillAllowed(type, skill)`, `buildThreadTitle(input)`
 
@@ -74,10 +76,16 @@ describe('reading skills', () => {
   });
 
   it('优先用目标和技能生成标题，无技能时使用首问', () => {
-    expect(buildThreadTitle({ targetLabel: '第三章', skillLabel: '梳理论证', question: '' }))
-      .toBe('第三章 · 梳理论证');
-    expect(buildThreadTitle({ targetLabel: '全书', skillLabel: null, question: '作者为什么反对经验主义？' }))
-      .toBe('全书 · 作者为什么反对经验主义？');
+    expect(buildThreadTitle({ targetLabel: '第三章', skillLabel: '梳理论证', question: '' })).toBe(
+      '第三章 · 梳理论证',
+    );
+    expect(
+      buildThreadTitle({
+        targetLabel: '全书',
+        skillLabel: null,
+        question: '作者为什么反对经验主义？',
+      }),
+    ).toBe('全书 · 作者为什么反对经验主义？');
   });
 });
 ```
@@ -93,11 +101,21 @@ Expected: FAIL，提示无法解析 `src/shared/skills`。
 ```ts
 export type ReadingTargetType = 'book' | 'chapter' | 'selection';
 export type ReadingSkillType =
-  | 'book_summary' | 'book_framework' | 'book_critique'
-  | 'chapter_summary' | 'chapter_role' | 'chapter_argument'
-  | 'plain_explanation' | 'concept_explanation' | 'background_context' | 'example_analogy';
+  | 'book_summary'
+  | 'book_framework'
+  | 'book_critique'
+  | 'chapter_summary'
+  | 'chapter_role'
+  | 'chapter_argument'
+  | 'plain_explanation'
+  | 'concept_explanation'
+  | 'background_context'
+  | 'example_analogy';
 
-export interface ChapterCrumb { chapterId: string; title: string }
+export interface ChapterCrumb {
+  chapterId: string;
+  title: string;
+}
 export interface SelectionSnapshot {
   selectedText: string;
   startPassageId: string;
@@ -115,7 +133,9 @@ export interface ReadingTarget {
   endOffset: number | null;
   breadcrumb: ChapterCrumb[];
 }
-export interface MessageReference extends SelectionSnapshot { breadcrumb: ChapterCrumb[] }
+export interface MessageReference extends SelectionSnapshot {
+  breadcrumb: ChapterCrumb[];
+}
 export interface CreateConversationInput {
   bookId: string;
   target: ReadingTarget;
@@ -123,9 +143,18 @@ export interface CreateConversationInput {
   prompt: string;
   contextStrategy: ContextStrategy;
 }
-export interface FollowUpInput { threadId: string; question: string; reference?: MessageReference | null }
-export interface RetryMessageInput { threadId: string; messageId: string }
-export interface DeleteThreadInput { threadId: string }
+export interface FollowUpInput {
+  threadId: string;
+  question: string;
+  reference?: MessageReference | null;
+}
+export interface RetryMessageInput {
+  threadId: string;
+  messageId: string;
+}
+export interface DeleteThreadInput {
+  threadId: string;
+}
 ```
 
 同时将 `ReadingThread` 改为保存 `target`、`skillType`、`lastError`，将 `ThreadMessage` 增加 `reference`、`status`、`error`。保留 `ReadingActionType` 作为旧库迁移兼容别名，业务新代码不再使用。
@@ -152,10 +181,12 @@ git commit -m "feat: 定义 AI 会话目标与技能模型"
 ### Task 2: 建立 Markdown 章节树和范围算法
 
 **Files:**
+
 - Modify: `src/main/library/MarkdownParser.ts`
 - Test: `tests/main/MarkdownParser.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Chapter`
 - Produces: 正确的 `parentChapterId`，且父章节 `startPassageId/endPassageId` 覆盖后代 passage
 
@@ -165,7 +196,8 @@ git commit -m "feat: 定义 AI 会话目标与技能模型"
 it('建立多级章节树并让父章节覆盖子章节内容', () => {
   const result = new MarkdownParser().parse({
     bookId: 'b1',
-    markdown: '# 第一编\n\n导言。\n\n## 第一章\n\n正文一。\n\n### 第一节\n\n正文二。\n\n## 第二章\n\n正文三。',
+    markdown:
+      '# 第一编\n\n导言。\n\n## 第一章\n\n正文一。\n\n### 第一节\n\n正文二。\n\n## 第二章\n\n正文三。',
   });
   const [part, chapter, section, chapter2] = result.chapters;
   expect(chapter.parentChapterId).toBe(part.id);
@@ -204,10 +236,12 @@ git commit -m "feat: 为 Markdown 建立章节层级与范围"
 ### Task 3: 实现 DOM 选区快照、面包屑与恢复定位
 
 **Files:**
+
 - Create: `src/renderer/selection/selectionSnapshot.ts`
 - Test: `tests/renderer/selectionSnapshot.test.ts`
 
 **Interfaces:**
+
 - Produces: `captureSelection(selection, chapters, passages): ReadingTarget | null`
 - Produces: `breadcrumbsForSelection(startPassageId, endPassageId, chapters, passages): ChapterCrumb[]`
 - Produces: `locateSnapshot(snapshot, root): Range | null`
@@ -217,7 +251,8 @@ git commit -m "feat: 为 Markdown 建立章节层级与范围"
 测试 DOM 中的正文段落必须带 `data-passage-id`；验证同段偏移、跨段文本拼接、跨兄弟节只返回共同父章节，以及偏移失效时按 `selectedText` 搜索恢复。
 
 ```ts
-document.body.innerHTML = '<article id="reader"><p data-passage-id="p1">甲乙丙</p><p data-passage-id="p2">丁戊己</p></article>';
+document.body.innerHTML =
+  '<article id="reader"><p data-passage-id="p1">甲乙丙</p><p data-passage-id="p2">丁戊己</p></article>';
 ```
 
 - [ ] **Step 2: 运行确认模块不存在**
@@ -250,6 +285,7 @@ git commit -m "feat: 捕获并恢复阅读器原文选区"
 ### Task 4: 迁移 SQLite 会话和消息模型
 
 **Files:**
+
 - Modify: `src/main/storage/schema.ts`
 - Modify: `src/main/storage/database.ts`
 - Modify: `src/main/threads/ThreadStore.ts`
@@ -257,6 +293,7 @@ git commit -m "feat: 捕获并恢复阅读器原文选区"
 - Create: `tests/main/databaseMigration.test.ts`
 
 **Interfaces:**
+
 - Produces: `createThread(CreateThreadInput)`, `deleteThread(threadId)`, `markMessageFailed(messageId, error)`, `resetMessageForRetry(messageId)`
 - Produces: 旧 row 到新 `ReadingThread` / `ThreadMessage` 的兼容映射
 
@@ -315,10 +352,12 @@ git commit -m "feat: 持久化会话目标引用与失败状态"
 ### Task 5: 重写上下文组装为全书认知加目标补足
 
 **Files:**
+
 - Modify: `src/main/ai/ContextAssembler.ts`
 - Test: `tests/main/ContextAssembler.test.ts`
 
 **Interfaces:**
+
 - Consumes: `strategy`, `target`, `reference`, `skillInstruction`, `threadMessages`, book document
 - Produces: `AssembledContext`，新增 `coveredPassageIds: string[]`
 
@@ -362,6 +401,7 @@ git commit -m "feat: 按全书覆盖范围去重解读目标"
 ### Task 6: 实现创建、追问、失败重试和删除 IPC
 
 **Files:**
+
 - Modify: `src/main/ai/ReadingActionService.ts`
 - Modify: `src/shared/ipc.ts`
 - Modify: `src/main/ipc/registerIpc.ts`
@@ -369,6 +409,7 @@ git commit -m "feat: 按全书覆盖范围去重解读目标"
 - Test: `tests/main/ReadingActionService.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1 输入类型、Task 4 Store、Task 5 assembler
 - Produces: `ai.createConversation`, `ai.followUp`, `ai.retry`, `threads.delete`
 
@@ -420,10 +461,12 @@ git commit -m "feat: 支持会话创建追问重试与删除"
 ### Task 7: 实现唯一草稿状态机
 
 **Files:**
+
 - Create: `src/renderer/chat/draftState.ts`
 - Test: `tests/renderer/draftState.test.ts`
 
 **Interfaces:**
+
 - Produces: `ConversationDraft`, `createBookDraft`, `applyAutomaticSelection`, `selectTarget`, `replaceDraftFromSelection`, `validateDraft`
 
 - [ ] **Step 1: 写状态转换失败测试**
@@ -456,6 +499,7 @@ git commit -m "feat: 实现 AI 会话唯一草稿状态机"
 ### Task 8: 构建目标、技能、历史和选区意图组件
 
 **Files:**
+
 - Modify: `src/renderer/components/SelectionMenu.tsx`
 - Create: `src/renderer/components/TargetPicker.tsx`
 - Create: `src/renderer/components/ThreadHistory.tsx`
@@ -463,6 +507,7 @@ git commit -m "feat: 实现 AI 会话唯一草稿状态机"
 - Test: `tests/renderer/ThreadHistory.test.tsx`
 
 **Interfaces:**
+
 - `SelectionMenu`: consumes `mode`, emits `onSetTarget`, `onStartConversation`, `onReference`
 - `TargetPicker`: consumes draft and skill definitions, emits target/skill/strategy updates
 - `ThreadHistory`: consumes all thread items, emits open/delete/retry
@@ -497,10 +542,12 @@ git commit -m "feat: 增加目标技能历史与选区意图组件"
 ### Task 9: 重构右侧面板为横向 Tab、草稿 Composer 与引用追问
 
 **Files:**
+
 - Modify: `src/renderer/components/RightAiPanel.tsx`
 - Test: `tests/renderer/RightAiPanel.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `openThreadIds`, `activeView`, `draft`, `pendingReference`, histories
 - Emits: create/send/close/open/delete/follow-up/retry/locate callbacks
 
@@ -538,11 +585,13 @@ git commit -m "feat: 重构 AI 面板草稿 Tab 与引用交互"
 ### Task 10: 在 ReaderPage 编排会话、后台流和回到原文
 
 **Files:**
+
 - Modify: `src/renderer/pages/ReaderPage.tsx`
 - Modify: `src/renderer/styles.css`
 - Test: `tests/renderer/ReaderPage.test.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 3 selection helpers、Task 7 draft reducer、Task 9 panel callbacks、preload API
 - Produces: 完整用户流程
 
@@ -606,6 +655,7 @@ git commit -m "feat: 接通 AI 会话重设计完整阅读流程"
 ### Task 11: 删除兼容入口并完成全量验证
 
 **Files:**
+
 - Modify: `src/shared/types.ts`
 - Modify: `src/shared/ipc.ts`
 - Modify: `src/main/ipc/registerIpc.ts`
@@ -615,6 +665,7 @@ git commit -m "feat: 接通 AI 会话重设计完整阅读流程"
 - Test: existing full suite
 
 **Interfaces:**
+
 - Produces: 无 renderer 调用旧 `runReadingAction` / `ReadingActionType` 的最终 API
 
 - [ ] **Step 1: 搜索旧入口和旧字段**

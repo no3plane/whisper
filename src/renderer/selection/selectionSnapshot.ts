@@ -1,7 +1,7 @@
 import type { Chapter, ChapterCrumb, Passage, ReadingTarget } from '../../shared/types';
 
 function passageElement(node: Node): HTMLElement | null {
-  const element = node.nodeType === Node.ELEMENT_NODE ? node as Element : node.parentElement;
+  const element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
   return element?.closest<HTMLElement>('[data-passage-id]') ?? null;
 }
 
@@ -43,7 +43,8 @@ export function breadcrumbsForSelection(
   chapters: Chapter[],
   passages: Passage[],
 ): ChapterCrumb[] {
-  const startChapterId = passages.find((passage) => passage.id === startPassageId)?.chapterId ?? null;
+  const startChapterId =
+    passages.find((passage) => passage.id === startPassageId)?.chapterId ?? null;
   const endChapterId = passages.find((passage) => passage.id === endPassageId)?.chapterId ?? null;
   const endIds = new Set(ancestry(endChapterId, chapters).map((chapter) => chapter.id));
   return ancestry(startChapterId, chapters)
@@ -66,8 +67,11 @@ export function captureSelection(
   if (!startPassageId || !endPassageId) return null;
   const breadcrumb = breadcrumbsForSelection(startPassageId, endPassageId, chapters, passages);
   return {
-    type: 'selection', chapterId: breadcrumb[0]?.chapterId ?? null,
-    startPassageId, endPassageId, selectedText: selection.toString(),
+    type: 'selection',
+    chapterId: breadcrumb[0]?.chapterId ?? null,
+    startPassageId,
+    endPassageId,
+    selectedText: selection.toString(),
     startOffset: textOffset(startElement, range.startContainer, range.startOffset),
     endOffset: textOffset(endElement, range.endContainer, range.endOffset),
     breadcrumb,
@@ -92,13 +96,16 @@ export function locateSnapshot(snapshot: ReadingTarget, root: ParentNode): Range
     }
   }
 
-  const found = snapshot.selectedText ? start.textContent?.indexOf(snapshot.selectedText) ?? -1 : -1;
+  const found = snapshot.selectedText
+    ? (start.textContent?.indexOf(snapshot.selectedText) ?? -1)
+    : -1;
   if (found >= 0) {
     const from = pointAt(start, found);
     const to = pointAt(start, found + snapshot.selectedText.length);
     if (from && to) {
       const match = document.createRange();
-      match.setStart(from.node, from.offset); match.setEnd(to.node, to.offset);
+      match.setStart(from.node, from.offset);
+      match.setEnd(to.node, to.offset);
       return match;
     }
   }

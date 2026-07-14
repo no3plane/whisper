@@ -1,5 +1,13 @@
 import { randomUUID } from 'node:crypto';
-import type { BookThreadsPayload, ContextStrategy, MessageReference, ReadingSkillType, ReadingTarget, ReadingThread, ThreadMessage } from '../../shared/types';
+import type {
+  BookThreadsPayload,
+  ContextStrategy,
+  MessageReference,
+  ReadingSkillType,
+  ReadingTarget,
+  ReadingThread,
+  ThreadMessage,
+} from '../../shared/types';
 import type { AppDatabase } from '../storage/database';
 
 interface ReadingThreadRow {
@@ -52,7 +60,9 @@ const readingSkillTypes = new Set<string>([
 ]);
 
 function safeSkillType(value: unknown): ReadingSkillType | null {
-  return typeof value === 'string' && readingSkillTypes.has(value) ? value as ReadingSkillType : null;
+  return typeof value === 'string' && readingSkillTypes.has(value)
+    ? (value as ReadingSkillType)
+    : null;
 }
 
 export interface CreateThreadInput {
@@ -78,7 +88,11 @@ export interface AddMessageInput {
   error?: string | null;
 }
 
-function parseJsonOr<T>(value: string | null, fallback: T, isValid: (parsed: unknown) => boolean): T {
+function parseJsonOr<T>(
+  value: string | null,
+  fallback: T,
+  isValid: (parsed: unknown) => boolean,
+): T {
   if (!value) return fallback;
   try {
     const parsed: unknown = JSON.parse(value);
@@ -124,7 +138,11 @@ function mapMessageRow(row: ThreadMessageRow): ThreadMessage {
     contextStrategy: row.context_strategy,
     effectiveContextStrategy: row.effective_context_strategy,
     degradationReason: row.degradation_reason,
-    reference: parseJsonOr(row.reference_json, null, (parsed) => typeof parsed === 'object' && parsed !== null),
+    reference: parseJsonOr(
+      row.reference_json,
+      null,
+      (parsed) => typeof parsed === 'object' && parsed !== null,
+    ),
     status: (row.status as string) === 'ready' ? 'complete' : row.status,
     error: row.error,
   };
@@ -233,7 +251,9 @@ export class ThreadStore {
           message.error,
         );
 
-      this.db.prepare('UPDATE reading_threads SET updated_at = ? WHERE id = ?').run(now, input.threadId);
+      this.db
+        .prepare('UPDATE reading_threads SET updated_at = ? WHERE id = ?')
+        .run(now, input.threadId);
     });
 
     insert();
@@ -249,16 +269,18 @@ export class ThreadStore {
 
   listThreadsByBook(bookId: string): ReadingThread[] {
     const rows = this.db
-      .prepare("SELECT * FROM reading_threads WHERE book_id = ? ORDER BY CASE WHEN status = 'streaming' THEN 0 ELSE 1 END, updated_at DESC")
+      .prepare(
+        "SELECT * FROM reading_threads WHERE book_id = ? ORDER BY CASE WHEN status = 'streaming' THEN 0 ELSE 1 END, updated_at DESC",
+      )
       .all(bookId) as unknown as ReadingThreadRow[];
     return rows.map(mapThreadRow);
   }
 
   listThreadsWithMessagesByBook(bookId: string): BookThreadsPayload {
     const threads = this.listThreadsByBook(bookId);
-    const bookRow = this.db.prepare('SELECT active_thread_id FROM books WHERE id = ?').get(bookId) as
-      | { active_thread_id: string | null }
-      | undefined;
+    const bookRow = this.db
+      .prepare('SELECT active_thread_id FROM books WHERE id = ?')
+      .get(bookId) as { active_thread_id: string | null } | undefined;
 
     if (!bookRow) {
       throw new Error(`找不到书籍：${bookId}`);
@@ -266,7 +288,9 @@ export class ThreadStore {
 
     const storedActiveId = bookRow.active_thread_id;
     const activeThreadId =
-      storedActiveId && threads.some((thread) => thread.id === storedActiveId) ? storedActiveId : null;
+      storedActiveId && threads.some((thread) => thread.id === storedActiveId)
+        ? storedActiveId
+        : null;
 
     return {
       threads: threads.map((thread) => ({
@@ -299,33 +323,57 @@ export class ThreadStore {
     this.db.transaction(() => {
       this.db.prepare('DELETE FROM thread_messages WHERE thread_id = ?').run(threadId);
       this.db.prepare('DELETE FROM reading_threads WHERE id = ?').run(threadId);
-      this.db.prepare('UPDATE books SET active_thread_id = NULL WHERE active_thread_id = ?').run(threadId);
+      this.db
+        .prepare('UPDATE books SET active_thread_id = NULL WHERE active_thread_id = ?')
+        .run(threadId);
     })();
   }
 
   markMessageFailed(messageId: string, error: string): ThreadMessage {
-    const existing = this.db.prepare('SELECT thread_id FROM thread_messages WHERE id = ?').get(messageId) as
-      | { thread_id: string }
-      | undefined;
+    const existing = this.db
+      .prepare('SELECT thread_id FROM thread_messages WHERE id = ?')
+      .get(messageId) as { thread_id: string } | undefined;
     if (!existing) throw new Error(`找不到 message：${messageId}`);
     this.db.transaction(() => {
-      this.db.prepare("UPDATE thread_messages SET status = 'failed', error = ? WHERE id = ?").run(error, messageId);
-      this.db.prepare("UPDATE reading_threads SET status = 'failed', last_error = ?, updated_at = ? WHERE id = ?").run(error, new Date().toISOString(), existing.thread_id);
+      this.db
+        .prepare("UPDATE thread_messages SET status = 'failed', error = ? WHERE id = ?")
+        .run(error, messageId);
+      this.db
+        .prepare(
+          "UPDATE reading_threads SET status = 'failed', last_error = ?, updated_at = ? WHERE id = ?",
+        )
+        .run(error, new Date().toISOString(), existing.thread_id);
     })();
-    return mapMessageRow(this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as unknown as ThreadMessageRow);
+    return mapMessageRow(
+      this.db
+        .prepare('SELECT * FROM thread_messages WHERE id = ?')
+        .get(messageId) as unknown as ThreadMessageRow,
+    );
   }
 
   resetMessageForRetry(messageId: string): ThreadMessage {
-    const existing = this.db.prepare('SELECT thread_id, role FROM thread_messages WHERE id = ?').get(messageId) as
-      | { thread_id: string; role: ThreadMessage['role'] }
-      | undefined;
+    const existing = this.db
+      .prepare('SELECT thread_id, role FROM thread_messages WHERE id = ?')
+      .get(messageId) as { thread_id: string; role: ThreadMessage['role'] } | undefined;
     if (!existing) throw new Error(`找不到 message：${messageId}`);
     if (existing.role !== 'assistant') throw new Error('只能重试 assistant message');
     this.db.transaction(() => {
-      this.db.prepare("UPDATE thread_messages SET content = '', status = 'streaming', error = NULL WHERE id = ?").run(messageId);
-      this.db.prepare("UPDATE reading_threads SET status = 'streaming', last_error = NULL, updated_at = ? WHERE id = ?").run(new Date().toISOString(), existing.thread_id);
+      this.db
+        .prepare(
+          "UPDATE thread_messages SET content = '', status = 'streaming', error = NULL WHERE id = ?",
+        )
+        .run(messageId);
+      this.db
+        .prepare(
+          "UPDATE reading_threads SET status = 'streaming', last_error = NULL, updated_at = ? WHERE id = ?",
+        )
+        .run(new Date().toISOString(), existing.thread_id);
     })();
-    return mapMessageRow(this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as unknown as ThreadMessageRow);
+    return mapMessageRow(
+      this.db
+        .prepare('SELECT * FROM thread_messages WHERE id = ?')
+        .get(messageId) as unknown as ThreadMessageRow,
+    );
   }
 
   updateMessage(
@@ -340,9 +388,9 @@ export class ThreadStore {
       degradationReason?: string | null;
     },
   ): ThreadMessage {
-    const existing = this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as
-      | ThreadMessageRow
-      | undefined;
+    const existing = this.db
+      .prepare('SELECT * FROM thread_messages WHERE id = ?')
+      .get(messageId) as ThreadMessageRow | undefined;
     if (!existing) {
       throw new Error(`找不到 message：${messageId}`);
     }
@@ -352,8 +400,12 @@ export class ThreadStore {
     const tokenUsage = patch.tokenUsage !== undefined ? patch.tokenUsage : existing.token_usage;
     const status = patch.status ?? existing.status;
     const error = patch.error !== undefined ? patch.error : existing.error;
-    const effective = patch.effectiveContextStrategy !== undefined ? patch.effectiveContextStrategy : existing.effective_context_strategy;
-    const degradation = patch.degradationReason !== undefined ? patch.degradationReason : existing.degradation_reason;
+    const effective =
+      patch.effectiveContextStrategy !== undefined
+        ? patch.effectiveContextStrategy
+        : existing.effective_context_strategy;
+    const degradation =
+      patch.degradationReason !== undefined ? patch.degradationReason : existing.degradation_reason;
     const now = new Date().toISOString();
 
     this.db.transaction(() => {
@@ -364,10 +416,14 @@ export class ThreadStore {
            WHERE id = ?`,
         )
         .run(content, model, tokenUsage, status, error, effective, degradation, messageId);
-      this.db.prepare('UPDATE reading_threads SET updated_at = ? WHERE id = ?').run(now, existing.thread_id);
+      this.db
+        .prepare('UPDATE reading_threads SET updated_at = ? WHERE id = ?')
+        .run(now, existing.thread_id);
     })();
 
-    const row = this.db.prepare('SELECT * FROM thread_messages WHERE id = ?').get(messageId) as unknown as ThreadMessageRow;
+    const row = this.db
+      .prepare('SELECT * FROM thread_messages WHERE id = ?')
+      .get(messageId) as unknown as ThreadMessageRow;
     return mapMessageRow(row);
   }
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { skillsForTarget } from '../../shared/skills';
 import type { ConversationDraft } from '../chat/draftState';
 import type { ContextStrategy, ReadingSkillType, ReadingTarget } from '../../shared/types';
+import styles from './TargetPicker.module.css';
 
 interface TargetPickerProps {
   draft: ConversationDraft;
@@ -16,7 +17,12 @@ const strategyLabels: Record<ContextStrategy, string> = {
   hybrid: '混合',
 };
 
-export function TargetPicker({ draft, onTargetChange, onSkillChange, onStrategyChange }: TargetPickerProps) {
+export function TargetPicker({
+  draft,
+  onTargetChange,
+  onSkillChange,
+  onStrategyChange,
+}: TargetPickerProps) {
   const previousSkill = useRef(draft.skillType);
   const [skillCleared, setSkillCleared] = useState(false);
 
@@ -41,15 +47,21 @@ export function TargetPicker({ draft, onTargetChange, onSkillChange, onStrategyC
   };
 
   return (
-    <section className="target-picker" aria-label="解读设置">
-      <div className="target-picker-breadcrumb" aria-label="解读目标">
+    <section className={styles.picker} aria-label="解读设置">
+      <div className={styles.breadcrumb} aria-label="解读目标">
         {draft.target.type === 'selection' ? (
-          <button type="button" aria-pressed>框选内容</button>
+          <button type="button" aria-pressed>
+            框选内容
+          </button>
         ) : draft.target.type === 'book' ? (
-          <button type="button" aria-pressed>整本书</button>
+          <button type="button" aria-pressed>
+            整本书
+          </button>
         ) : null}
         {draft.target.breadcrumb.map((crumb, index) => (
-          <button type="button" key={crumb.chapterId} onClick={() => selectChapter(index)}>{crumb.title}</button>
+          <button type="button" key={crumb.chapterId} onClick={() => selectChapter(index)}>
+            {crumb.title}
+          </button>
         ))}
       </div>
 
@@ -72,8 +84,15 @@ export function TargetPicker({ draft, onTargetChange, onSkillChange, onStrategyC
 
       <label>
         全书认知
-        <select value={draft.contextStrategy} onChange={(event) => onStrategyChange(event.target.value as ContextStrategy)}>
-          {Object.entries(strategyLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+        <select
+          value={draft.contextStrategy}
+          onChange={(event) => onStrategyChange(event.target.value as ContextStrategy)}
+        >
+          {Object.entries(strategyLabels).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
         </select>
       </label>
     </section>

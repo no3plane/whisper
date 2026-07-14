@@ -1,18 +1,23 @@
 :root {
   color: #1f2933;
   background: #f7f4ee;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
 
 body {
   margin: 0;
 }
-
 button,
 input {
   font: inherit;
 }
-
 button {
   border: 1px solid #c9c1b2;
   background: #fffaf2;
@@ -21,149 +26,16 @@ button {
   padding: 8px 10px;
   cursor: pointer;
 }
-
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
-
 input {
   border: 1px solid #c9c1b2;
   border-radius: 6px;
   padding: 8px 10px;
   background: #fffdf8;
 }
-
-.app-shell {
-  padding: 24px;
-}
-
-.top-bar {
-  margin-bottom: 18px;
-}
-
-.home-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.6fr);
-  gap: 20px;
-}
-
-.settings-panel,
-.library-page {
-  border: 1px solid #ded5c6;
-  background: #fffdf8;
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.settings-panel label,
-.import-row {
-  display: grid;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.button-row,
-.import-row {
-  display: flex;
-  gap: 8px;
-}
-
-.book-list {
-  display: grid;
-  gap: 10px;
-}
-
-.book-item {
-  display: grid;
-  gap: 4px;
-  text-align: left;
-}
-
-
-.reader-layout {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 380px;
-  height: 100vh;
-}
-
-.left-nav,
-.right-panel {
-  border-right: 1px solid #ded5c6;
-  background: #fffaf2;
-  padding: 14px;
-  overflow: auto;
-}
-
-.right-panel {
-  position: relative;
-  border-right: none;
-  border-left: 1px solid #ded5c6;
-}
-
-.left-nav a {
-  display: block;
-  color: #425466;
-  margin: 8px 0;
-  text-decoration: none;
-}
-
-.reader {
-  position: relative;
-  padding: 42px 64px;
-  overflow: auto;
-  font-size: 18px;
-  line-height: 1.85;
-  background: #fffdf8;
-}
-
-.reader p {
-  max-width: 760px;
-}
-
-.selection-menu {
-  position: sticky;
-  top: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border: 1px solid #d7c8ac;
-  background: #fffaf2;
-  border-radius: 8px;
-  z-index: 1;
-}
-
-.temporary-source-highlight {
-  background: rgba(250, 204, 21, 0.28);
-  transition: background-color 180ms ease;
-}
-
-.reader ::selection {
-  background: color-mix(in srgb, var(--accent) 32%, transparent);
-  color: inherit;
-}
-
-.pending-reference {
-  position: relative;
-  padding: 10px 36px 10px 12px;
-  border-left: 3px solid #b58a42;
-  background: #fffaf0;
-}
-
-.pending-reference blockquote {
-  margin: 6px 0 0;
-}
-
-.thread-history {
-  position: absolute;
-  inset: 52px 0 0;
-  z-index: 2;
-  overflow: auto;
-  padding: 16px;
-  background: #fffdf8;
-}
-
 button:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
@@ -171,211 +43,9 @@ a:focus-visible {
   outline: 2px solid #8b5e24;
   outline-offset: 2px;
 }
-
-.tabs {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 12px;
-}
-
-.tabs-scroll {
-  display: flex;
-  flex: 1 1 auto;
-  flex-wrap: nowrap;
-  gap: 6px;
-  min-width: 0;
-  overflow-x: auto;
-}
-
-.thread-tab {
-  display: inline-flex;
-  flex: none;
-}
-
-.tabs .active {
-  background: #1f2933;
-  color: #fff;
-}
-
-.panel-body {
-  display: grid;
-  gap: 12px;
-}
-
-
-.thread-chat {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 0;
-  height: calc(100vh - 72px);
-}
-
-.selected-quote {
-  margin: 0;
-  padding: 10px 12px;
-  border-left: 3px solid #c9b48a;
-  background: #fffdf8;
-  color: #425466;
-  font-size: 13px;
-  line-height: 1.6;
-  max-height: 120px;
-  overflow: auto;
-}
-
-.aui-thread-root {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 1;
-}
-
-.aui-thread-viewport {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-height: 0;
-  flex: 1;
-  overflow: auto;
-  padding-right: 2px;
-}
-
-.aui-message {
-  display: grid;
-  gap: 6px;
-  padding-top: 10px;
-  border-top: 1px solid #ded5c6;
-}
-
-.aui-message-label {
-  font-size: 12px;
-  color: #687789;
-  font-weight: 600;
-}
-
-.aui-message-body {
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-.aui-user-text {
-  margin: 0;
-  white-space: pre-wrap;
-}
-
-.aui-markdown .aui-md {
-  font-size: 14px;
-  line-height: 1.7;
-}
-
-.aui-markdown .aui-md p {
-  margin: 0 0 0.75em;
-}
-
-.aui-markdown .aui-md p:last-child {
-  margin-bottom: 0;
-}
-
-.aui-markdown .aui-md ul,
-.aui-markdown .aui-md ol {
-  margin: 0 0 0.75em;
-  padding-left: 1.25em;
-}
-
-.aui-markdown .aui-md strong {
-  font-weight: 650;
-}
-
-.aui-markdown .aui-md code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.92em;
-  background: #f1ebe0;
-  padding: 0.1em 0.35em;
-  border-radius: 4px;
-}
-
-.aui-markdown .aui-md pre {
-  overflow: auto;
-  background: #f1ebe0;
-  padding: 10px 12px;
-  border-radius: 6px;
-}
-
-.aui-markdown .aui-md pre code {
-  background: transparent;
-  padding: 0;
-}
-
-.thinking-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #687789;
-  font-size: 13px;
-  padding: 4px 0 8px;
-}
-
-.thinking-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #8a7350;
-  animation: aui-pulse 1.2s ease-in-out infinite;
-}
-
-.aui-composer {
-  display: grid;
-  gap: 8px;
-  padding-top: 10px;
-  border-top: 1px solid #ded5c6;
-  background: #fffaf2;
-  position: sticky;
-  bottom: 0;
-}
-
-.aui-composer-input {
-  width: 100%;
-  min-height: 42px;
-  resize: vertical;
-  border: 1px solid #c9c1b2;
-  border-radius: 6px;
-  padding: 8px 10px;
-  background: #fffdf8;
-  box-sizing: border-box;
-}
-
-.aui-composer-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-.aui-composer-send,
-.aui-composer-cancel {
-  border: 1px solid #c9c1b2;
-  background: #fffaf2;
-  color: #1f2933;
-  border-radius: 6px;
-  padding: 8px 10px;
-  cursor: pointer;
-}
-
-.aui-composer-send {
-  background: #1f2933;
-  border-color: #1f2933;
-  color: #fff;
-}
-
-.aui-composer-cancel:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-
 .muted {
   color: #687789;
 }
-
 .error {
   color: #a33a2b;
 }

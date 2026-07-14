@@ -34,7 +34,10 @@ function bookTarget(): ReadingTarget {
   };
 }
 
-export function createBookDraft(bookId: string, contextStrategy: ContextStrategy): ConversationDraft {
+export function createBookDraft(
+  bookId: string,
+  contextStrategy: ContextStrategy,
+): ConversationDraft {
   return {
     bookId,
     target: bookTarget(),
@@ -52,16 +55,14 @@ export function applyAutomaticSelection(
   selection: ReadingTarget,
 ): ConversationDraft {
   if (draft.mode === 'manual') return draft;
-  const skillType = draft.skillType && isSkillAllowed(selection.type, draft.skillType)
-    ? draft.skillType
-    : null;
+  const skillType =
+    draft.skillType && isSkillAllowed(selection.type, draft.skillType) ? draft.skillType : null;
   return { ...draft, target: selection, skillType };
 }
 
 export function selectTarget(draft: ConversationDraft, target: ReadingTarget): ConversationDraft {
-  const skillType = draft.skillType && isSkillAllowed(target.type, draft.skillType)
-    ? draft.skillType
-    : null;
+  const skillType =
+    draft.skillType && isSkillAllowed(target.type, draft.skillType) ? draft.skillType : null;
   return { ...draft, target, skillType, mode: 'manual' };
 }
 

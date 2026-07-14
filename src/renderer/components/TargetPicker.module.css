@@ -1,0 +1,9 @@
+.picker {
+  display: grid;
+  gap: 12px;
+}
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

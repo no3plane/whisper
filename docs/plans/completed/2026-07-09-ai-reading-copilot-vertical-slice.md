@@ -95,6 +95,7 @@ tests/
 ### Task 1: 初始化 Electron + React + TypeScript 工程
 
 **Files:**
+
 - Create: `package.json`
 - Create: `tsconfig.json`
 - Create: `tsconfig.node.json`
@@ -304,7 +305,14 @@ export function App() {
 :root {
   color: #1f2933;
   background: #f7f4ee;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
 
 body {
@@ -398,6 +406,7 @@ git commit -m "feat: scaffold electron react app"
 ### Task 2: 定义共享类型与 IPC API
 
 **Files:**
+
 - Create: `src/shared/types.ts`
 - Create: `src/shared/ipc.ts`
 - Modify: `src/preload/index.ts`
@@ -547,21 +556,32 @@ import type {
 const whisper = {
   settings: {
     get: () => ipcRenderer.invoke(ipcChannels.settingsGet) as Promise<AISettings | null>,
-    save: (settings: AISettings) => ipcRenderer.invoke(ipcChannels.settingsSave, settings) as Promise<void>,
+    save: (settings: AISettings) =>
+      ipcRenderer.invoke(ipcChannels.settingsSave, settings) as Promise<void>,
     testConnection: (settings: AISettings) =>
-      ipcRenderer.invoke(ipcChannels.settingsTestConnection, settings) as Promise<{ ok: boolean; message: string }>,
+      ipcRenderer.invoke(ipcChannels.settingsTestConnection, settings) as Promise<{
+        ok: boolean;
+        message: string;
+      }>,
   },
   books: {
     importMarkdown: (input: ImportBookInput) =>
       ipcRenderer.invoke(ipcChannels.booksImportMarkdown, input) as Promise<Book>,
     list: () => ipcRenderer.invoke(ipcChannels.booksList) as Promise<Book[]>,
-    open: (bookId: string) => ipcRenderer.invoke(ipcChannels.booksOpen, bookId) as Promise<BookDocument>,
+    open: (bookId: string) =>
+      ipcRenderer.invoke(ipcChannels.booksOpen, bookId) as Promise<BookDocument>,
   },
   ai: {
     runReadingAction: (input: RunReadingActionInput) =>
-      ipcRenderer.invoke(ipcChannels.aiRunReadingAction, input) as Promise<{ thread: ReadingThread; messages: ThreadMessage[] }>,
+      ipcRenderer.invoke(ipcChannels.aiRunReadingAction, input) as Promise<{
+        thread: ReadingThread;
+        messages: ThreadMessage[];
+      }>,
     followUp: (input: FollowUpInput) =>
-      ipcRenderer.invoke(ipcChannels.aiFollowUp, input) as Promise<{ thread: ReadingThread; messages: ThreadMessage[] }>,
+      ipcRenderer.invoke(ipcChannels.aiFollowUp, input) as Promise<{
+        thread: ReadingThread;
+        messages: ThreadMessage[];
+      }>,
   },
   threads: {
     listByBook: (bookId: string) =>
@@ -612,6 +632,7 @@ git commit -m "feat: define shared ipc api"
 ### Task 3: SQLite 数据库与 SettingsService
 
 **Files:**
+
 - Create: `src/main/storage/schema.ts`
 - Create: `src/main/storage/database.ts`
 - Create: `src/main/settings/SettingsService.ts`
@@ -739,14 +760,17 @@ export class SettingsService {
   constructor(private readonly db: AppDatabase) {}
 
   getAISettings(): AISettings | null {
-    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(SETTINGS_KEY) as { value: string } | undefined;
+    const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(SETTINGS_KEY) as
+      { value: string } | undefined;
     if (!row) return null;
     return JSON.parse(row.value) as AISettings;
   }
 
   saveAISettings(settings: AISettings): void {
     this.db
-      .prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+      .prepare(
+        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      )
       .run(SETTINGS_KEY, JSON.stringify(settings));
   }
 }
@@ -853,6 +877,7 @@ git commit -m "feat: add sqlite settings service"
 ### Task 4: MarkdownParser
 
 **Files:**
+
 - Create: `src/main/library/MarkdownParser.ts`
 - Create: `tests/main/MarkdownParser.test.ts`
 
@@ -884,7 +909,11 @@ describe('MarkdownParser', () => {
       level: 2,
       order: 1,
     });
-    expect(result.passages.map((passage) => passage.text)).toEqual(['这是第一段。', '这是第二段。', '这是第三段。']);
+    expect(result.passages.map((passage) => passage.text)).toEqual([
+      '这是第一段。',
+      '这是第二段。',
+      '这是第三段。',
+    ]);
     expect(result.fullText).toContain('这是第三段。');
   });
 });
@@ -1031,6 +1060,7 @@ git commit -m "feat: parse markdown books"
 ### Task 5: LibraryService 与 Markdown 导入 IPC
 
 **Files:**
+
 - Create: `src/main/library/LibraryService.ts`
 - Modify: `src/main/ipc/registerIpc.ts`
 - Modify: `src/main/index.ts`
@@ -1156,16 +1186,23 @@ export class LibraryService {
   }
 
   listBooks(): Book[] {
-    const rows = this.db.prepare('SELECT * FROM books ORDER BY created_at DESC').all() as Array<Record<string, unknown>>;
+    const rows = this.db.prepare('SELECT * FROM books ORDER BY created_at DESC').all() as Array<
+      Record<string, unknown>
+    >;
     return rows.map(this.mapBookRow);
   }
 
   openBook(bookId: string): BookDocument {
-    const bookRow = this.db.prepare('SELECT * FROM books WHERE id = ?').get(bookId) as Record<string, unknown> | undefined;
+    const bookRow = this.db.prepare('SELECT * FROM books WHERE id = ?').get(bookId) as
+      Record<string, unknown> | undefined;
     if (!bookRow) throw new Error(`找不到书籍：${bookId}`);
 
-    const chapters = this.db.prepare('SELECT * FROM chapters WHERE book_id = ? ORDER BY chapter_order ASC').all(bookId) as Array<Record<string, unknown>>;
-    const passages = this.db.prepare('SELECT * FROM passages WHERE book_id = ? ORDER BY passage_order ASC').all(bookId) as Array<Record<string, unknown>>;
+    const chapters = this.db
+      .prepare('SELECT * FROM chapters WHERE book_id = ? ORDER BY chapter_order ASC')
+      .all(bookId) as Array<Record<string, unknown>>;
+    const passages = this.db
+      .prepare('SELECT * FROM passages WHERE book_id = ? ORDER BY passage_order ASC')
+      .all(bookId) as Array<Record<string, unknown>>;
 
     this.db.prepare('UPDATE books SET last_opened_at = ? WHERE id = ?').run(now(), bookId);
 
@@ -1248,7 +1285,9 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(ipcChannels.booksList, () => services.library.listBooks());
 
-  ipcMain.handle(ipcChannels.booksOpen, (_event, bookId: string) => services.library.openBook(bookId));
+  ipcMain.handle(ipcChannels.booksOpen, (_event, bookId: string) =>
+    services.library.openBook(bookId),
+  );
 }
 ```
 
@@ -1292,6 +1331,7 @@ git commit -m "feat: import markdown books"
 ### Task 6: ThreadStore
 
 **Files:**
+
 - Create: `src/main/threads/ThreadStore.ts`
 - Create: `tests/main/ThreadStore.test.ts`
 
@@ -1363,7 +1403,12 @@ Expected: FAIL because `ThreadStore` does not exist.
 ```ts
 import crypto from 'node:crypto';
 import type { AppDatabase } from '../storage/database';
-import type { ContextStrategy, ReadingActionType, ReadingThread, ThreadMessage } from '../../shared/types';
+import type {
+  ContextStrategy,
+  ReadingActionType,
+  ReadingThread,
+  ThreadMessage,
+} from '../../shared/types';
 
 function now() {
   return new Date().toISOString();
@@ -1408,12 +1453,14 @@ export class ThreadStore {
     };
 
     this.db
-      .prepare(`
+      .prepare(
+        `
         INSERT INTO reading_threads (
           id, book_id, chapter_id, passage_id, title, action_type, selected_text,
           context_strategy, created_at, updated_at, status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `)
+      `,
+      )
       .run(
         thread.id,
         thread.bookId,
@@ -1444,11 +1491,13 @@ export class ThreadStore {
     };
 
     this.db
-      .prepare(`
+      .prepare(
+        `
         INSERT INTO thread_messages (
           id, thread_id, role, content, created_at, model, token_usage, context_strategy
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `)
+      `,
+      )
       .run(
         message.id,
         message.threadId,
@@ -1460,7 +1509,9 @@ export class ThreadStore {
         message.contextStrategy,
       );
 
-    this.db.prepare('UPDATE reading_threads SET updated_at = ? WHERE id = ?').run(now(), input.threadId);
+    this.db
+      .prepare('UPDATE reading_threads SET updated_at = ? WHERE id = ?')
+      .run(now(), input.threadId);
     return message;
   }
 
@@ -1523,6 +1574,7 @@ git commit -m "feat: store reading threads"
 ### Task 7: ContextAssembler full_book 策略
 
 **Files:**
+
 - Create: `src/main/ai/ContextAssembler.ts`
 - Create: `tests/main/ContextAssembler.test.ts`
 
@@ -1648,6 +1700,7 @@ git commit -m "feat: assemble full book context"
 ### Task 8: AIProvider 与白话解释动作
 
 **Files:**
+
 - Create: `src/main/ai/AIProvider.ts`
 - Create: `src/main/ai/ReadingActionService.ts`
 - Modify: `src/main/ipc/registerIpc.ts`
@@ -1706,7 +1759,8 @@ import type { RunReadingActionInput, FollowUpInput } from '../../shared/types';
 import { ContextAssembler } from './ContextAssembler';
 import { AIProvider } from './AIProvider';
 
-const plainExplanationInstruction = '请用白话解释当前选中文本。要求：先用 1-2 句话说清楚这段在讲什么，再列出最容易卡住的点。不要替代原文，不要输出长篇总结。';
+const plainExplanationInstruction =
+  '请用白话解释当前选中文本。要求：先用 1-2 句话说清楚这段在讲什么，再列出最容易卡住的点。不要替代原文，不要输出长篇总结。';
 
 export class ReadingActionService {
   private readonly assembler = new ContextAssembler();
@@ -1731,7 +1785,8 @@ export class ReadingActionService {
 
     const thread = this.threads.createThread({
       bookId: input.bookId,
-      chapterId: document.passages.find((passage) => passage.id === input.passageId)?.chapterId ?? null,
+      chapterId:
+        document.passages.find((passage) => passage.id === input.passageId)?.chapterId ?? null,
       passageId: input.passageId,
       title: '白话解释',
       actionType: input.actionType,
@@ -1788,7 +1843,8 @@ export class ReadingActionService {
     });
 
     const messages = this.threads.listMessages(input.threadId);
-    const assistantText = '纵向切片阶段的追问已记录。下一步实现会把 thread 对应书籍上下文重新组装后发给模型。';
+    const assistantText =
+      '纵向切片阶段的追问已记录。下一步实现会把 thread 对应书籍上下文重新组装后发给模型。';
     this.threads.addMessage({
       threadId: input.threadId,
       role: 'assistant',
@@ -1804,7 +1860,11 @@ export class ReadingActionService {
     };
   }
 
-  private getNearbyText(passages: Array<{ id: string; text: string }>, passageId: string | null, selectedText: string) {
+  private getNearbyText(
+    passages: Array<{ id: string; text: string }>,
+    passageId: string | null,
+    selectedText: string,
+  ) {
     if (!passageId) return selectedText;
     const index = passages.findIndex((passage) => passage.id === passageId);
     if (index < 0) return selectedText;
@@ -1943,6 +2003,7 @@ git commit -m "feat: run plain explanation action"
 ### Task 9: React UI 书库、设置与阅读器
 
 **Files:**
+
 - Modify: `src/renderer/App.tsx`
 - Modify: `src/renderer/styles.css`
 - Create: `src/renderer/pages/LibraryPage.tsx`
@@ -1993,22 +2054,34 @@ export function SettingsPanel() {
       <h2>模型设置</h2>
       <label>
         Base URL
-        <input value={settings.baseURL} onChange={(event) => setSettings({ ...settings, baseURL: event.target.value })} />
+        <input
+          value={settings.baseURL}
+          onChange={(event) => setSettings({ ...settings, baseURL: event.target.value })}
+        />
       </label>
       <label>
         API Key
-        <input type="password" value={settings.apiKey} onChange={(event) => setSettings({ ...settings, apiKey: event.target.value })} />
+        <input
+          type="password"
+          value={settings.apiKey}
+          onChange={(event) => setSettings({ ...settings, apiKey: event.target.value })}
+        />
       </label>
       <label>
         Model
-        <input value={settings.model} onChange={(event) => setSettings({ ...settings, model: event.target.value })} />
+        <input
+          value={settings.model}
+          onChange={(event) => setSettings({ ...settings, model: event.target.value })}
+        />
       </label>
       <label>
         Context Window
         <input
           type="number"
           value={settings.contextWindow}
-          onChange={(event) => setSettings({ ...settings, contextWindow: Number(event.target.value) })}
+          onChange={(event) =>
+            setSettings({ ...settings, contextWindow: Number(event.target.value) })
+          }
         />
       </label>
       <div className="button-row">
@@ -2064,7 +2137,11 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
         <h2>书库</h2>
       </div>
       <div className="import-row">
-        <input placeholder="输入本机 markdown 文件路径" value={filePath} onChange={(event) => setFilePath(event.target.value)} />
+        <input
+          placeholder="输入本机 markdown 文件路径"
+          value={filePath}
+          onChange={(event) => setFilePath(event.target.value)}
+        />
         <button onClick={importMarkdown} disabled={!filePath.trim()}>
           导入 Markdown
         </button>
@@ -2074,7 +2151,9 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
         {books.map((book) => (
           <button className="book-item" key={book.id} onClick={() => onOpenBook(book.id)}>
             <strong>{book.title}</strong>
-            <span>{book.format} · {book.tokenEstimate} tokens 估算 · {book.defaultContextStrategy}</span>
+            <span>
+              {book.format} · {book.tokenEstimate} tokens 估算 · {book.defaultContextStrategy}
+            </span>
           </button>
         ))}
       </div>
@@ -2097,13 +2176,21 @@ interface RightAiPanelProps {
   onFollowUp: (threadId: string, question: string) => Promise<void>;
 }
 
-export function RightAiPanel({ threads, activeThreadId, onSelectThread, onFollowUp }: RightAiPanelProps) {
+export function RightAiPanel({
+  threads,
+  activeThreadId,
+  onSelectThread,
+  onFollowUp,
+}: RightAiPanelProps) {
   const active = threads.find((item) => item.thread.id === activeThreadId) ?? null;
 
   return (
     <aside className="right-panel">
       <div className="tabs">
-        <button className={activeThreadId === null ? 'active' : ''} onClick={() => onSelectThread(null)}>
+        <button
+          className={activeThreadId === null ? 'active' : ''}
+          onClick={() => onSelectThread(null)}
+        >
           问题地图
         </button>
         {threads.map((item) => (
@@ -2121,7 +2208,9 @@ export function RightAiPanel({ threads, activeThreadId, onSelectThread, onFollow
       ) : (
         <div className="panel-body">
           <h3>问题地图</h3>
-          <p className="muted">纵向切片阶段暂未生成问题地图。下一阶段会在导入后生成全书问题地图。</p>
+          <p className="muted">
+            纵向切片阶段暂未生成问题地图。下一阶段会在导入后生成全书问题地图。
+          </p>
         </div>
       )}
     </aside>
@@ -2179,7 +2268,10 @@ export function SelectionMenu({ selectedText, onExplain }: SelectionMenuProps) {
   if (!selectedText.trim()) return null;
   return (
     <div className="selection-menu">
-      <span>{selectedText.slice(0, 24)}{selectedText.length > 24 ? '...' : ''}</span>
+      <span>
+        {selectedText.slice(0, 24)}
+        {selectedText.length > 24 ? '...' : ''}
+      </span>
       <button onClick={onExplain}>白话解释</button>
     </div>
   );
@@ -2206,7 +2298,9 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const [document, setDocument] = useState<BookDocument | null>(null);
   const [selectedText, setSelectedText] = useState('');
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
-  const [threads, setThreads] = useState<Array<{ thread: ReadingThread; messages: ThreadMessage[] }>>([]);
+  const [threads, setThreads] = useState<
+    Array<{ thread: ReadingThread; messages: ThreadMessage[] }>
+  >([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -2253,14 +2347,18 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         <button onClick={onBack}>返回书库</button>
         <h2>{document.book.title}</h2>
         {document.chapters.map((chapter) => (
-          <a key={chapter.id} href={`#${chapter.startPassageId}`}>{chapter.title}</a>
+          <a key={chapter.id} href={`#${chapter.startPassageId}`}>
+            {chapter.title}
+          </a>
         ))}
       </nav>
       <article className="reader" onMouseUp={updateSelection} onKeyUp={updateSelection}>
         <SelectionMenu selectedText={selectedText} onExplain={explain} />
         {error && <p className="error">{error}</p>}
         {document.passages.map((passage) => (
-          <p id={passage.id} key={passage.id}>{passage.text}</p>
+          <p id={passage.id} key={passage.id}>
+            {passage.text}
+          </p>
         ))}
       </article>
       <RightAiPanel
@@ -2313,7 +2411,14 @@ export function App() {
 :root {
   color: #1f2933;
   background: #f7f4ee;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
 }
 
 body {
@@ -2497,6 +2602,7 @@ git commit -m "feat: add reading copilot ui"
 ### Task 10: 验证纵向切片
 
 **Files:**
+
 - No planned source changes unless verification exposes a defect.
 
 - [ ] **Step 1: 运行单元测试**

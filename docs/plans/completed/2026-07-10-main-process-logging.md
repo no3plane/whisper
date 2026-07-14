@@ -16,21 +16,22 @@
 
 ## 文件结构
 
-| 文件 | 职责 |
-|------|------|
-| `package.json` / `pnpm-lock.yaml` | 增加 `electron-log` |
-| `src/main/logging/logger.ts` | 初始化、导出 `logger` / `redactSettings` |
-| `src/main/index.ts` | 启动时初始化 |
-| `src/main/ai/AIProvider.ts` | AI 起止与错误 |
-| `src/main/ai/ReadingActionService.ts` | 会话创建 / 追问 |
-| `src/main/library/LibraryService.ts` | 导入 / 打开书籍 |
-| `src/main/ipc/registerIpc.ts` | IPC 错误包装 |
+| 文件                                  | 职责                                     |
+| ------------------------------------- | ---------------------------------------- |
+| `package.json` / `pnpm-lock.yaml`     | 增加 `electron-log`                      |
+| `src/main/logging/logger.ts`          | 初始化、导出 `logger` / `redactSettings` |
+| `src/main/index.ts`                   | 启动时初始化                             |
+| `src/main/ai/AIProvider.ts`           | AI 起止与错误                            |
+| `src/main/ai/ReadingActionService.ts` | 会话创建 / 追问                          |
+| `src/main/library/LibraryService.ts`  | 导入 / 打开书籍                          |
+| `src/main/ipc/registerIpc.ts`         | IPC 错误包装                             |
 
 ---
 
 ### Task 1: 安装依赖并创建 logger
 
 **Files:**
+
 - Modify: `package.json`
 - Create: `src/main/logging/logger.ts`
 - Modify: `src/main/index.ts`
@@ -97,6 +98,7 @@ EOF
 ### Task 2: AIProvider 打点
 
 **Files:**
+
 - Modify: `src/main/ai/AIProvider.ts`
 
 - [ ] **Step 1: 在 generate / streamGenerate 记录 start/done/error**
@@ -125,6 +127,7 @@ EOF
 ### Task 3: 业务与 IPC 打点
 
 **Files:**
+
 - Modify: `src/main/ai/ReadingActionService.ts`
 - Modify: `src/main/library/LibraryService.ts`
 - Modify: `src/main/ipc/registerIpc.ts`

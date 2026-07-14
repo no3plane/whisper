@@ -1,0 +1,36 @@
+.layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 380px;
+  height: 100vh;
+}
+.leftNav {
+  border-right: 1px solid #ded5c6;
+  background: #fffaf2;
+  padding: 14px;
+  overflow: auto;
+}
+.leftNav a {
+  display: block;
+  color: #425466;
+  margin: 8px 0;
+  text-decoration: none;
+}
+.reader {
+  position: relative;
+  padding: 42px 64px;
+  overflow: auto;
+  font-size: 18px;
+  line-height: 1.85;
+  background: #fffdf8;
+}
+.reader p {
+  max-width: 760px;
+}
+.reader ::selection {
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
+  color: inherit;
+}
+.temporarySourceHighlight {
+  background: rgba(250, 204, 21, 0.28);
+  transition: background-color 180ms ease;
+}

@@ -3,6 +3,7 @@ import { getWhisperApi } from './api/whisper';
 import { SettingsPanel } from './components/SettingsPanel';
 import { LibraryPage } from './pages/LibraryPage';
 import { ReaderPage } from './pages/ReaderPage';
+import styles from './App.module.css';
 
 export function App() {
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
@@ -11,7 +12,7 @@ export function App() {
     getWhisperApi();
   } catch (error) {
     return (
-      <main className="app-shell">
+      <main className={styles.shell}>
         <h1>Whisper Reading Copilot</h1>
         <p className="error">{error instanceof Error ? error.message : String(error)}</p>
       </main>
@@ -23,11 +24,11 @@ export function App() {
   }
 
   return (
-    <main className="app-shell">
-      <header className="top-bar">
+    <main className={styles.shell}>
+      <header className={styles.topBar}>
         <h1>Whisper Reading Copilot</h1>
       </header>
-      <div className="home-grid">
+      <div className={styles.homeGrid}>
         <LibraryPage onOpenBook={setActiveBookId} />
         <SettingsPanel />
       </div>

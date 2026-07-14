@@ -1,0 +1,8 @@
+.history {
+  position: absolute;
+  inset: 52px 0 0;
+  z-index: 2;
+  overflow: auto;
+  padding: 16px;
+  background: #fffdf8;
+}

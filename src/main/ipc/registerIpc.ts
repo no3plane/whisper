@@ -1,7 +1,16 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { ipcChannels } from '../../shared/ipc';
 import { ipcInputSchemas, parseIpcInput } from '../../shared/ipcSchemas';
-import type { AISettings, ContextStrategy, CreateConversationInput, DeleteThreadInput, FollowUpInput, ImportBookInput, RetryMessageInput, SetActiveThreadInput } from '../../shared/types';
+import type {
+  AISettings,
+  ContextStrategy,
+  CreateConversationInput,
+  DeleteThreadInput,
+  FollowUpInput,
+  ImportBookInput,
+  RetryMessageInput,
+  SetActiveThreadInput,
+} from '../../shared/types';
 import { AIProvider } from '../ai/AIProvider';
 import type { ReadingActionService } from '../ai/ReadingActionService';
 import type { LibraryService } from '../library/LibraryService';
@@ -46,7 +55,8 @@ function validated<T, Result>(
   handler: (event: Electron.IpcMainInvokeEvent, input: T) => Result | Promise<Result>,
 ) {
   return withIpcLog(channel, (event, input: unknown) =>
-    handler(event, parseIpcInput(channel, schema, input)));
+    handler(event, parseIpcInput(channel, schema, input)),
+  );
 }
 
 export function registerIpc(services: IpcServices) {
@@ -57,33 +67,49 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(
     ipcChannels.settingsSave,
-    validated(ipcChannels.settingsSave, ipcInputSchemas.aiSettings, (_event, settings: AISettings) => {
-      services.settings.saveAISettings(settings);
-    }),
+    validated(
+      ipcChannels.settingsSave,
+      ipcInputSchemas.aiSettings,
+      (_event, settings: AISettings) => {
+        services.settings.saveAISettings(settings);
+      },
+    ),
   );
 
   ipcMain.handle(
     ipcChannels.settingsTestConnection,
-    validated(ipcChannels.settingsTestConnection, ipcInputSchemas.aiSettings, (_event, settings: AISettings) =>
-      aiProvider.testConnection(settings),
+    validated(
+      ipcChannels.settingsTestConnection,
+      ipcInputSchemas.aiSettings,
+      (_event, settings: AISettings) => aiProvider.testConnection(settings),
     ),
   );
 
   ipcMain.handle(
     ipcChannels.booksImportMarkdown,
-    validated(ipcChannels.booksImportMarkdown, ipcInputSchemas.importBook, (_event, input: ImportBookInput | string) => {
-      const filePath = typeof input === 'string' ? input : input.filePath;
-      const book = services.library.importMarkdown(filePath);
-      return book;
-    }),
+    validated(
+      ipcChannels.booksImportMarkdown,
+      ipcInputSchemas.importBook,
+      (_event, input: ImportBookInput | string) => {
+        const filePath = typeof input === 'string' ? input : input.filePath;
+        const book = services.library.importMarkdown(filePath);
+        return book;
+      },
+    ),
   );
 
   ipcMain.handle(
     ipcChannels.booksImportEpub,
-    validated(ipcChannels.booksImportEpub, ipcInputSchemas.importBook, (_event, input: ImportBookInput | string) => {
-      const book = services.library.importEpub(typeof input === 'string' ? input : input.filePath);
-      return book;
-    }),
+    validated(
+      ipcChannels.booksImportEpub,
+      ipcInputSchemas.importBook,
+      (_event, input: ImportBookInput | string) => {
+        const book = services.library.importEpub(
+          typeof input === 'string' ? input : input.filePath,
+        );
+        return book;
+      },
+    ),
   );
 
   ipcMain.handle(
@@ -93,22 +119,32 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(
     ipcChannels.booksOpen,
-    validated(ipcChannels.booksOpen, ipcInputSchemas.bookId, (_event, bookId: string) => services.library.openBook(bookId)),
+    validated(ipcChannels.booksOpen, ipcInputSchemas.bookId, (_event, bookId: string) =>
+      services.library.openBook(bookId),
+    ),
   );
 
   ipcMain.handle(
     ipcChannels.booksSetContextStrategy,
-    validated(ipcChannels.booksSetContextStrategy, ipcInputSchemas.setContextStrategy, (_event, input: { bookId: string; strategy: ContextStrategy }) =>
-      services.library.setDefaultContextStrategy(input.bookId, input.strategy)),
+    validated(
+      ipcChannels.booksSetContextStrategy,
+      ipcInputSchemas.setContextStrategy,
+      (_event, input: { bookId: string; strategy: ContextStrategy }) =>
+        services.library.setDefaultContextStrategy(input.bookId, input.strategy),
+    ),
   );
 
   ipcMain.handle(
     ipcChannels.aiCreateConversation,
-    validated(ipcChannels.aiCreateConversation, ipcInputSchemas.createConversation, (event, input: CreateConversationInput) => {
-      const window = senderWindow(event);
-      if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
-      return services.readingActions.createConversation(input, window);
-    }),
+    validated(
+      ipcChannels.aiCreateConversation,
+      ipcInputSchemas.createConversation,
+      (event, input: CreateConversationInput) => {
+        const window = senderWindow(event);
+        if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
+        return services.readingActions.createConversation(input, window);
+      },
+    ),
   );
 
   ipcMain.handle(
@@ -131,8 +167,11 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(
     ipcChannels.threadsDelete,
-    validated(ipcChannels.threadsDelete, ipcInputSchemas.deleteThread, (_event, input: DeleteThreadInput) =>
-      services.readingActions.deleteConversation(input)),
+    validated(
+      ipcChannels.threadsDelete,
+      ipcInputSchemas.deleteThread,
+      (_event, input: DeleteThreadInput) => services.readingActions.deleteConversation(input),
+    ),
   );
 
   ipcMain.handle(
@@ -144,15 +183,21 @@ export function registerIpc(services: IpcServices) {
 
   ipcMain.handle(
     ipcChannels.threadsListWithMessagesByBook,
-    validated(ipcChannels.threadsListWithMessagesByBook, ipcInputSchemas.bookId, (_event, bookId: string) =>
-      services.threads.listThreadsWithMessagesByBook(bookId),
+    validated(
+      ipcChannels.threadsListWithMessagesByBook,
+      ipcInputSchemas.bookId,
+      (_event, bookId: string) => services.threads.listThreadsWithMessagesByBook(bookId),
     ),
   );
 
   ipcMain.handle(
     ipcChannels.booksSetActiveThread,
-    validated(ipcChannels.booksSetActiveThread, ipcInputSchemas.setActiveThread, (_event, input: SetActiveThreadInput) => {
-      services.library.setActiveThread(input.bookId, input.threadId);
-    }),
+    validated(
+      ipcChannels.booksSetActiveThread,
+      ipcInputSchemas.setActiveThread,
+      (_event, input: SetActiveThreadInput) => {
+        services.library.setActiveThread(input.bookId, input.threadId);
+      },
+    ),
   );
 }

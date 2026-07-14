@@ -1,0 +1,20 @@
+.page {
+  border: 1px solid #ded5c6;
+  background: #fffdf8;
+  border-radius: 8px;
+  padding: 16px;
+}
+.importRow {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.bookList {
+  display: grid;
+  gap: 10px;
+}
+.bookItem {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+}

@@ -9,17 +9,25 @@ describe('reading skills', () => {
   });
 
   it('优先用目标和技能生成标题，无技能时使用首问', () => {
-    expect(buildThreadTitle({ targetLabel: '第三章', skillLabel: '梳理论证', question: '' }))
-      .toBe('第三章 · 梳理论证');
-    expect(buildThreadTitle({ targetLabel: '全书', skillLabel: null, question: '作者为什么反对经验主义？' }))
-      .toBe('全书 · 作者为什么反对经验主义？');
+    expect(buildThreadTitle({ targetLabel: '第三章', skillLabel: '梳理论证', question: '' })).toBe(
+      '第三章 · 梳理论证',
+    );
+    expect(
+      buildThreadTitle({
+        targetLabel: '全书',
+        skillLabel: null,
+        question: '作者为什么反对经验主义？',
+      }),
+    ).toBe('全书 · 作者为什么反对经验主义？');
   });
 
   it('标题压缩换行并按 Unicode code point 截断', () => {
-    expect(buildThreadTitle({
-      targetLabel: '框选内容',
-      skillLabel: null,
-      question: '第一行\n第二行有一个很长很长的追问用于测试截断',
-    })).toBe('框选内容 · 第一行 第二行有一个很…');
+    expect(
+      buildThreadTitle({
+        targetLabel: '框选内容',
+        skillLabel: null,
+        question: '第一行\n第二行有一个很长很长的追问用于测试截断',
+      }),
+    ).toBe('框选内容 · 第一行 第二行有一个很…');
   });
 });

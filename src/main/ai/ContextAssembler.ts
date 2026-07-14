@@ -6,7 +6,10 @@ import type {
   ReadingTarget,
 } from '../../shared/types';
 
-interface ThreadMessageLike { role: 'user' | 'assistant' | 'system'; content: string }
+interface ThreadMessageLike {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
 
 interface ReadingActionContextInput {
   strategy: ContextStrategy;
@@ -27,7 +30,10 @@ interface BookKnowledge {
   coveredPassageIds: string[];
 }
 
-export interface AssembledMessage { role: 'user' | 'assistant'; content: string }
+export interface AssembledMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
 export interface AssembledContext {
   system: string;
   messages: AssembledMessage[];
@@ -44,7 +50,10 @@ function passagesInChapter(input: ReadingActionContextInput, chapterId: string |
   return input.passages.filter((passage) => passage.chapterId === chapterId);
 }
 
-function compressedKnowledge(input: ReadingActionContextInput, excludedChapterId: string | null = null): BookKnowledge {
+function compressedKnowledge(
+  input: ReadingActionContextInput,
+  excludedChapterId: string | null = null,
+): BookKnowledge {
   if (input.chapters.length === 0) {
     return { text: input.fullText.slice(0, 24000), coveredPassageIds: [] };
   }
@@ -55,9 +64,14 @@ function compressedKnowledge(input: ReadingActionContextInput, excludedChapterId
   let truncated = false;
   for (const chapter of includedChapters) {
     const chapterPassages = passagesInChapter(input, chapter.id);
-    const samples = chapterPassages.length <= 4
-      ? chapterPassages
-      : [chapterPassages[0], chapterPassages[Math.floor(chapterPassages.length / 2)], chapterPassages[chapterPassages.length - 1]];
+    const samples =
+      chapterPassages.length <= 4
+        ? chapterPassages
+        : [
+            chapterPassages[0],
+            chapterPassages[Math.floor(chapterPassages.length / 2)],
+            chapterPassages[chapterPassages.length - 1],
+          ];
     const heading = `## ${chapter.title}`;
     const chapterBlocks: string[] = [];
     for (const passage of samples) {
@@ -80,7 +94,10 @@ function compressedKnowledge(input: ReadingActionContextInput, excludedChapterId
   return { text: blocks.join('\n\n'), coveredPassageIds };
 }
 
-function buildBookKnowledge(input: ReadingActionContextInput, strategy: ContextStrategy): BookKnowledge {
+function buildBookKnowledge(
+  input: ReadingActionContextInput,
+  strategy: ContextStrategy,
+): BookKnowledge {
   if (strategy === 'full_book') {
     return {
       text: `完整书籍内容：\n${input.fullText}`,
@@ -88,7 +105,10 @@ function buildBookKnowledge(input: ReadingActionContextInput, strategy: ContextS
     };
   }
 
-  const compressed = compressedKnowledge(input, strategy === 'hybrid' ? input.target.chapterId : null);
+  const compressed = compressedKnowledge(
+    input,
+    strategy === 'hybrid' ? input.target.chapterId : null,
+  );
   if (strategy === 'compressed_book') {
     return { ...compressed, text: `全书压缩表示：\n${compressed.text}` };
   }
@@ -98,7 +118,9 @@ function buildBookKnowledge(input: ReadingActionContextInput, strategy: ContextS
   targetChapter.forEach((passage) => covered.add(passage.id));
   const current = targetChapter.map((passage) => `[${passage.id}] ${passage.text}`).join('\n\n');
   return {
-    text: [`全书压缩表示：\n${compressed.text}`, current ? `目标章节原文：\n${current}` : ''].filter(Boolean).join('\n\n'),
+    text: [`全书压缩表示：\n${compressed.text}`, current ? `目标章节原文：\n${current}` : '']
+      .filter(Boolean)
+      .join('\n\n'),
     coveredPassageIds: [...covered],
   };
 }
@@ -110,7 +132,11 @@ function passageRange(input: ReadingActionContextInput) {
   return input.passages.slice(Math.min(start, end), Math.max(start, end) + 1);
 }
 
-function buildTargetSupplement(input: ReadingActionContextInput, coveredIds: Set<string>, strategy: ContextStrategy) {
+function buildTargetSupplement(
+  input: ReadingActionContextInput,
+  coveredIds: Set<string>,
+  strategy: ContextStrategy,
+) {
   if (input.target.type === 'book') return '';
 
   const range = passageRange(input);
@@ -132,19 +158,27 @@ function buildTargetSupplement(input: ReadingActionContextInput, coveredIds: Set
   }
   const start = Math.max(0, Math.min(...validIndices) - 1);
   const end = Math.min(input.passages.length - 1, Math.max(...validIndices) + 1);
-  const nearby = input.passages.slice(start, end + 1).filter((passage) => !coveredIds.has(passage.id));
+  const nearby = input.passages
+    .slice(start, end + 1)
+    .filter((passage) => !coveredIds.has(passage.id));
   return [
     '解读目标补充：',
     `精确选区：${input.target.selectedText}`,
-    nearby.length > 0 ? nearby.map((passage) => `[${passage.id}] ${passage.text}`).join('\n\n') : '',
-  ].filter(Boolean).join('\n');
+    nearby.length > 0
+      ? nearby.map((passage) => `[${passage.id}] ${passage.text}`).join('\n\n')
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 function targetDescription(target: ReadingTarget) {
   const path = target.breadcrumb.map((crumb) => crumb.title).join(' > ');
   if (target.type === 'book') return '整本书';
   if (target.type === 'chapter') return `章节：${path || target.chapterId || '未知章节'}`;
-  return [`框选内容：${target.selectedText}`, path ? `路径：${path}` : ''].filter(Boolean).join('\n');
+  return [`框选内容：${target.selectedText}`, path ? `路径：${path}` : '']
+    .filter(Boolean)
+    .join('\n');
 }
 
 export class ContextAssembler {
@@ -154,13 +188,20 @@ export class ContextAssembler {
     let effectiveStrategy = requestedStrategy;
     let degradationReason: string | null = null;
 
-    if (effectiveStrategy === 'full_book' && estimateTokens(input.fullText) > Math.floor(limit * 0.72)) {
+    if (
+      effectiveStrategy === 'full_book' &&
+      estimateTokens(input.fullText) > Math.floor(limit * 0.72)
+    ) {
       effectiveStrategy = 'hybrid';
       degradationReason = `完整书籍估算 ${estimateTokens(input.fullText)} tokens，超过上下文预算，已降级为 hybrid。`;
     }
 
     const knowledge = buildBookKnowledge(input, effectiveStrategy);
-    const supplement = buildTargetSupplement(input, new Set(knowledge.coveredPassageIds), effectiveStrategy);
+    const supplement = buildTargetSupplement(
+      input,
+      new Set(knowledge.coveredPassageIds),
+      effectiveStrategy,
+    );
     const reference = input.reference
       ? `本轮引用：\n路径：${input.reference.breadcrumb.map((crumb) => crumb.title).join(' > ')}\n${input.reference.selectedText}`
       : '';
@@ -172,10 +213,15 @@ export class ContextAssembler {
         `固定解读目标：\n${targetDescription(input.target)}`,
         supplement,
         reference,
-      ].filter(Boolean).join('\n\n'),
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
     };
     const history = input.threadMessages
-      .filter((message): message is { role: 'user' | 'assistant'; content: string } => message.role !== 'system')
+      .filter(
+        (message): message is { role: 'user' | 'assistant'; content: string } =>
+          message.role !== 'system',
+      )
       .filter((message) => message.content.trim().length > 0)
       .map(({ role, content }) => ({ role, content }));
     const systemParts = [
@@ -183,12 +229,15 @@ export class ContextAssembler {
       '原书始终是主要阅读对象；回答必须结合提供的全书背景，并在不确定时明确说明。',
       '优先使用中文回答。',
     ];
-    if (input.isInitialTurn && input.skillInstruction) systemParts.push(`技能要求：\n${input.skillInstruction}`);
+    if (input.isInitialTurn && input.skillInstruction)
+      systemParts.push(`技能要求：\n${input.skillInstruction}`);
     const system = systemParts.join('\n');
     const messages = [contextMessage, ...history];
     const estimated = estimateTokens(system + messages.map((message) => message.content).join(''));
     if (estimated > limit) {
-      throw new Error(`上下文估算 ${estimated} tokens，超过模型窗口 ${limit}。请降低局部上下文或使用更大的模型窗口。`);
+      throw new Error(
+        `上下文估算 ${estimated} tokens，超过模型窗口 ${limit}。请降低局部上下文或使用更大的模型窗口。`,
+      );
     }
     return {
       system,

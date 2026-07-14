@@ -1,0 +1,15 @@
+.panel {
+  border: 1px solid #ded5c6;
+  background: #fffdf8;
+  border-radius: 8px;
+  padding: 16px;
+}
+.panel label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.buttonRow {
+  display: flex;
+  gap: 8px;
+}

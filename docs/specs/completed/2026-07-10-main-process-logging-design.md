@@ -67,11 +67,11 @@ log.transports.file.resolvePathFn = (variables) =>
 
 ### AI（`AIProvider`）
 
-| 事件 | 级别 | 字段 |
-|------|------|------|
-| `ai.generate.start` / `ai.stream.start` | info | `model`、`baseURL`、脱敏后的 settings 摘要、`system`、`user` 全文；`testConnection` 可带 `purpose: 'testConnection'` |
-| `ai.generate.done` / `ai.stream.done` | info | 耗时 `durationMs`、`tokenUsage`、回复 `text` 全文 |
-| `ai.generate.error` / `ai.stream.error` | error | 上述上下文摘要 + `message` / `stack` |
+| 事件                                    | 级别  | 字段                                                                                                                 |
+| --------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------- |
+| `ai.generate.start` / `ai.stream.start` | info  | `model`、`baseURL`、脱敏后的 settings 摘要、`system`、`user` 全文；`testConnection` 可带 `purpose: 'testConnection'` |
+| `ai.generate.done` / `ai.stream.done`   | info  | 耗时 `durationMs`、`tokenUsage`、回复 `text` 全文                                                                    |
+| `ai.generate.error` / `ai.stream.error` | error | 上述上下文摘要 + `message` / `stack`                                                                                 |
 
 规则：
 
@@ -81,13 +81,13 @@ log.transports.file.resolvePathFn = (variables) =>
 
 ### 业务事件
 
-| 事件 | 位置 | 级别 | 字段 |
-|------|------|------|------|
-| `books.import` | `LibraryService.importMarkdown` | info / error | 源路径、书名、`bookId`；失败时 error |
-| `books.open` | `LibraryService.openBook` | info / error | `bookId`、title（可得时）；失败时 error |
-| `threads.create` | `ReadingActionService.runReadingAction` | info | `bookId`、`threadId`、`actionType`、`contextStrategy`、选中文本 |
-| `threads.followUp` | `ReadingActionService.followUp` | info | `bookId`、`threadId`、问题文本 |
-| `ipc.error` | `registerIpc` 关键 handler 包装 | error | `channel`、`message` / `stack` |
+| 事件               | 位置                                    | 级别         | 字段                                                            |
+| ------------------ | --------------------------------------- | ------------ | --------------------------------------------------------------- |
+| `books.import`     | `LibraryService.importMarkdown`         | info / error | 源路径、书名、`bookId`；失败时 error                            |
+| `books.open`       | `LibraryService.openBook`               | info / error | `bookId`、title（可得时）；失败时 error                         |
+| `threads.create`   | `ReadingActionService.runReadingAction` | info         | `bookId`、`threadId`、`actionType`、`contextStrategy`、选中文本 |
+| `threads.followUp` | `ReadingActionService.followUp`         | info         | `bookId`、`threadId`、问题文本                                  |
+| `ipc.error`        | `registerIpc` 关键 handler 包装         | error        | `channel`、`message` / `stack`                                  |
 
 说明：
 
@@ -97,15 +97,15 @@ log.transports.file.resolvePathFn = (variables) =>
 
 ## 文件改动预期
 
-| 文件 | 职责 |
-|------|------|
-| `package.json` / lockfile | 增加 `electron-log` |
-| `src/main/logging/logger.ts` | 初始化、导出 `logger` / `redactSettings` |
-| `src/main/index.ts` | 启动时初始化 logger |
-| `src/main/ai/AIProvider.ts` | AI 起止与错误日志 |
-| `src/main/ai/ReadingActionService.ts` | 会话创建 / 追问业务事件 |
-| `src/main/library/LibraryService.ts` | 导入 / 打开书籍事件 |
-| `src/main/ipc/registerIpc.ts` | 关键 handler 错误包装 |
+| 文件                                  | 职责                                     |
+| ------------------------------------- | ---------------------------------------- |
+| `package.json` / lockfile             | 增加 `electron-log`                      |
+| `src/main/logging/logger.ts`          | 初始化、导出 `logger` / `redactSettings` |
+| `src/main/index.ts`                   | 启动时初始化 logger                      |
+| `src/main/ai/AIProvider.ts`           | AI 起止与错误日志                        |
+| `src/main/ai/ReadingActionService.ts` | 会话创建 / 追问业务事件                  |
+| `src/main/library/LibraryService.ts`  | 导入 / 打开书籍事件                      |
+| `src/main/ipc/registerIpc.ts`         | 关键 handler 错误包装                    |
 
 ## 验证方式
 

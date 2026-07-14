@@ -16,7 +16,9 @@ export class SettingsService {
 
   saveAISettings(settings: AISettings): void {
     this.db
-      .prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
+      .prepare(
+        'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
+      )
       .run(SETTINGS_KEY, JSON.stringify(settings));
   }
 }

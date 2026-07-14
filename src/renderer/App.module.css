@@ -1,0 +1,11 @@
+.shell {
+  padding: 24px;
+}
+.topBar {
+  margin-bottom: 18px;
+}
+.homeGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.6fr);
+  gap: 20px;
+}

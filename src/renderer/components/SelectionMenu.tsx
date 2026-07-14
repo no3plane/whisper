@@ -1,3 +1,5 @@
+import styles from './SelectionMenu.module.css';
+
 interface SelectionMenuProps {
   selectedText: string;
   mode?: 'draft' | 'thread';
@@ -16,8 +18,11 @@ export function SelectionMenu({
   if (!selectedText.trim()) return null;
 
   return (
-    <div className="selection-menu">
-      <span>{selectedText.slice(0, 24)}{selectedText.length > 24 ? '...' : ''}</span>
+    <div className={styles.menu}>
+      <span>
+        {selectedText.slice(0, 24)}
+        {selectedText.length > 24 ? '...' : ''}
+      </span>
       {mode === 'draft' ? (
         <button onClick={onSetTarget}>设为解读目标</button>
       ) : (

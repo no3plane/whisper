@@ -1,7 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { Book, BookDocument, Chapter, ContextStrategy, Passage, PreprocessStatus } from '../../shared/types';
+import type {
+  Book,
+  BookDocument,
+  Chapter,
+  ContextStrategy,
+  Passage,
+  PreprocessStatus,
+} from '../../shared/types';
 import { logger } from '../logging/logger';
 import { getAppDataDir } from '../storage/database';
 import type { AppDatabase } from '../storage/database';
@@ -240,36 +247,103 @@ export class LibraryService {
     try {
       const parsed = this.epubParser.parse({ bookId, buffer: fs.readFileSync(libraryFilePath) });
       const now = new Date().toISOString();
-      const book: Book = { id: bookId, title, author: null, format: 'epub', originalFilePath: filePath, libraryFilePath, createdAt: now, updatedAt: now, lastOpenedAt: null, preprocessStatus: 'not_started', tokenEstimate: Math.ceil(parsed.fullText.length / 3), defaultContextStrategy: 'full_book', activeThreadId: null };
+      const book: Book = {
+        id: bookId,
+        title,
+        author: null,
+        format: 'epub',
+        originalFilePath: filePath,
+        libraryFilePath,
+        createdAt: now,
+        updatedAt: now,
+        lastOpenedAt: null,
+        preprocessStatus: 'not_started',
+        tokenEstimate: Math.ceil(parsed.fullText.length / 3),
+        defaultContextStrategy: 'full_book',
+        activeThreadId: null,
+      };
       this.db.transaction(() => {
-        this.db.prepare(`INSERT INTO books (id,title,author,format,original_file_path,library_file_path,created_at,updated_at,last_opened_at,preprocess_status,token_estimate,default_context_strategy,active_thread_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-          .run(book.id, book.title, null, book.format, filePath, libraryFilePath, now, now, null, book.preprocessStatus, book.tokenEstimate, book.defaultContextStrategy, null);
-        const insertChapter = this.db.prepare(`INSERT INTO chapters (id,book_id,parent_chapter_id,title,level,chapter_order,start_passage_id,end_passage_id,summary) VALUES (?,?,?,?,?,?,?,?,?)`);
-        parsed.chapters.forEach((c) => insertChapter.run(c.id,c.bookId,c.parentChapterId,c.title,c.level,c.order,c.startPassageId,c.endPassageId,c.summary));
-        const insertPassage = this.db.prepare(`INSERT INTO passages (id,book_id,chapter_id,passage_order,text,source_href,source_offset) VALUES (?,?,?,?,?,?,?)`);
-        parsed.passages.forEach((p) => insertPassage.run(p.id,p.bookId,p.chapterId,p.order,p.text,p.sourceHref,p.sourceOffset));
+        this.db
+          .prepare(
+            `INSERT INTO books (id,title,author,format,original_file_path,library_file_path,created_at,updated_at,last_opened_at,preprocess_status,token_estimate,default_context_strategy,active_thread_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+          )
+          .run(
+            book.id,
+            book.title,
+            null,
+            book.format,
+            filePath,
+            libraryFilePath,
+            now,
+            now,
+            null,
+            book.preprocessStatus,
+            book.tokenEstimate,
+            book.defaultContextStrategy,
+            null,
+          );
+        const insertChapter = this.db.prepare(
+          `INSERT INTO chapters (id,book_id,parent_chapter_id,title,level,chapter_order,start_passage_id,end_passage_id,summary) VALUES (?,?,?,?,?,?,?,?,?)`,
+        );
+        parsed.chapters.forEach((c) =>
+          insertChapter.run(
+            c.id,
+            c.bookId,
+            c.parentChapterId,
+            c.title,
+            c.level,
+            c.order,
+            c.startPassageId,
+            c.endPassageId,
+            c.summary,
+          ),
+        );
+        const insertPassage = this.db.prepare(
+          `INSERT INTO passages (id,book_id,chapter_id,passage_order,text,source_href,source_offset) VALUES (?,?,?,?,?,?,?)`,
+        );
+        parsed.passages.forEach((p) =>
+          insertPassage.run(
+            p.id,
+            p.bookId,
+            p.chapterId,
+            p.order,
+            p.text,
+            p.sourceHref,
+            p.sourceOffset,
+          ),
+        );
       })();
       return book;
     } catch (error) {
-      logger.error('books.import.epub', { filePath, bookId, message: error instanceof Error ? error.message : String(error) });
+      logger.error('books.import.epub', {
+        filePath,
+        bookId,
+        message: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }
 
   listBooks(): Book[] {
-    const rows = this.db.prepare('SELECT * FROM books ORDER BY created_at DESC').all() as unknown as BookRow[];
+    const rows = this.db
+      .prepare('SELECT * FROM books ORDER BY created_at DESC')
+      .all() as unknown as BookRow[];
     return rows.map(mapBookRow);
   }
 
   openBook(bookId: string): BookDocument {
-    const bookRow = this.db.prepare('SELECT * FROM books WHERE id = ?').get(bookId) as BookRow | undefined;
+    const bookRow = this.db.prepare('SELECT * FROM books WHERE id = ?').get(bookId) as
+      | BookRow
+      | undefined;
     if (!bookRow) {
       logger.error('books.open', { bookId, message: `Book not found: ${bookId}` });
       throw new Error(`Book not found: ${bookId}`);
     }
 
     const openedAt = new Date().toISOString();
-    this.db.prepare('UPDATE books SET last_opened_at = ?, updated_at = ? WHERE id = ?').run(openedAt, openedAt, bookId);
+    this.db
+      .prepare('UPDATE books SET last_opened_at = ?, updated_at = ? WHERE id = ?')
+      .run(openedAt, openedAt, bookId);
 
     const book = mapBookRow({
       ...bookRow,
@@ -277,10 +351,14 @@ export class LibraryService {
       last_opened_at: openedAt,
     });
     const chapters = (
-      this.db.prepare('SELECT * FROM chapters WHERE book_id = ? ORDER BY chapter_order ASC').all(bookId) as unknown as ChapterRow[]
+      this.db
+        .prepare('SELECT * FROM chapters WHERE book_id = ? ORDER BY chapter_order ASC')
+        .all(bookId) as unknown as ChapterRow[]
     ).map(mapChapterRow);
     const passages = (
-      this.db.prepare('SELECT * FROM passages WHERE book_id = ? ORDER BY passage_order ASC').all(bookId) as unknown as PassageRow[]
+      this.db
+        .prepare('SELECT * FROM passages WHERE book_id = ? ORDER BY passage_order ASC')
+        .all(bookId) as unknown as PassageRow[]
     ).map(mapPassageRow);
 
     logger.info('books.open', { bookId, title: book.title });
@@ -303,7 +381,8 @@ export class LibraryService {
   }
 
   setDefaultContextStrategy(bookId: string, strategy: ContextStrategy): void {
-    const result = this.db.prepare('UPDATE books SET default_context_strategy = ?, updated_at = ? WHERE id = ?')
+    const result = this.db
+      .prepare('UPDATE books SET default_context_strategy = ?, updated_at = ? WHERE id = ?')
       .run(strategy, new Date().toISOString(), bookId);
     if (result.changes === 0) throw new Error(`Book not found: ${bookId}`);
   }

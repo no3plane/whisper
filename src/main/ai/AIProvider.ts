@@ -61,7 +61,11 @@ export class AIProvider {
     }
   }
 
-  async streamGenerate(settings: AISettings, input: AssembledContext, handlers: StreamGenerateHandlers) {
+  async streamGenerate(
+    settings: AISettings,
+    input: AssembledContext,
+    handlers: StreamGenerateHandlers,
+  ) {
     const startedAt = Date.now();
     logger.info('ai.stream.start', {
       settings: redactSettings(settings),

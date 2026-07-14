@@ -21,14 +21,19 @@ describe('MarkdownParser', () => {
       level: 2,
       order: 1,
     });
-    expect(result.passages.map((passage) => passage.text)).toEqual(['这是第一段。', '这是第二段。', '这是第三段。']);
+    expect(result.passages.map((passage) => passage.text)).toEqual([
+      '这是第一段。',
+      '这是第二段。',
+      '这是第三段。',
+    ]);
     expect(result.fullText).toContain('这是第三段。');
   });
 
   it('建立多级章节树并让父章节覆盖子章节内容', () => {
     const result = new MarkdownParser().parse({
       bookId: 'b1',
-      markdown: '# 第一编\n\n导言。\n\n## 第一章\n\n正文一。\n\n### 第一节\n\n正文二。\n\n## 第二章\n\n正文三。',
+      markdown:
+        '# 第一编\n\n导言。\n\n## 第一章\n\n正文一。\n\n### 第一节\n\n正文二。\n\n## 第二章\n\n正文三。',
     });
     const [part, chapter, section, chapter2] = result.chapters;
 

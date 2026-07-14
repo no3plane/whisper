@@ -5,12 +5,7 @@
     "correctness": "error",
     "suspicious": "error"
   },
-  "ignorePatterns": [
-    "out/**",
-    "node_modules/**",
-    ".worktrees/**",
-    ".superpowers/**"
-  ],
+  "ignorePatterns": ["out/**", "node_modules/**", ".worktrees/**", ".superpowers/**"],
   "options": {
     "denyWarnings": true
   },
@@ -69,7 +64,13 @@
       "rules": { "typescript/no-explicit-any": "off" }
     },
     {
-      "files": ["tests/main/**/*.ts", "scripts/**/*.mjs", "vite.config.ts", "vitest.config.ts", "electron.vite.config.ts"],
+      "files": [
+        "tests/main/**/*.ts",
+        "scripts/**/*.mjs",
+        "vite.config.ts",
+        "vitest.config.ts",
+        "electron.vite.config.ts"
+      ],
       "env": { "node": true },
       "rules": { "no-console": "off" }
     },

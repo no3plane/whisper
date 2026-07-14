@@ -16,23 +16,24 @@
 
 ## 文件结构
 
-| 文件 | 职责 |
-|------|------|
-| `src/shared/types.ts` | `Book.activeThreadId`、`BookThreadsPayload`、`SetActiveThreadInput` |
-| `src/shared/ipc.ts` | 新 channel 名 |
-| `src/main/storage/schema.ts` | 新库建表含 `active_thread_id` |
-| `src/main/storage/database.ts` | 旧库轻量列迁移 |
-| `src/main/library/LibraryService.ts` | 映射 `activeThreadId`、`setActiveThread` |
-| `src/main/threads/ThreadStore.ts` | `listThreadsWithMessagesByBook` |
-| `src/main/ipc/registerIpc.ts` | 注册两个新 handler |
-| `src/preload/index.ts` | 暴露 renderer API |
-| `src/renderer/pages/ReaderPage.tsx` | 打开加载、切换/新建写回 |
+| 文件                                 | 职责                                                                |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| `src/shared/types.ts`                | `Book.activeThreadId`、`BookThreadsPayload`、`SetActiveThreadInput` |
+| `src/shared/ipc.ts`                  | 新 channel 名                                                       |
+| `src/main/storage/schema.ts`         | 新库建表含 `active_thread_id`                                       |
+| `src/main/storage/database.ts`       | 旧库轻量列迁移                                                      |
+| `src/main/library/LibraryService.ts` | 映射 `activeThreadId`、`setActiveThread`                            |
+| `src/main/threads/ThreadStore.ts`    | `listThreadsWithMessagesByBook`                                     |
+| `src/main/ipc/registerIpc.ts`        | 注册两个新 handler                                                  |
+| `src/preload/index.ts`               | 暴露 renderer API                                                   |
+| `src/renderer/pages/ReaderPage.tsx`  | 打开加载、切换/新建写回                                             |
 
 ---
 
 ### Task 1: 共享类型与 IPC channel
 
 **Files:**
+
 - Modify: `src/shared/types.ts`
 - Modify: `src/shared/ipc.ts`
 
@@ -83,6 +84,7 @@ EOF
 ### Task 2: Schema 与轻量迁移
 
 **Files:**
+
 - Modify: `src/main/storage/schema.ts`
 - Modify: `src/main/storage/database.ts`
 
@@ -154,6 +156,7 @@ EOF
 ### Task 3: LibraryService 读写 activeThreadId
 
 **Files:**
+
 - Modify: `src/main/library/LibraryService.ts`
 
 - [ ] **Step 1: 扩展 `BookRow` 与 `mapBookRow`**
@@ -215,6 +218,7 @@ EOF
 ### Task 4: ThreadStore 按书返回 threads + messages
 
 **Files:**
+
 - Modify: `src/main/threads/ThreadStore.ts`
 
 - [ ] **Step 1: 引入类型并实现方法**
@@ -222,7 +226,13 @@ EOF
 在文件顶部 import 中增加 `BookThreadsPayload`：
 
 ```ts
-import type { BookThreadsPayload, ContextStrategy, ReadingActionType, ReadingThread, ThreadMessage } from '../../shared/types';
+import type {
+  BookThreadsPayload,
+  ContextStrategy,
+  ReadingActionType,
+  ReadingThread,
+  ThreadMessage,
+} from '../../shared/types';
 ```
 
 在 `ThreadStore` 类中，于 `listThreadsByBook` 之后增加：
@@ -268,6 +278,7 @@ EOF
 ### Task 5: 注册 IPC 并暴露 preload API
 
 **Files:**
+
 - Modify: `src/main/ipc/registerIpc.ts`
 - Modify: `src/preload/index.ts`
 
@@ -276,7 +287,13 @@ EOF
 在 `registerIpc.ts` 顶部 import 增加 `SetActiveThreadInput`：
 
 ```ts
-import type { AISettings, FollowUpInput, ImportBookInput, RunReadingActionInput, SetActiveThreadInput } from '../../shared/types';
+import type {
+  AISettings,
+  FollowUpInput,
+  ImportBookInput,
+  RunReadingActionInput,
+  SetActiveThreadInput,
+} from '../../shared/types';
 ```
 
 在现有 `threadsListByBook` handler 旁增加：
@@ -330,6 +347,7 @@ EOF
 ### Task 6: ReaderPage 打开时加载历史
 
 **Files:**
+
 - Modify: `src/renderer/pages/ReaderPage.tsx`
 
 - [ ] **Step 1: 打开书时并行加载历史**
@@ -423,6 +441,7 @@ EOF
 ### Task 7: 切换 tab / 新建会话时写回选中态
 
 **Files:**
+
 - Modify: `src/renderer/pages/ReaderPage.tsx`
 - Modify: `src/renderer/components/RightAiPanel.tsx`（仅当需要改回调签名时）
 
@@ -448,13 +467,13 @@ function handleSelectThread(threadId: string | null) {
 把传给 `RightAiPanel` 的：
 
 ```ts
-onSelectThread={setActiveThreadId}
+onSelectThread = { setActiveThreadId };
 ```
 
 改为：
 
 ```ts
-onSelectThread={handleSelectThread}
+onSelectThread = { handleSelectThread };
 ```
 
 - [ ] **Step 2: 新建会话时写回**
@@ -482,7 +501,9 @@ useEffect(() => {
       setStreamError('');
       setThreads((current) => upsertThread(current, event.thread, event.messages));
       setActiveThreadId(event.thread.id);
-      void whisper.books.setActiveThread({ bookId, threadId: event.thread.id }).catch(() => undefined);
+      void whisper.books
+        .setActiveThread({ bookId, threadId: event.thread.id })
+        .catch(() => undefined);
       return;
     }
     // ... chunk / done / error 保持不变
@@ -526,14 +547,14 @@ pnpm dev
 
 ## Spec 覆盖自检
 
-| Spec 要求 | 对应 Task |
-|-----------|-----------|
-| `books.active_thread_id` + 迁移 | Task 2 |
+| Spec 要求                                    | 对应 Task |
+| -------------------------------------------- | --------- |
+| `books.active_thread_id` + 迁移              | Task 2    |
 | `Book.activeThreadId` / `BookThreadsPayload` | Task 1、3 |
-| `threads.listWithMessagesByBook` | Task 4、5 |
-| `books.setActiveThread` | Task 3、5 |
-| 打开书加载历史并恢复 tab | Task 6 |
-| 切换 tab 写回 | Task 7 |
-| 新建会话写回 | Task 7 |
-| 写回失败不打断 / 历史失败正文可读 | Task 6、7 |
-| 手工验证 4 条 | Task 8 |
+| `threads.listWithMessagesByBook`             | Task 4、5 |
+| `books.setActiveThread`                      | Task 3、5 |
+| 打开书加载历史并恢复 tab                     | Task 6    |
+| 切换 tab 写回                                | Task 7    |
+| 新建会话写回                                 | Task 7    |
+| 写回失败不打断 / 历史失败正文可读            | Task 6、7 |
+| 手工验证 4 条                                | Task 8    |
