@@ -14,21 +14,38 @@ const defaultSettings: AISettings = {
 export function SettingsPanel() {
   const [settings, setSettings] = useState<AISettings>(defaultSettings);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    void whisper.settings.get().then((saved) => {
-      if (saved) setSettings(saved);
-    });
+    void whisper.settings
+      .get()
+      .then((saved) => {
+        if (saved) setSettings(saved);
+      })
+      .catch((reason) => setError(messageOf(reason)));
   }, []);
 
   async function save() {
-    await whisper.settings.save(settings);
-    setMessage('已保存设置。');
+    await run(async () => {
+      await whisper.settings.save(settings);
+      setMessage('已保存设置。');
+    });
   }
 
   async function test() {
-    const result = await whisper.settings.testConnection(settings);
-    setMessage(result.message);
+    await run(async () => {
+      const result = await whisper.settings.testConnection(settings);
+      setMessage(result.message);
+    });
+  }
+
+  async function run(operation: () => Promise<void>) {
+    setError('');
+    try {
+      await operation();
+    } catch (reason) {
+      setError(messageOf(reason));
+    }
   }
 
   return (
@@ -87,6 +104,11 @@ export function SettingsPanel() {
         <button onClick={test}>测试连接</button>
       </div>
       {message && <p className="muted">{message}</p>}
+      {error && <p className="error">{error}</p>}
     </section>
   );
+}
+
+function messageOf(reason: unknown) {
+  return reason instanceof Error ? reason.message : String(reason);
 }

@@ -1,4 +1,4 @@
-import type { WhisperApi } from '../../preload';
+import type { WhisperApi } from '../../shared/whisperApi';
 
 declare global {
   interface Window {

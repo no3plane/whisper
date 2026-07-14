@@ -17,7 +17,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
   }
 
   useEffect(() => {
-    void loadBooks();
+    void loadBooks().catch((reason) => setError(messageOf(reason)));
   }, []);
 
   async function importMarkdown() {
@@ -27,7 +27,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
       setFilePath('');
       await loadBooks();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(messageOf(err));
     }
   }
 
@@ -38,7 +38,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
       setFilePath('');
       await loadBooks();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(messageOf(err));
     }
   }
 
@@ -75,4 +75,8 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
       </div>
     </section>
   );
+}
+
+function messageOf(reason: unknown) {
+  return reason instanceof Error ? reason.message : String(reason);
 }

@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { ipcChannels } from '../shared/ipc';
+import type { WhisperApi } from '../shared/whisperApi';
 import type {
   AISettings,
   AiStreamEvent,
@@ -17,7 +18,7 @@ import type {
   ContextStrategy,
 } from '../shared/types';
 
-const whisper = {
+const whisper: WhisperApi = {
   settings: {
     get: () => ipcRenderer.invoke(ipcChannels.settingsGet) as Promise<AISettings | null>,
     save: (settings: AISettings) =>
@@ -80,5 +81,3 @@ const whisper = {
 };
 
 contextBridge.exposeInMainWorld('whisper', whisper);
-
-export type WhisperApi = typeof whisper;

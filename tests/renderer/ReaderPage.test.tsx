@@ -248,6 +248,31 @@ describe('ReaderPage 会话编排', () => {
     expect(screen.queryByText('模型思考中…')).toBeNull();
   });
 
+  it('忽略其他书籍的流事件', async () => {
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    const foreignThread = { ...thread, id: 'foreign', bookId: 'b2', title: '其他书会话' };
+
+    listeners.forEach((listener) =>
+      listener({
+        type: 'started',
+        thread: foreignThread,
+        messages: [{ ...assistant, id: 'foreign-message', threadId: 'foreign' }],
+        assistantMessageId: 'foreign-message',
+      }),
+    );
+    listeners.forEach((listener) =>
+      listener({
+        type: 'done',
+        thread: { ...foreignThread, status: 'ready' },
+        messages: [],
+      }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '历史' }));
+    expect(screen.queryByText('其他书会话')).toBeNull();
+  });
+
   it('关闭生成中的 Tab 后仍接收 chunk 和 done', async () => {
     api.threads.listWithMessagesByBook.mockResolvedValueOnce({
       threads: [{ thread, messages: [assistant] }],

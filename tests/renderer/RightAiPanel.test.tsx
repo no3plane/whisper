@@ -75,31 +75,65 @@ function message(overrides: Partial<ThreadMessage> = {}): ThreadMessage {
   };
 }
 
-function renderPanel(overrides: Partial<React.ComponentProps<typeof RightAiPanel>> = {}) {
+interface PanelOptions {
+  threads?: Array<{ thread: ReadingThread; messages: ThreadMessage[] }>;
+  activeView?: React.ComponentProps<typeof RightAiPanel>['conversation']['workspace']['activeView'];
+  draft?: React.ComponentProps<typeof RightAiPanel>['draft']['value'];
+  pendingReference?: MessageReference | null;
+  onOpenDraft?: ReturnType<typeof vi.fn>;
+  onCreate?: ReturnType<typeof vi.fn>;
+  onOpenThread?: ReturnType<typeof vi.fn>;
+  onDeleteThread?: ReturnType<typeof vi.fn>;
+  onFollowUp?: ReturnType<typeof vi.fn>;
+  onClearReference?: ReturnType<typeof vi.fn>;
+  onCloseThread?: ReturnType<typeof vi.fn>;
+  onRetryMessage?: ReturnType<typeof vi.fn>;
+}
+
+function renderPanel(options: PanelOptions = {}) {
+  const spies = {
+    onOpenDraft: options.onOpenDraft ?? vi.fn(),
+    onCreate: options.onCreate ?? vi.fn(async () => undefined),
+    onOpenThread: options.onOpenThread ?? vi.fn(),
+    onDeleteThread: options.onDeleteThread ?? vi.fn(async () => undefined),
+    onFollowUp: options.onFollowUp ?? vi.fn(async () => undefined),
+    onClearReference: options.onClearReference ?? vi.fn(),
+    onCloseThread: options.onCloseThread ?? vi.fn(),
+    onRetryMessage: options.onRetryMessage ?? vi.fn(async () => undefined),
+  };
   const props: React.ComponentProps<typeof RightAiPanel> = {
-    threads: [{ thread: thread(), messages: [message()] }],
-    historyThreads: [thread()],
-    openThreadIds: ['t1'],
-    activeView: { type: 'thread', threadId: 't1' },
-    draft: createBookDraft('b1', 'hybrid'),
-    pendingReference: null,
-    onOpenDraft: vi.fn(),
-    onUpdateDraft: vi.fn(),
-    onCreate: vi.fn(async () => undefined),
-    onSelectThread: vi.fn(),
-    onCloseThread: vi.fn(),
-    onOpenHistory: vi.fn(),
-    onOpenThread: vi.fn(),
-    onDeleteThread: vi.fn(),
-    onRetryThread: vi.fn(),
-    onFollowUp: vi.fn(async () => undefined),
-    onClearReference: vi.fn(),
-    onRetryMessage: vi.fn(),
+    conversation: {
+      workspace: {
+        threads: options.threads ?? [{ thread: thread(), messages: [message()] }],
+        openThreadIds: ['t1'],
+        activeView:
+          options.activeView === undefined
+            ? { type: 'thread', threadId: 't1' }
+            : options.activeView,
+        pendingReference: options.pendingReference ?? null,
+      },
+      commands: {
+        selectView: vi.fn(),
+        selectThread: vi.fn(),
+        openThread: spies.onOpenThread,
+        closeThread: spies.onCloseThread,
+        setReference: spies.onClearReference,
+        createConversation: spies.onCreate,
+        deleteThread: spies.onDeleteThread,
+        followUp: spies.onFollowUp,
+        retryMessage: spies.onRetryMessage,
+      },
+    },
+    draft: {
+      value: options.draft ?? createBookDraft('b1', 'hybrid'),
+      open: spies.onOpenDraft,
+      update: vi.fn(),
+      selectTarget: vi.fn(),
+    },
     onLocate: vi.fn(),
-    ...overrides,
   };
   const rendered = render(<RightAiPanel {...props} />);
-  return Object.assign(props, { container: rendered.container });
+  return { ...spies, container: rendered.container };
 }
 
 describe('RightAiPanel', () => {

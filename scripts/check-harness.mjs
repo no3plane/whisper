@@ -56,8 +56,13 @@ for (const file of sourceFiles) {
   const name = relative(file);
   const content = fs.readFileSync(file, 'utf8');
 
-  if (name.startsWith('src/renderer/') && /from\s+['"]\.\.\/\.\.\/main\//.test(content)) {
-    fail(`${name}：renderer 不得直接依赖 main；请通过 shared 契约和 preload IPC。`);
+  if (
+    name.startsWith('src/renderer/') &&
+    /from\s+['"](?:electron|node:|(?:\.\.\/)+(?:main|preload)(?:\/|['"]))/.test(content)
+  ) {
+    fail(
+      `${name}：renderer 不得依赖 main、preload、Electron 或 Node；请通过 shared 契约和 preload IPC。`,
+    );
   }
   if (name.startsWith('src/shared/') && /from\s+['"](?:electron|node:)/.test(content)) {
     fail(`${name}：shared 不得依赖 Electron 或 Node 运行时。`);
