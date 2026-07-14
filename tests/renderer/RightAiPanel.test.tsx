@@ -215,6 +215,33 @@ describe('RightAiPanel', () => {
     expect(onClearReference).toHaveBeenCalledOnce();
   });
 
+  it('Enter 发送追问，Shift+Enter 保留换行', async () => {
+    const onFollowUp = vi.fn(async () => undefined);
+    renderPanel({ onFollowUp });
+    const input = screen.getByPlaceholderText('继续追问这个回答');
+    fireEvent.change(input, { target: { value: '第一行' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', shiftKey: true });
+    expect(onFollowUp).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: '第一行\n第二行' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
+    await waitFor(() => expect(onFollowUp).toHaveBeenCalledWith('t1', '第一行\n第二行', null));
+  });
+
+  it('追问发送失败时保留输入和引用', async () => {
+    const onFollowUp = vi.fn(async () => {
+      throw new Error('网络错误');
+    });
+    const onClearReference = vi.fn();
+    renderPanel({ pendingReference: reference, onFollowUp, onClearReference });
+    const input = screen.getByPlaceholderText('结合这段文字追问什么？');
+    fireEvent.change(input, { target: { value: '请重试' } });
+    fireEvent.click(screen.getByRole('button', { name: '发送追问' }));
+    await waitFor(() => expect(onFollowUp).toHaveBeenCalledOnce());
+    expect((input as HTMLTextAreaElement).value).toBe('请重试');
+    expect(screen.getByText('另一段原文')).not.toBeNull();
+    expect(onClearReference).not.toHaveBeenCalled();
+  });
+
   it('失败消息把原 message ID 传给重试 callback', () => {
     const onRetryMessage = vi.fn();
     renderPanel({

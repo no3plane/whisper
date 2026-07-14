@@ -126,11 +126,12 @@ export function useConversationWorkspace(bookId: string, onError: (message: stri
     [bookId],
   );
 
-  async function run(command: () => Promise<void>) {
+  async function run(command: () => Promise<void>, rethrow = false) {
     try {
       await command();
     } catch (reason) {
       onError(messageOf(reason));
+      if (rethrow) throw reason;
     }
   }
 
@@ -155,7 +156,7 @@ export function useConversationWorkspace(bookId: string, onError: (message: stri
       run(async () => {
         const result = await whisper.ai.followUp({ threadId, question, reference });
         dispatch({ type: 'threadUpserted', thread: result.thread, messages: result.messages });
-      }),
+      }, true),
     retryMessage: (threadId: string, messageId: string) =>
       run(async () => {
         const result = await whisper.ai.retry({ threadId, messageId });

@@ -69,38 +69,38 @@
   font-size: 14px;
   line-height: 1.7;
 }
-.markdown :global(.aui-md) {
+.markdown {
   font-size: 14px;
   line-height: 1.7;
 }
-.markdown :global(.aui-md) p {
+.markdown p {
   margin: 0 0 0.75em;
 }
-.markdown :global(.aui-md) p:last-child {
+.markdown p:last-child {
   margin-bottom: 0;
 }
-.markdown :global(.aui-md) ul,
-.markdown :global(.aui-md) ol {
+.markdown ul,
+.markdown ol {
   margin: 0 0 0.75em;
   padding-left: 1.25em;
 }
-.markdown :global(.aui-md) strong {
+.markdown strong {
   font-weight: 650;
 }
-.markdown :global(.aui-md) code {
+.markdown code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.92em;
   background: #f1ebe0;
   padding: 0.1em 0.35em;
   border-radius: 4px;
 }
-.markdown :global(.aui-md) pre {
+.markdown pre {
   overflow: auto;
   background: #f1ebe0;
   padding: 10px 12px;
   border-radius: 6px;
 }
-.markdown :global(.aui-md) pre code {
+.markdown pre code {
   background: transparent;
   padding: 0;
 }
