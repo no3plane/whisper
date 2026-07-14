@@ -1,4 +1,4 @@
-import type { Chapter, ChapterCrumb, Passage, ReadingTarget } from '../../shared/types';
+import type { Chapter, ChapterCrumb, Passage, ReadingTarget } from '../../../shared/types';
 
 function passageElement(node: Node): HTMLElement | null {
   const element = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;

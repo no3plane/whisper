@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { AISettings } from '../../shared/types';
-import { whisper } from '../api/whisper';
+import type { AISettings } from '../../../shared/types';
+import { whisper } from '../../api/whisper';
 import styles from './SettingsPanel.module.css';
 
 const defaultSettings: AISettings = {

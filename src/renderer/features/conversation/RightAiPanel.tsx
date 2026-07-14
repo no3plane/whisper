@@ -14,9 +14,9 @@ import type {
   MessageReference,
   ReadingThread,
   ThreadMessage,
-} from '../../shared/types';
-import type { ConversationDraft } from '../chat/draftState';
-import { validateDraft } from '../chat/draftState';
+} from '../../../shared/types';
+import type { ConversationDraft } from './draftState';
+import { validateDraft } from './draftState';
 import { ThreadHistory } from './ThreadHistory';
 import { TargetPicker } from './TargetPicker';
 import '@assistant-ui/react-markdown/styles/dot.css';

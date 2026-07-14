@@ -7,19 +7,22 @@ import type {
   ReadingTarget,
   ReadingThread,
   ThreadMessage,
-} from '../../shared/types';
+} from '../../../shared/types';
 import {
   createBookDraft,
   applyAutomaticSelection,
   replaceDraftFromSelection,
   selectTarget,
   type ConversationDraft,
-} from '../chat/draftState';
-import { RightAiPanel, type AiPanelView } from '../components/RightAiPanel';
-import { SelectionMenu } from '../components/SelectionMenu';
-import { captureSelection, locateSnapshot } from '../selection/selectionSnapshot';
-import { whisper } from '../api/whisper';
-import appStyles from '../App.module.css';
+} from '../../features/conversation/draftState';
+import { RightAiPanel, type AiPanelView } from '../../features/conversation/RightAiPanel';
+import { SelectionMenu } from '../../features/reading-selection/SelectionMenu';
+import {
+  captureSelection,
+  locateSnapshot,
+} from '../../features/reading-selection/selectionSnapshot';
+import { whisper } from '../../api/whisper';
+import appStyles from '../../App.module.css';
 import styles from './ReaderPage.module.css';
 
 interface ReaderPageProps {

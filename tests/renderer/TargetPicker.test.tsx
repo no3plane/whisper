@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SelectionMenu } from '../../src/renderer/components/SelectionMenu';
-import { TargetPicker } from '../../src/renderer/components/TargetPicker';
-import type { ConversationDraft } from '../../src/renderer/chat/draftState';
+import { SelectionMenu } from '../../src/renderer/features/reading-selection/SelectionMenu';
+import { TargetPicker } from '../../src/renderer/features/conversation/TargetPicker';
+import type { ConversationDraft } from '../../src/renderer/features/conversation/draftState';
 import type { ReadingTarget } from '../../src/shared/types';
 
 afterEach(cleanup);

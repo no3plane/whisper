@@ -33,6 +33,25 @@ for (const file of requiredFiles) {
 }
 
 const sourceFiles = walk(path.join(root, 'src')).filter((file) => /\.(ts|tsx)$/.test(file));
+
+const legacyRendererDirectories = ['components', 'chat', 'selection'];
+for (const directory of legacyRendererDirectories) {
+  const name = `src/renderer/${directory}`;
+  if (fs.existsSync(path.join(root, name))) {
+    fail(`${name}：renderer 应按页面和 feature 组织，不得恢复遗留的技术类型目录。`);
+  }
+}
+
+for (const parent of ['src/renderer/pages', 'src/renderer/features']) {
+  const directory = path.join(root, parent);
+  if (!fs.existsSync(directory)) continue;
+  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+    if (entry.isDirectory() && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.name)) {
+      fail(`${parent}/${entry.name}：页面和 feature 目录必须使用 kebab-case。`);
+    }
+  }
+}
+
 for (const file of sourceFiles) {
   const name = relative(file);
   const content = fs.readFileSync(file, 'utf8');
@@ -51,6 +70,45 @@ for (const file of sourceFiles) {
     /console\.(log|debug|info|warn|error)\s*\(/.test(content)
   ) {
     fail(`${name}：生产代码禁止直接使用 console；主进程请使用统一 logger。`);
+  }
+
+  if (name.startsWith('src/renderer/') && name.endsWith('.tsx')) {
+    const stem = path.basename(name, '.tsx');
+    if (stem !== 'main' && !/^[A-Z][A-Za-z0-9]*$/.test(stem)) {
+      fail(`${name}：React 组件文件必须使用 PascalCase；renderer 入口 main.tsx 除外。`);
+    }
+  }
+
+  if (name.startsWith('src/renderer/features/') || name.startsWith('src/renderer/pages/')) {
+    for (const match of content.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+      const specifier = match[1];
+      if (!specifier.startsWith('.')) continue;
+      const target = relative(path.resolve(path.dirname(file), specifier));
+
+      if (name.startsWith('src/renderer/features/') && target.startsWith('src/renderer/pages/')) {
+        fail(`${name}：feature 不得依赖 page（${specifier}）。`);
+      }
+
+      if (name.startsWith('src/renderer/pages/') && target.startsWith('src/renderer/pages/')) {
+        const sourcePage = name.split('/')[3];
+        const targetPage = target.split('/')[3];
+        if (sourcePage !== targetPage) fail(`${name}：page 不得依赖其他 page（${specifier}）。`);
+      }
+    }
+  }
+}
+
+const rendererCssModules = walk(path.join(root, 'src/renderer')).filter((file) =>
+  file.endsWith('.module.css'),
+);
+for (const file of rendererCssModules) {
+  const name = relative(file);
+  const stem = path.basename(file, '.module.css');
+  if (!/^[A-Z][A-Za-z0-9]*$/.test(stem)) {
+    fail(`${name}：组件 CSS Module 必须使用 PascalCase.module.css。`);
+  }
+  if (!fs.existsSync(path.join(path.dirname(file), `${stem}.tsx`))) {
+    fail(`${name}：组件 CSS Module 必须与同目录的 ${stem}.tsx 配对。`);
   }
 }
 

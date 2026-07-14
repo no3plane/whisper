@@ -41,6 +41,15 @@ Main Process
 
 `src/renderer/` 负责书库、阅读器、AI 面板、选区快照和草稿状态。它只能通过 preload API 请求高权限操作，不导入 `src/main/`，也不直接访问 Node、SQLite 或文件系统。
 
+Renderer 采用“页面组装、功能内聚”的模块结构：
+
+- `pages/` 保存页面入口和页面级状态编排；页面可以组合多个 feature，但页面之间不相互依赖。
+- `features/` 按用户能力收拢 UI、样式、状态和纯逻辑；feature 可以依赖 `api/` 和 `src/shared/`，但不依赖页面。
+- `api/` 是 renderer 到 preload API 的最小适配层。
+- 只有被多个无关 feature 实际复用的代码才提升到 renderer 的共享目录，不提前创建通用抽象。
+
+Renderer 目录使用 `kebab-case`，React 组件和对应 CSS Module 使用 `PascalCase`，普通 TypeScript 模块使用 `camelCase`，Hook 使用 `useXxx`。这些可机械判断的边界由 Harness 阻断；代码是否属于正确 feature 继续由评审判断。
+
 ### Shared
 
 `src/shared/` 保存跨进程数据契约、IPC channel 和不依赖运行环境的纯定义。它不能依赖 Electron、React 或 main/renderer 的实现。

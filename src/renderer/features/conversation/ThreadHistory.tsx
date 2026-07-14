@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { ReadingThread } from '../../shared/types';
+import type { ReadingThread } from '../../../shared/types';
 import styles from './ThreadHistory.module.css';
 
 interface ThreadHistoryProps {

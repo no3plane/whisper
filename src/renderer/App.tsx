@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { getWhisperApi } from './api/whisper';
-import { SettingsPanel } from './components/SettingsPanel';
-import { LibraryPage } from './pages/LibraryPage';
-import { ReaderPage } from './pages/ReaderPage';
+import { SettingsPanel } from './features/settings/SettingsPanel';
+import { LibraryPage } from './pages/library-page/LibraryPage';
+import { ReaderPage } from './pages/reader-page/ReaderPage';
 import styles from './App.module.css';
 
 export function App() {

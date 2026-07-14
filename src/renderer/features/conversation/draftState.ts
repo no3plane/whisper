@@ -1,10 +1,10 @@
-import { isSkillAllowed } from '../../shared/skills';
+import { isSkillAllowed } from '../../../shared/skills';
 import type {
   ContextStrategy,
   MessageReference,
   ReadingSkillType,
   ReadingTarget,
-} from '../../shared/types';
+} from '../../../shared/types';
 
 export interface ConversationDraft {
   bookId: string;

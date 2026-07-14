@@ -1,14 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ReaderPage } from '../../src/renderer/pages/ReaderPage';
+import { ReaderPage } from '../../src/renderer/pages/reader-page/ReaderPage';
 import type {
   AiStreamEvent,
   BookDocument,
   ReadingThread,
   ThreadMessage,
 } from '../../src/shared/types';
-import panelStyles from '../../src/renderer/components/RightAiPanel.module.css';
-import readerStyles from '../../src/renderer/pages/ReaderPage.module.css';
+import panelStyles from '../../src/renderer/features/conversation/RightAiPanel.module.css';
+import readerStyles from '../../src/renderer/pages/reader-page/ReaderPage.module.css';
 
 const { listeners, api } = vi.hoisted(() => {
   const listeners = new Set<(event: AiStreamEvent) => void>();

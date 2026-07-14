@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { skillsForTarget } from '../../shared/skills';
-import type { ConversationDraft } from '../chat/draftState';
-import type { ContextStrategy, ReadingSkillType, ReadingTarget } from '../../shared/types';
+import { skillsForTarget } from '../../../shared/skills';
+import type { ConversationDraft } from './draftState';
+import type { ContextStrategy, ReadingSkillType, ReadingTarget } from '../../../shared/types';
 import styles from './TargetPicker.module.css';
 
 interface TargetPickerProps {

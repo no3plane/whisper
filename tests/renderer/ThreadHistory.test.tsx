@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ThreadHistory } from '../../src/renderer/components/ThreadHistory';
+import { ThreadHistory } from '../../src/renderer/features/conversation/ThreadHistory';
 import type { ReadingThread } from '../../src/shared/types';
 
 afterEach(cleanup);

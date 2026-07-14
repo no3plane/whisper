@@ -1,9 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { RightAiPanel } from '../../src/renderer/components/RightAiPanel';
-import { createBookDraft } from '../../src/renderer/chat/draftState';
+import { RightAiPanel } from '../../src/renderer/features/conversation/RightAiPanel';
+import { createBookDraft } from '../../src/renderer/features/conversation/draftState';
 import type { MessageReference, ReadingThread, ThreadMessage } from '../../src/shared/types';
-import styles from '../../src/renderer/components/RightAiPanel.module.css';
+import styles from '../../src/renderer/features/conversation/RightAiPanel.module.css';
 
 afterEach(cleanup);
 

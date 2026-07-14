@@ -4,7 +4,7 @@ import {
   breadcrumbsForSelection,
   captureSelection,
   locateSnapshot,
-} from '../../src/renderer/selection/selectionSnapshot';
+} from '../../src/renderer/features/reading-selection/selectionSnapshot';
 
 const chapters: Chapter[] = [
   {

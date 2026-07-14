@@ -6,7 +6,7 @@ import {
   replaceDraftFromSelection,
   selectTarget,
   validateDraft,
-} from '../../src/renderer/chat/draftState';
+} from '../../src/renderer/features/conversation/draftState';
 
 const selection: ReadingTarget = {
   type: 'selection',

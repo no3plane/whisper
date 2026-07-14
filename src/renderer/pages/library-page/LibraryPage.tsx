@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { Book } from '../../shared/types';
-import { whisper } from '../api/whisper';
+import type { Book } from '../../../shared/types';
+import { whisper } from '../../api/whisper';
 import styles from './LibraryPage.module.css';
 
 interface LibraryPageProps {
