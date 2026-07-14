@@ -10,7 +10,9 @@ export class SettingsService {
     const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(SETTINGS_KEY) as
       | { value: string }
       | undefined;
-    if (!row) return null;
+    if (!row) {
+      return null;
+    }
     return JSON.parse(row.value) as AISettings;
   }
 

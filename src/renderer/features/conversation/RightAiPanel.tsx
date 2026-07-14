@@ -71,7 +71,9 @@ export function RightAiPanel({ conversation, draft, onLocate }: RightAiPanelProp
               ?.messages.find(
                 (message) => message.role === 'assistant' && message.status === 'failed',
               );
-            if (failed) void commands.retryMessage(threadId, failed.id);
+            if (failed) {
+              void commands.retryMessage(threadId, failed.id);
+            }
           }}
           retryableThreadIds={
             new Set(

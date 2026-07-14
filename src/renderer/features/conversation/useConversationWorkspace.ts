@@ -43,7 +43,9 @@ export function useConversationWorkspace(bookId: string, onError: (message: stri
     void whisper.threads
       .listWithMessagesByBook(bookId)
       .then((history) => {
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         dispatch({
           type: 'initialized',
           threads: history.threads,
@@ -53,7 +55,9 @@ export function useConversationWorkspace(bookId: string, onError: (message: stri
         initialized.current = true;
       })
       .catch((reason) => {
-        if (!cancelled) onError(messageOf(reason));
+        if (!cancelled) {
+          onError(messageOf(reason));
+        }
       });
     return () => {
       cancelled = true;
@@ -61,26 +65,31 @@ export function useConversationWorkspace(bookId: string, onError: (message: stri
   }, [bookId, onError]);
 
   useEffect(() => {
-    if (initialized.current)
+    if (initialized.current) {
       localStorage.setItem(openThreadsKey(bookId), JSON.stringify(state.openThreadIds));
+    }
   }, [bookId, state.openThreadIds]);
 
   useEffect(
     () =>
       whisper.ai.onStream((event) => {
         const current = stateRef.current;
-        if ((event.type === 'started' || event.type === 'done') && event.thread.bookId !== bookId)
+        if ((event.type === 'started' || event.type === 'done') && event.thread.bookId !== bookId) {
           return;
+        }
         if (
           (event.type === 'chunk' || event.type === 'error') &&
           !current.threads.some((item) => item.thread.id === event.threadId)
-        )
+        ) {
           return;
+        }
         const isNew =
           event.type === 'started' &&
           !current.threads.some((item) => item.thread.id === event.thread.id);
         dispatch({ type: 'streamReceived', event });
-        if (!isNew) return;
+        if (!isNew) {
+          return;
+        }
         dispatch({ type: 'threadOpened', threadId: event.thread.id });
         void whisper.books
           .setActiveThread({ bookId: event.thread.bookId, threadId: event.thread.id })
@@ -120,8 +129,9 @@ export function useConversationWorkspace(bookId: string, onError: (message: stri
         current.activeView?.type === 'thread' &&
         current.activeView.threadId === threadId &&
         neighbor
-      )
+      ) {
         void whisper.books.setActiveThread({ bookId, threadId: neighbor }).catch(() => undefined);
+      }
     },
     [bookId],
   );
@@ -131,7 +141,9 @@ export function useConversationWorkspace(bookId: string, onError: (message: stri
       await command();
     } catch (reason) {
       onError(messageOf(reason));
-      if (rethrow) throw reason;
+      if (rethrow) {
+        throw reason;
+      }
     }
   }
 
@@ -173,7 +185,9 @@ function openThreadsKey(bookId: string) {
 function readOpenThreads(bookId: string): string[] | null {
   try {
     const raw = localStorage.getItem(openThreadsKey(bookId));
-    if (raw === null) return null;
+    if (raw === null) {
+      return null;
+    }
     const value = JSON.parse(raw);
     return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
   } catch {

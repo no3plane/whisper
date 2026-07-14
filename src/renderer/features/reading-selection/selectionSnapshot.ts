@@ -20,7 +20,9 @@ function pointAt(root: HTMLElement, offset: number): { node: Node; offset: numbe
   while ((node = walker.nextNode())) {
     last = node;
     const length = node.textContent?.length ?? 0;
-    if (remaining <= length) return { node, offset: remaining };
+    if (remaining <= length) {
+      return { node, offset: remaining };
+    }
     remaining -= length;
   }
   return remaining === 0 && last ? { node: last, offset: last.textContent?.length ?? 0 } : null;
@@ -57,14 +59,20 @@ export function captureSelection(
   chapters: Chapter[],
   passages: Passage[],
 ): ReadingTarget | null {
-  if (!selection.rangeCount || selection.isCollapsed) return null;
+  if (!selection.rangeCount || selection.isCollapsed) {
+    return null;
+  }
   const range = selection.getRangeAt(0);
   const startElement = passageElement(range.startContainer);
   const endElement = passageElement(range.endContainer);
-  if (!startElement || !endElement) return null;
+  if (!startElement || !endElement) {
+    return null;
+  }
   const startPassageId = startElement.dataset.passageId;
   const endPassageId = endElement.dataset.passageId;
-  if (!startPassageId || !endPassageId) return null;
+  if (!startPassageId || !endPassageId) {
+    return null;
+  }
   const breadcrumb = breadcrumbsForSelection(startPassageId, endPassageId, chapters, passages);
   return {
     type: 'selection',
@@ -79,11 +87,15 @@ export function captureSelection(
 }
 
 export function locateSnapshot(snapshot: ReadingTarget, root: ParentNode): Range | null {
-  if (!snapshot.startPassageId || !snapshot.endPassageId) return null;
+  if (!snapshot.startPassageId || !snapshot.endPassageId) {
+    return null;
+  }
   const elements = [...root.querySelectorAll<HTMLElement>('[data-passage-id]')];
   const start = elements.find((element) => element.dataset.passageId === snapshot.startPassageId);
   const end = elements.find((element) => element.dataset.passageId === snapshot.endPassageId);
-  if (!start) return null;
+  if (!start) {
+    return null;
+  }
 
   if (end && snapshot.startOffset != null && snapshot.endOffset != null) {
     const startPoint = pointAt(start, snapshot.startOffset);
@@ -92,7 +104,9 @@ export function locateSnapshot(snapshot: ReadingTarget, root: ParentNode): Range
       const exact = document.createRange();
       exact.setStart(startPoint.node, startPoint.offset);
       exact.setEnd(endPoint.node, endPoint.offset);
-      if (!snapshot.selectedText || exact.toString() === snapshot.selectedText) return exact;
+      if (!snapshot.selectedText || exact.toString() === snapshot.selectedText) {
+        return exact;
+      }
     }
   }
 

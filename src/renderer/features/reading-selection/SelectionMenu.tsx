@@ -15,7 +15,9 @@ export function SelectionMenu({
   onStartConversation = () => undefined,
   onReference = () => undefined,
 }: SelectionMenuProps) {
-  if (!selectedText.trim()) return null;
+  if (!selectedText.trim()) {
+    return null;
+  }
 
   return (
     <div className={styles.menu}>

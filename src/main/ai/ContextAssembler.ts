@@ -89,7 +89,9 @@ function compressedKnowledge(
       const chapterBlock = `${heading}\n${chapterBlocks.join('\n')}`;
       blocks.push(chapterBlock);
     }
-    if (truncated) break;
+    if (truncated) {
+      break;
+    }
   }
   return { text: blocks.join('\n\n'), coveredPassageIds };
 }
@@ -128,7 +130,9 @@ function buildBookKnowledge(
 function passageRange(input: ReadingActionContextInput) {
   const start = input.passages.findIndex((passage) => passage.id === input.target.startPassageId);
   const end = input.passages.findIndex((passage) => passage.id === input.target.endPassageId);
-  if (start < 0 || end < 0) return [];
+  if (start < 0 || end < 0) {
+    return [];
+  }
   return input.passages.slice(Math.min(start, end), Math.max(start, end) + 1);
 }
 
@@ -137,17 +141,23 @@ function buildTargetSupplement(
   coveredIds: Set<string>,
   strategy: ContextStrategy,
 ) {
-  if (input.target.type === 'book') return '';
+  if (input.target.type === 'book') {
+    return '';
+  }
 
   const range = passageRange(input);
   const missing = range.filter((passage) => !coveredIds.has(passage.id));
   if (input.target.type === 'chapter') {
-    if (missing.length === 0) return '';
+    if (missing.length === 0) {
+      return '';
+    }
     return `解读目标补充：\n${missing.map((passage) => `[${passage.id}] ${passage.text}`).join('\n\n')}`;
   }
 
   // 压缩全书只提供稀疏采样；选区任务仍需显式给出精确选区及相邻原文。
-  if (strategy !== 'compressed_book' && missing.length === 0) return '';
+  if (strategy !== 'compressed_book' && missing.length === 0) {
+    return '';
+  }
   if (range.length === 0) {
     return `解读目标补充：\n精确选区：${input.target.selectedText}`;
   }
@@ -174,8 +184,12 @@ function buildTargetSupplement(
 
 function targetDescription(target: ReadingTarget) {
   const path = target.breadcrumb.map((crumb) => crumb.title).join(' > ');
-  if (target.type === 'book') return '整本书';
-  if (target.type === 'chapter') return `章节：${path || target.chapterId || '未知章节'}`;
+  if (target.type === 'book') {
+    return '整本书';
+  }
+  if (target.type === 'chapter') {
+    return `章节：${path || target.chapterId || '未知章节'}`;
+  }
   return [`框选内容：${target.selectedText}`, path ? `路径：${path}` : '']
     .filter(Boolean)
     .join('\n');
@@ -229,8 +243,9 @@ export class ContextAssembler {
       '原书始终是主要阅读对象；回答必须结合提供的全书背景，并在不确定时明确说明。',
       '优先使用中文回答。',
     ];
-    if (input.isInitialTurn && input.skillInstruction)
+    if (input.isInitialTurn && input.skillInstruction) {
       systemParts.push(`技能要求：\n${input.skillInstruction}`);
+    }
     const system = systemParts.join('\n');
     const messages = [contextMessage, ...history];
     const estimated = estimateTokens(system + messages.map((message) => message.content).join(''));

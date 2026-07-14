@@ -21,8 +21,12 @@ export function ThreadHistory({
   const sorted = useMemo(
     () =>
       [...threads].sort((left, right) => {
-        if (left.status === 'streaming' && right.status !== 'streaming') return -1;
-        if (right.status === 'streaming' && left.status !== 'streaming') return 1;
+        if (left.status === 'streaming' && right.status !== 'streaming') {
+          return -1;
+        }
+        if (right.status === 'streaming' && left.status !== 'streaming') {
+          return 1;
+        }
         return right.updatedAt.localeCompare(left.updatedAt);
       }),
     [threads],

@@ -54,7 +54,9 @@ export function applyAutomaticSelection(
   draft: ConversationDraft,
   selection: ReadingTarget,
 ): ConversationDraft {
-  if (draft.mode === 'manual') return draft;
+  if (draft.mode === 'manual') {
+    return draft;
+  }
   const skillType =
     draft.skillType && isSkillAllowed(selection.type, draft.skillType) ? draft.skillType : null;
   return { ...draft, target: selection, skillType };

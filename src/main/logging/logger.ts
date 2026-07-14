@@ -8,7 +8,9 @@ export { sanitizeForLog } from './sanitize';
 let initialized = false;
 
 export function initLogger() {
-  if (initialized) return;
+  if (initialized) {
+    return;
+  }
   initialized = true;
 
   log.initialize();

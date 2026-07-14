@@ -159,9 +159,12 @@ export class ReadingActionService {
       const messages = this.threads.listMessages(thread.id);
       const index = messages.findIndex((message) => message.id === input.messageId);
       const message = messages[index];
-      if (!message || message.threadId !== thread.id) throw new Error('重试消息不属于当前会话。');
-      if (message.role !== 'assistant' || message.status !== 'failed')
+      if (!message || message.threadId !== thread.id) {
+        throw new Error('重试消息不属于当前会话。');
+      }
+      if (message.role !== 'assistant' || message.status !== 'failed') {
         throw new Error('只能重试失败的 assistant message。');
+      }
       const assistant = this.threads.resetMessageForRetry(message.id);
       const history = messages.slice(0, index);
       return await this.run(
@@ -193,8 +196,9 @@ export class ReadingActionService {
       throw new Error('删除会话参数无效：threadId 必须是非空字符串。');
     }
     const thread = this.threads.getThread(input.threadId);
-    if (thread.status === 'streaming' || this.inFlight.has(thread.id))
+    if (thread.status === 'streaming' || this.inFlight.has(thread.id)) {
       throw new Error('生成中的会话不能删除。');
+    }
     this.threads.deleteThread(input.threadId);
   }
 
@@ -272,15 +276,22 @@ export class ReadingActionService {
   }
 
   private acquire(threadId: string) {
-    if (this.inFlight.has(threadId)) throw new Error('该会话正在生成回答，请稍后再试。');
+    if (this.inFlight.has(threadId)) {
+      throw new Error('该会话正在生成回答，请稍后再试。');
+    }
     this.inFlight.add(threadId);
   }
 
   private validateCreate(input: CreateConversationInput) {
-    if (!input || typeof input !== 'object') throw new Error('创建会话参数无效。');
-    if (typeof input.bookId !== 'string' || !input.bookId.trim())
+    if (!input || typeof input !== 'object') {
+      throw new Error('创建会话参数无效。');
+    }
+    if (typeof input.bookId !== 'string' || !input.bookId.trim()) {
       throw new Error('bookId 必须是非空字符串。');
-    if (typeof input.prompt !== 'string') throw new Error('prompt 必须是字符串。');
+    }
+    if (typeof input.prompt !== 'string') {
+      throw new Error('prompt 必须是字符串。');
+    }
     if (!['full_book', 'compressed_book', 'hybrid'].includes(input.contextStrategy)) {
       throw new Error('全书认知策略无效。');
     }
@@ -291,15 +302,21 @@ export class ReadingActionService {
     ) {
       throw new Error('技能类型无效。');
     }
-    if (!input.skillType && !input.prompt.trim()) throw new Error('请输入问题。');
-    if (input.skillType && skills[input.skillType].target !== input.target.type)
+    if (!input.skillType && !input.prompt.trim()) {
+      throw new Error('请输入问题。');
+    }
+    if (input.skillType && skills[input.skillType].target !== input.target.type) {
       throw new Error('所选技能不适用于当前解读目标。');
+    }
   }
 
   private validateTarget(target: CreateConversationInput['target']) {
-    if (!target || typeof target !== 'object') throw new Error('解读目标无效。');
-    if (!['book', 'chapter', 'selection'].includes(target.type))
+    if (!target || typeof target !== 'object') {
+      throw new Error('解读目标无效。');
+    }
+    if (!['book', 'chapter', 'selection'].includes(target.type)) {
       throw new Error('解读目标类型无效。');
+    }
     const nullableString = (value: unknown) => value === null || typeof value === 'string';
     const nullableNumber = (value: unknown) => value === null || typeof value === 'number';
     const validBreadcrumb =
@@ -334,13 +351,21 @@ export class ReadingActionService {
   }
 
   private validateFollowUp(input: FollowUpInput) {
-    if (!input || typeof input !== 'object') throw new Error('追问参数无效。');
-    if (typeof input.threadId !== 'string' || !input.threadId.trim())
+    if (!input || typeof input !== 'object') {
+      throw new Error('追问参数无效。');
+    }
+    if (typeof input.threadId !== 'string' || !input.threadId.trim()) {
       throw new Error('threadId 必须是非空字符串。');
-    if (typeof input.question !== 'string') throw new Error('question 必须是字符串。');
-    if (!input.question.trim()) throw new Error('请输入追问内容。');
-    if (input.reference !== undefined && input.reference !== null)
+    }
+    if (typeof input.question !== 'string') {
+      throw new Error('question 必须是字符串。');
+    }
+    if (!input.question.trim()) {
+      throw new Error('请输入追问内容。');
+    }
+    if (input.reference !== undefined && input.reference !== null) {
       this.validateReference(input.reference);
+    }
   }
 
   private validateReference(reference: NonNullable<FollowUpInput['reference']>) {
@@ -362,20 +387,28 @@ export class ReadingActionService {
   }
 
   private validateRetry(input: RetryMessageInput) {
-    if (!input || typeof input !== 'object') throw new Error('重试参数无效。');
-    if (typeof input.threadId !== 'string' || !input.threadId.trim())
+    if (!input || typeof input !== 'object') {
+      throw new Error('重试参数无效。');
+    }
+    if (typeof input.threadId !== 'string' || !input.threadId.trim()) {
       throw new Error('threadId 必须是非空字符串。');
-    if (typeof input.messageId !== 'string' || !input.messageId.trim())
+    }
+    if (typeof input.messageId !== 'string' || !input.messageId.trim()) {
       throw new Error('messageId 必须是非空字符串。');
+    }
   }
 
   private emit(window: BrowserWindow, event: AiStreamEvent) {
-    if (!window.isDestroyed()) window.webContents.send(ipcChannels.aiStream, event);
+    if (!window.isDestroyed()) {
+      window.webContents.send(ipcChannels.aiStream, event);
+    }
   }
 
   private requireSettings() {
     const value = this.settings.getAISettings();
-    if (!value) throw new Error('请先在设置页填写模型配置。');
+    if (!value) {
+      throw new Error('请先在设置页填写模型配置。');
+    }
     return value;
   }
 }

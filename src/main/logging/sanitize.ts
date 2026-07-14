@@ -7,8 +7,12 @@ export function sanitizeForLog(value: unknown, seen = new WeakSet<object>()): un
   if (typeof value === 'string') {
     return value.replace(/Bearer\s+[^\s,"'}]+/gi, 'Bearer ***').replace(secretInText, '$1***');
   }
-  if (value === null || typeof value !== 'object') return value;
-  if (seen.has(value)) return '[Circular]';
+  if (value === null || typeof value !== 'object') {
+    return value;
+  }
+  if (seen.has(value)) {
+    return '[Circular]';
+  }
   seen.add(value);
   if (value instanceof Error) {
     return {
@@ -17,7 +21,9 @@ export function sanitizeForLog(value: unknown, seen = new WeakSet<object>()): un
       stack: sanitizeForLog(value.stack, seen),
     };
   }
-  if (Array.isArray(value)) return value.map((item) => sanitizeForLog(item, seen));
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeForLog(item, seen));
+  }
   return Object.fromEntries(
     Object.entries(value).map(([key, item]) => [
       key,

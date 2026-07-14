@@ -27,8 +27,12 @@ export function TargetPicker({
   const [skillCleared, setSkillCleared] = useState(false);
 
   useEffect(() => {
-    if (previousSkill.current && !draft.skillType) setSkillCleared(true);
-    if (draft.skillType) setSkillCleared(false);
+    if (previousSkill.current && !draft.skillType) {
+      setSkillCleared(true);
+    }
+    if (draft.skillType) {
+      setSkillCleared(false);
+    }
     previousSkill.current = draft.skillType;
   }, [draft.skillType]);
 

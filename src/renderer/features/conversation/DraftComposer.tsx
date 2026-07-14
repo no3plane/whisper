@@ -16,7 +16,9 @@ export function DraftComposer({ draft, onUpdate, onSelectTarget, onCreate }: Dra
   const validation = validateDraft(draft);
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!validation.valid) return;
+    if (!validation.valid) {
+      return;
+    }
     await onCreate({
       bookId: draft.bookId,
       target: draft.target,

@@ -53,7 +53,9 @@ function setup(providerResult: 'success' | 'failure' = 'success') {
     },
     getThread(id: string) {
       const item = threads.find((thread) => thread.id === id);
-      if (!item) throw new Error(`找不到 thread：${id}`);
+      if (!item) {
+        throw new Error(`找不到 thread：${id}`);
+      }
       return item;
     },
     addMessage(input: any) {
@@ -99,19 +101,25 @@ function setup(providerResult: 'success' | 'failure' = 'success') {
     },
     resetMessageForRetry(id: string) {
       const message = messages.find((item) => item.id === id)!;
-      if (message.role !== 'assistant') throw new Error('只能重试 assistant message');
+      if (message.role !== 'assistant') {
+        throw new Error('只能重试 assistant message');
+      }
       Object.assign(message, { content: '', status: 'streaming', error: null });
       return message;
     },
     deleteThread(id: string) {
       const index = threads.findIndex((thread) => thread.id === id);
-      if (index < 0) throw new Error('missing');
+      if (index < 0) {
+        throw new Error('missing');
+      }
       threads.splice(index, 1);
     },
   };
   const provider = {
     async streamGenerate(_settings: any, _context: any, handlers: any) {
-      if (providerResult === 'failure') throw new Error('网络错误');
+      if (providerResult === 'failure') {
+        throw new Error('网络错误');
+      }
       handlers.onChunk('回答');
       return { text: '回答', usage: 3 };
     },

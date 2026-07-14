@@ -141,7 +141,9 @@ export function registerIpc(services: IpcServices) {
       ipcInputSchemas.createConversation,
       (event, input: CreateConversationInput) => {
         const window = senderWindow(event);
-        if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
+        if (!window) {
+          throw new Error('找不到当前窗口，无法启动流式回答。');
+        }
         return services.readingActions.createConversation(input, window);
       },
     ),
@@ -151,7 +153,9 @@ export function registerIpc(services: IpcServices) {
     ipcChannels.aiRetry,
     validated(ipcChannels.aiRetry, ipcInputSchemas.retry, (event, input: RetryMessageInput) => {
       const window = senderWindow(event);
-      if (!window) throw new Error('找不到当前窗口，无法重试回答。');
+      if (!window) {
+        throw new Error('找不到当前窗口，无法重试回答。');
+      }
       return services.readingActions.retry(input, window);
     }),
   );
@@ -160,7 +164,9 @@ export function registerIpc(services: IpcServices) {
     ipcChannels.aiFollowUp,
     validated(ipcChannels.aiFollowUp, ipcInputSchemas.followUp, (event, input: FollowUpInput) => {
       const window = senderWindow(event);
-      if (!window) throw new Error('找不到当前窗口，无法启动流式回答。');
+      if (!window) {
+        throw new Error('找不到当前窗口，无法启动流式回答。');
+      }
       return services.readingActions.followUp(input, window);
     }),
   );

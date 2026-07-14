@@ -12,7 +12,9 @@ export function useSourceLocator(
   const highlightedRange = useRef<Range | null>(null);
 
   const clear = useCallback(() => {
-    if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    if (highlightTimer.current) {
+      clearTimeout(highlightTimer.current);
+    }
     highlightTimer.current = null;
     highlightedPassage.current?.classList.remove(temporaryHighlightClass);
     highlightedPassage.current = null;
@@ -22,8 +24,9 @@ export function useSourceLocator(
       createdRange &&
       browserSelection?.rangeCount === 1 &&
       rangesEqual(browserSelection.getRangeAt(0), createdRange)
-    )
+    ) {
       browserSelection.removeAllRanges();
+    }
     highlightedRange.current = null;
   }, [temporaryHighlightClass]);
 
@@ -33,7 +36,9 @@ export function useSourceLocator(
     (snapshot: ReadingTarget | MessageReference) => {
       clear();
       const article = articleRef.current;
-      if (!article) return;
+      if (!article) {
+        return;
+      }
       const range = locateSnapshot(snapshot as ReadingTarget, article);
       const passage = snapshot.startPassageId
         ? ([...article.querySelectorAll<HTMLElement>('[data-passage-id]')].find(

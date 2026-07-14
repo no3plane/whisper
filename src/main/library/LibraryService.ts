@@ -384,6 +384,8 @@ export class LibraryService {
     const result = this.db
       .prepare('UPDATE books SET default_context_strategy = ?, updated_at = ? WHERE id = ?')
       .run(strategy, new Date().toISOString(), bookId);
-    if (result.changes === 0) throw new Error(`Book not found: ${bookId}`);
+    if (result.changes === 0) {
+      throw new Error(`Book not found: ${bookId}`);
+    }
   }
 }

@@ -93,7 +93,9 @@ function parseJsonOr<T>(
   fallback: T,
   isValid: (parsed: unknown) => boolean,
 ): T {
-  if (!value) return fallback;
+  if (!value) {
+    return fallback;
+  }
   try {
     const parsed: unknown = JSON.parse(value);
     return isValid(parsed) ? (parsed as T) : fallback;
@@ -333,7 +335,9 @@ export class ThreadStore {
     const existing = this.db
       .prepare('SELECT thread_id FROM thread_messages WHERE id = ?')
       .get(messageId) as { thread_id: string } | undefined;
-    if (!existing) throw new Error(`找不到 message：${messageId}`);
+    if (!existing) {
+      throw new Error(`找不到 message：${messageId}`);
+    }
     this.db.transaction(() => {
       this.db
         .prepare("UPDATE thread_messages SET status = 'failed', error = ? WHERE id = ?")
@@ -355,8 +359,12 @@ export class ThreadStore {
     const existing = this.db
       .prepare('SELECT thread_id, role FROM thread_messages WHERE id = ?')
       .get(messageId) as { thread_id: string; role: ThreadMessage['role'] } | undefined;
-    if (!existing) throw new Error(`找不到 message：${messageId}`);
-    if (existing.role !== 'assistant') throw new Error('只能重试 assistant message');
+    if (!existing) {
+      throw new Error(`找不到 message：${messageId}`);
+    }
+    if (existing.role !== 'assistant') {
+      throw new Error('只能重试 assistant message');
+    }
     this.db.transaction(() => {
       this.db
         .prepare(

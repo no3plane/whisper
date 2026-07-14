@@ -20,7 +20,9 @@ export function SettingsPanel() {
     void whisper.settings
       .get()
       .then((saved) => {
-        if (saved) setSettings(saved);
+        if (saved) {
+          setSettings(saved);
+        }
       })
       .catch((reason) => setError(messageOf(reason)));
   }, []);

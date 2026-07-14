@@ -31,20 +31,28 @@ export function ThreadChat({
   const canSend = question.trim().length > 0 && !isRunning && !isSubmitting;
 
   useEffect(() => {
-    if (!stickToBottomRef.current) return;
+    if (!stickToBottomRef.current) {
+      return;
+    }
     const viewport = viewportRef.current;
-    if (viewport) viewport.scrollTo({ top: viewport.scrollHeight });
+    if (viewport) {
+      viewport.scrollTo({ top: viewport.scrollHeight });
+    }
   }, [item.messages, item.thread.status]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const nextQuestion = question.trim();
-    if (!nextQuestion || isRunning || isSubmitting) return;
+    if (!nextQuestion || isRunning || isSubmitting) {
+      return;
+    }
     setIsSubmitting(true);
     try {
       await onFollowUp(item.thread.id, nextQuestion, pendingReference);
       setQuestion('');
-      if (pendingReference) onClearReference();
+      if (pendingReference) {
+        onClearReference();
+      }
     } catch {
       // The conversation controller reports the error; keep the draft available for retry.
     } finally {
@@ -53,14 +61,18 @@ export function ThreadChat({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
     event.preventDefault();
     event.currentTarget.form?.requestSubmit();
   }
 
   function handleScroll() {
     const viewport = viewportRef.current;
-    if (!viewport) return;
+    if (!viewport) {
+      return;
+    }
     stickToBottomRef.current =
       viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight <= 48;
   }

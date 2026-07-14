@@ -9,7 +9,9 @@ function fail(message) {
 }
 
 function walk(directory) {
-  if (!fs.existsSync(directory)) return [];
+  if (!fs.existsSync(directory)) {
+    return [];
+  }
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const target = path.join(directory, entry.name);
     return entry.isDirectory() ? walk(target) : [target];
@@ -29,7 +31,9 @@ const requiredFiles = [
 ];
 
 for (const file of requiredFiles) {
-  if (!fs.existsSync(path.join(root, file))) fail(`缺少 Harness 必需文件：${file}`);
+  if (!fs.existsSync(path.join(root, file))) {
+    fail(`缺少 Harness 必需文件：${file}`);
+  }
 }
 
 const sourceFiles = walk(path.join(root, 'src')).filter((file) => /\.(ts|tsx)$/.test(file));
@@ -44,7 +48,9 @@ for (const directory of legacyRendererDirectories) {
 
 for (const parent of ['src/renderer/pages', 'src/renderer/features']) {
   const directory = path.join(root, parent);
-  if (!fs.existsSync(directory)) continue;
+  if (!fs.existsSync(directory)) {
+    continue;
+  }
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     if (entry.isDirectory() && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.name)) {
       fail(`${parent}/${entry.name}：页面和 feature 目录必须使用 kebab-case。`);
@@ -87,7 +93,9 @@ for (const file of sourceFiles) {
   if (name.startsWith('src/renderer/features/') || name.startsWith('src/renderer/pages/')) {
     for (const match of content.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
       const specifier = match[1];
-      if (!specifier.startsWith('.')) continue;
+      if (!specifier.startsWith('.')) {
+        continue;
+      }
       const target = relative(path.resolve(path.dirname(file), specifier));
 
       if (name.startsWith('src/renderer/features/') && target.startsWith('src/renderer/pages/')) {
@@ -97,7 +105,9 @@ for (const file of sourceFiles) {
       if (name.startsWith('src/renderer/pages/') && target.startsWith('src/renderer/pages/')) {
         const sourcePage = name.split('/')[3];
         const targetPage = target.split('/')[3];
-        if (sourcePage !== targetPage) fail(`${name}：page 不得依赖其他 page（${specifier}）。`);
+        if (sourcePage !== targetPage) {
+          fail(`${name}：page 不得依赖其他 page（${specifier}）。`);
+        }
       }
     }
   }
@@ -132,15 +142,21 @@ for (const file of markdownFiles) {
   const content = fs.readFileSync(file, 'utf8');
   for (const match of content.matchAll(/\[[^\]]+\]\((?!https?:|mailto:|#)([^)]+)\)/g)) {
     const raw = match[1].split('#')[0];
-    if (!raw || raw.startsWith('/')) continue;
+    if (!raw || raw.startsWith('/')) {
+      continue;
+    }
     const target = path.resolve(path.dirname(file), decodeURIComponent(raw));
-    if (!fs.existsSync(target)) fail(`${relative(file)}：本地链接不存在：${match[1]}`);
+    if (!fs.existsSync(target)) {
+      fail(`${relative(file)}：本地链接不存在：${match[1]}`);
+    }
   }
 }
 
 if (failures.length > 0) {
   console.error('Harness 检查失败：');
-  for (const message of failures) console.error(`- ${message}`);
+  for (const message of failures) {
+    console.error(`- ${message}`);
+  }
   process.exit(1);
 }
 

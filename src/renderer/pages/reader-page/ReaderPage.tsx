@@ -36,11 +36,15 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     void (async () => {
       try {
         const doc = await whisper.books.open(bookId);
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
         setDocument(doc);
         setDraft(createBookDraft(bookId, doc.book.defaultContextStrategy));
       } catch (reason) {
-        if (!cancelled) setError(messageOf(reason));
+        if (!cancelled) {
+          setError(messageOf(reason));
+        }
       }
     })();
     return () => {
@@ -49,25 +53,36 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   }, [bookId]);
 
   function openDraft() {
-    if (document) setDraft(createBookDraft(bookId, document.book.defaultContextStrategy));
+    if (document) {
+      setDraft(createBookDraft(bookId, document.book.defaultContextStrategy));
+    }
     conversation.commands.selectView({ type: 'draft' });
   }
   function updateSelection() {
-    if (!document) return;
+    if (!document) {
+      return;
+    }
     const selected = window.getSelection();
     const next = selected ? captureSelection(selected, document.chapters, document.passages) : null;
-    if (!next) return;
+    if (!next) {
+      return;
+    }
     setSelection(next);
-    if (activeView?.type === 'draft')
+    if (activeView?.type === 'draft') {
       setDraft((current) => (current ? applyAutomaticSelection(current, next) : current));
+    }
   }
   function startFromSelection() {
-    if (!selection || !document || !draft) return;
+    if (!selection || !document || !draft) {
+      return;
+    }
     setDraft(replaceDraftFromSelection(draft, selection, document.book.defaultContextStrategy));
     conversation.commands.selectView({ type: 'draft' });
   }
   function referenceSelection() {
-    if (!selection) return;
+    if (!selection) {
+      return;
+    }
     conversation.commands.setReference({
       selectedText: selection.selectedText,
       startPassageId: selection.startPassageId!,
@@ -80,10 +95,12 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   function locate(threadId: string, reference?: MessageReference | null) {
     const item = threads.find(({ thread }) => thread.id === threadId);
     const snapshot = reference ?? item?.thread.target;
-    if (snapshot) locateSource(snapshot);
+    if (snapshot) {
+      locateSource(snapshot);
+    }
   }
 
-  if (!document || !draft)
+  if (!document || !draft) {
     return (
       <main className={appStyles.shell}>
         {error ? (
@@ -96,6 +113,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         )}
       </main>
     );
+  }
   return (
     <section className={styles.layout}>
       <nav className={styles.leftNav}>
