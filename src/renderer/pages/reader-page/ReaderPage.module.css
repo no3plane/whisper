@@ -7,6 +7,8 @@
 }
 
 .leftNav {
+  --color-scrollbar-thumb: rgb(245 236 223 / 34%);
+  --color-scrollbar-thumb-hover: rgb(245 236 223 / 58%);
   box-sizing: border-box;
   overflow: auto;
   padding: var(--space-6) var(--space-4);
