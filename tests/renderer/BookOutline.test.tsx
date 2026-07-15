@@ -14,9 +14,9 @@ function chapter(id: string, parentChapterId: string | null, order: number): Cha
     title: id,
     level: order + 1,
     order,
-    startPassageId: `p-${id}`,
-    endPassageId: `p-${id}`,
-    summary: null,
+    headingBlockId: `p-${id}`,
+    sourceStart: order,
+    sourceEnd: order + 1,
   };
 }
 

@@ -10,7 +10,6 @@ import type {
   CreateConversationInput,
   DeleteThreadInput,
   FollowUpInput,
-  ImportBookInput,
   ImportBooksResult,
   ReadingThread,
   RetryMessageInput,
@@ -36,10 +35,6 @@ const whisper: WhisperApi = {
         ipcChannels.booksImportFiles,
         files.map((file) => webUtils.getPathForFile(file)),
       ) as Promise<ImportBooksResult>,
-    importMarkdown: (input: ImportBookInput) =>
-      ipcRenderer.invoke(ipcChannels.booksImportMarkdown, input) as Promise<Book>,
-    importEpub: (input: ImportBookInput) =>
-      ipcRenderer.invoke(ipcChannels.booksImportEpub, input) as Promise<Book>,
     list: () => ipcRenderer.invoke(ipcChannels.booksList) as Promise<Book[]>,
     open: (bookId: string) =>
       ipcRenderer.invoke(ipcChannels.booksOpen, bookId) as Promise<BookDocument>,
@@ -83,6 +78,10 @@ const whisper: WhisperApi = {
         ipcChannels.threadsListWithMessagesByBook,
         bookId,
       ) as Promise<BookThreadsPayload>,
+  },
+  shell: {
+    openExternal: (url: string) =>
+      ipcRenderer.invoke(ipcChannels.shellOpenExternal, url) as Promise<void>,
   },
 };
 

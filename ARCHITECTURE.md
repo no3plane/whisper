@@ -12,7 +12,7 @@ Preload（最小 API）
     │ Electron IPC
     ▼
 Main Process
-    ├── LibraryService / MarkdownParser / EpubParser
+    ├── LibraryService / shared Markdown analysis
     ├── ReadingActionService / AIProvider / ContextAssembler
     ├── ThreadStore / SettingsService
     └── SQLite / logger / filesystem
@@ -59,9 +59,10 @@ Renderer 目录使用 `kebab-case`，React 组件和对应 CSS Module 使用 `Pa
 ### 导入与阅读
 
 1. Renderer 请求选择并导入文件。
-2. Main Process 读取 Markdown/EPUB，解析章节与 passage。
-3. LibraryService 把统一书籍模型写入 SQLite。
-4. Renderer 按 book ID 获取书籍内容并渲染。
+2. Main Process 只接受 `.md`，把 Markdown 副本保存到本地书库。
+3. 原始 Markdown 是正文唯一事实来源；共享 mdast 分析按需派生章节和 block。
+4. Renderer 语义化渲染 Markdown，目录、选区锚点和阅读位置复用同一 block ID。
+5. AI 上下文从 Markdown block 派生，不持久化第二份 passage 正文。
 
 ### AI 会话
 
@@ -75,7 +76,7 @@ Renderer 目录使用 `kebab-case`，React 组件和对应 CSS Module 使用 `Pa
 
 - SQLite 数据只在主进程中读写。
 - schema 定义与连接管理分别集中在 `src/main/storage/schema.ts` 和 `database.ts`。
-- schema 变更必须说明已有数据的兼容策略，并以数据库回归测试证明。
+- schema 使用显式版本门禁；当前开发期破坏性版本不迁移旧库，也不自动删除数据库。
 - API key 属于敏感信息；日志只能记录脱敏后的设置。
 
 ## 验证策略

@@ -702,17 +702,22 @@ git commit -m "refactor: assemble ai context from markdown blocks"
 
 ```ts
 it('只复制 Markdown 同目录树内被引用的本地图片', () => {
+  const allowedImage = 'images/' + 'a.png';
+  const escapedImage = '..' + '/secret.png';
+  const remoteImage = 'https://' + 'x.test/a.png';
   const manifest = service.copyMarkdownResources({
     markdownPath: '/books/a/book.md',
     bookDir,
     root: parseMarkdown(
-      '![ok](images/a.png)\n![bad](../secret.png)\n![remote](https://x.test/a.png)',
+      [
+        markdownImage('ok', allowedImage),
+        markdownImage('bad', escapedImage),
+        markdownImage('remote', remoteImage),
+      ].join('\n'),
     ),
   });
   expect(manifest.entries).toHaveLength(1);
-  expect(manifest.blocked).toEqual(
-    expect.arrayContaining(['../secret.png', 'https://x.test/a.png']),
-  );
+  expect(manifest.blocked).toEqual(expect.arrayContaining([escapedImage, remoteImage]));
 });
 
 it.each(['javascript:alert(1)', 'file:///etc/passwd'])('阻止危险链接 %s', (url) => {

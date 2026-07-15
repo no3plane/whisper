@@ -64,7 +64,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
   const importButton = (
     <button
       className={styles.importButton}
-      title="支持 Markdown 和 EPUB，可多选"
+      title="支持 Markdown，可多选"
       onClick={() => fileInputRef.current?.click()}
       disabled={isImporting}
     >
@@ -79,7 +79,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
         ref={fileInputRef}
         className={styles.fileInput}
         type="file"
-        accept=".md,.markdown,.epub"
+        accept=".md"
         multiple
         tabIndex={-1}
         aria-hidden="true"
@@ -102,7 +102,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
       ) : books.length === 0 ? (
         <div className={styles.emptyState} role="region" aria-label="空书库">
           <h3>书房还是空的</h3>
-          <p>选择 Markdown 或 EPUB，把第一本书放进书房。</p>
+          <p>选择 Markdown，把第一本书放进书房。</p>
           {importButton}
         </div>
       ) : (
@@ -110,7 +110,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
           <button
             className={styles.addBookButton}
             aria-label="导入书籍"
-            title="支持 Markdown 和 EPUB，可多选"
+            title="支持 Markdown，可多选"
             onClick={() => fileInputRef.current?.click()}
             disabled={isImporting}
           >
@@ -125,9 +125,7 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
                 </span>
               </button>
               <strong>{book.title}</strong>
-              <span>
-                {book.author ?? '作者未知'} · {book.format.toUpperCase()}
-              </span>
+              <span>{book.author ?? '作者未知'} · Markdown</span>
             </article>
           ))}
         </div>

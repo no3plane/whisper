@@ -23,24 +23,16 @@ describe('IPC 输入 schema', () => {
     ).toThrow('messageId');
   });
 
-  it('兼容字符串和对象两种导入参数', () => {
-    expect(parseIpcInput('books.importMarkdown', ipcInputSchemas.importBook, '/tmp/a.md')).toBe(
-      '/tmp/a.md',
-    );
-    expect(
-      parseIpcInput('books.importMarkdown', ipcInputSchemas.importBook, { filePath: '/tmp/a.md' }),
-    ).toEqual({
-      filePath: '/tmp/a.md',
-    });
-  });
-
   it('批量导入只接受非空的本机路径数组', () => {
     expect(
       parseIpcInput('books.importFiles', ipcInputSchemas.importBookFiles, [
         '/tmp/a.md',
-        '/tmp/b.epub',
+        '/tmp/b.MD',
       ]),
-    ).toEqual(['/tmp/a.md', '/tmp/b.epub']);
+    ).toEqual(['/tmp/a.md', '/tmp/b.MD']);
+    expect(() =>
+      parseIpcInput('books.importFiles', ipcInputSchemas.importBookFiles, ['/tmp/b.txt']),
+    ).toThrow('仅支持 .md 文件');
     expect(() => parseIpcInput('books.importFiles', ipcInputSchemas.importBookFiles, [])).toThrow(
       'books.importFiles',
     );

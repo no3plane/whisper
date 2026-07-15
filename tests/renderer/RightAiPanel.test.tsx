@@ -28,19 +28,15 @@ afterAll(() => {
 const target = {
   type: 'book' as const,
   chapterId: null,
-  startPassageId: null,
-  endPassageId: null,
+  start: null,
+  end: null,
   selectedText: '',
-  startOffset: null,
-  endOffset: null,
   breadcrumb: [],
 };
 const reference: MessageReference = {
   selectedText: '另一段原文',
-  startPassageId: 'p2',
-  endPassageId: 'p2',
-  startOffset: 0,
-  endOffset: 5,
+  start: { blockId: 'p2', offset: 0 },
+  end: { blockId: 'p2', offset: 5 },
   breadcrumb: [{ chapterId: 'c1', title: '第一章' }],
 };
 

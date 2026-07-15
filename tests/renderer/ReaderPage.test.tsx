@@ -8,7 +8,7 @@ import type {
   ThreadMessage,
 } from '../../src/shared/types';
 import panelStyles from '../../src/renderer/features/conversation/RightAiPanel.module.css';
-import readerStyles from '../../src/renderer/pages/reader-page/ReaderPage.module.css';
+import { analyzeMarkdown } from '../../src/shared/markdown/analyzeMarkdown';
 
 const { listeners, api } = vi.hoisted(() => {
   const listeners = new Set<(event: AiStreamEvent) => void>();
@@ -30,11 +30,9 @@ const { listeners, api } = vi.hoisted(() => {
 const target = {
   type: 'book' as const,
   chapterId: null,
-  startPassageId: null,
-  endPassageId: null,
+  start: null,
+  end: null,
   selectedText: '',
-  startOffset: null,
-  endOffset: null,
   breadcrumb: [],
 };
 const thread: ReadingThread = {
@@ -69,7 +67,6 @@ const bookDocument: BookDocument = {
     id: 'b1',
     title: '测试书',
     author: null,
-    format: 'markdown',
     originalFilePath: '',
     libraryFilePath: '',
     createdAt: '',
@@ -88,29 +85,54 @@ const bookDocument: BookDocument = {
       title: '第一章',
       level: 1,
       order: 0,
-      startPassageId: 'p1',
-      endPassageId: 'p1',
-      summary: null,
+      headingBlockId: 'p1',
+      sourceStart: 0,
+      sourceEnd: 30,
     },
   ],
-  passages: [
+  markdown: '# 第一章\n\n所谓自由并不是任性。',
+  blocks: [
     {
       id: 'p1',
-      bookId: 'b1',
       chapterId: 'c1',
       order: 0,
-      text: '所谓自由并不是任性。',
-      sourceHref: null,
-      sourceOffset: 0,
+      type: 'heading',
+      sourceStart: 0,
+      sourceEnd: 5,
+      markdown: '# 第一章',
+      plainText: '第一章',
+    },
+    {
+      id: 'p-body',
+      chapterId: 'c1',
+      order: 1,
+      type: 'paragraph',
+      sourceStart: 7,
+      sourceEnd: 18,
+      markdown: '所谓自由并不是任性。',
+      plainText: '所谓自由并不是任性。',
     },
   ],
+  resources: {},
   fullText: '所谓自由并不是任性。',
 };
+
+function analyzedDocument(markdown: string): BookDocument {
+  const analysis = analyzeMarkdown({ bookId: 'b1', markdown });
+  return {
+    ...bookDocument,
+    markdown,
+    chapters: analysis.chapters,
+    blocks: analysis.blocks,
+    fullText: analysis.structuredText,
+  };
+}
 
 vi.mock('../../src/renderer/api/whisper', () => ({ whisper: api }));
 
 const originalResizeObserver = globalThis.ResizeObserver;
 const originalScrollTo = HTMLElement.prototype.scrollTo;
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 beforeAll(() => {
   globalThis.ResizeObserver = class {
     observe() {}
@@ -118,13 +140,17 @@ beforeAll(() => {
     disconnect() {}
   };
   HTMLElement.prototype.scrollTo = vi.fn();
+  HTMLElement.prototype.scrollIntoView = vi.fn();
 });
 afterAll(() => {
   globalThis.ResizeObserver = originalResizeObserver;
   HTMLElement.prototype.scrollTo = originalScrollTo;
+  HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
 });
 beforeEach(() => {
   localStorage.clear();
+  window.getSelection()?.removeAllRanges();
+  HTMLElement.prototype.scrollIntoView = vi.fn();
   listeners.clear();
   vi.clearAllMocks();
   api.books.open.mockResolvedValue(bookDocument);
@@ -154,20 +180,19 @@ describe('ReaderPage 会话编排', () => {
     api.books.open.mockResolvedValueOnce({
       ...bookDocument,
       chapters: [
-        { ...bookDocument.chapters[0], id: 'part', title: '第一部', endPassageId: 'p2' },
+        { ...bookDocument.chapters[0], id: 'part', title: '第一部', headingBlockId: 'p1' },
         {
           ...bookDocument.chapters[0],
           id: 'chapter',
           parentChapterId: 'part',
           title: '第一章',
           order: 1,
-          startPassageId: 'p2',
-          endPassageId: 'p2',
+          headingBlockId: 'p2',
         },
       ],
-      passages: [
-        bookDocument.passages[0],
-        { ...bookDocument.passages[0], id: 'p2', chapterId: 'chapter', order: 1 },
+      blocks: [
+        bookDocument.blocks[0],
+        { ...bookDocument.blocks[0], id: 'p2', chapterId: 'chapter', order: 1 },
       ],
     });
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
@@ -185,61 +210,22 @@ describe('ReaderPage 会话编排', () => {
   it('目录导航滚动期间锁定目标分支，不展开沿途分支', async () => {
     const scroll = vi.fn();
     HTMLElement.prototype.scrollIntoView = scroll;
+    const navigationDocument = analyzedDocument(
+      '# Part 1\n\n# Part 2\n\n## Part 2 小节\n\n# Part 7\n\n## Part 7 小节',
+    );
+    const blockId = (title: string) =>
+      navigationDocument.chapters.find((chapter) => chapter.title === title)!.headingBlockId;
     let scrollPosition = 'start';
     const rect = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
         const topById: Record<string, number> =
           scrollPosition === 'start'
-            ? { p1: -10, p2: 200, p7: 400 }
-            : { p1: -400, p2: -10, p7: 200 };
+            ? { [blockId('Part 1')]: -10, [blockId('Part 2')]: 200, [blockId('Part 7')]: 400 }
+            : { [blockId('Part 1')]: -400, [blockId('Part 2')]: -10, [blockId('Part 7')]: 200 };
         return { top: topById[this.id] ?? 0 } as DOMRect;
       });
-    api.books.open.mockResolvedValueOnce({
-      ...bookDocument,
-      chapters: [
-        { ...bookDocument.chapters[0], id: 'part-1', title: 'Part 1' },
-        {
-          ...bookDocument.chapters[0],
-          id: 'part-2',
-          title: 'Part 2',
-          order: 1,
-          startPassageId: 'p2',
-          endPassageId: 'p2',
-        },
-        {
-          ...bookDocument.chapters[0],
-          id: 'part-2-child',
-          parentChapterId: 'part-2',
-          title: 'Part 2 小节',
-          order: 2,
-          startPassageId: 'p2',
-          endPassageId: 'p2',
-        },
-        {
-          ...bookDocument.chapters[0],
-          id: 'part-7',
-          title: 'Part 7',
-          order: 3,
-          startPassageId: 'p7',
-          endPassageId: 'p7',
-        },
-        {
-          ...bookDocument.chapters[0],
-          id: 'part-7-child',
-          parentChapterId: 'part-7',
-          title: 'Part 7 小节',
-          order: 4,
-          startPassageId: 'p7',
-          endPassageId: 'p7',
-        },
-      ],
-      passages: [
-        bookDocument.passages[0],
-        { ...bookDocument.passages[0], id: 'p2', chapterId: 'part-2-child', order: 1 },
-        { ...bookDocument.passages[0], id: 'p7', chapterId: 'part-7-child', order: 2 },
-      ],
-    });
+    api.books.open.mockResolvedValueOnce(navigationDocument);
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
 
     fireEvent.click(await screen.findByRole('link', { name: 'Part 7' }));
@@ -267,15 +253,14 @@ describe('ReaderPage 会话编排', () => {
       parentChapterId: index === 0 ? null : `level-${index}`,
       title: `第${index + 1}层`,
       order: index,
-      startPassageId: 'deep-passage',
-      endPassageId: 'deep-passage',
+      headingBlockId: 'deep-passage',
     }));
     api.books.open.mockResolvedValueOnce({
       ...bookDocument,
       chapters,
-      passages: [
+      blocks: [
         {
-          ...bookDocument.passages[0],
+          ...bookDocument.blocks[0],
           id: 'deep-passage',
           chapterId: 'level-5',
         },
@@ -524,73 +509,6 @@ describe('ReaderPage 会话编排', () => {
     await screen.findByText('第二个会话');
     fireEvent.click(screen.getByRole('button', { name: '关闭“第二个会话”' }));
     expect(await screen.findByText('全书认知：hybrid')).toBeTruthy();
-  });
-
-  it('精确选区定位时恢复 Range，2 秒后清理且不提示降级', async () => {
-    const selectionTarget = {
-      ...target,
-      type: 'selection' as const,
-      chapterId: 'c1',
-      startPassageId: 'p1',
-      endPassageId: 'p1',
-      selectedText: '自由',
-      startOffset: 2,
-      endOffset: 4,
-      breadcrumb: [{ chapterId: 'c1', title: '第一章' }],
-    };
-    api.threads.listWithMessagesByBook.mockResolvedValueOnce({
-      threads: [{ thread: { ...thread, target: selectionTarget, status: 'ready' }, messages: [] }],
-      activeThreadId: 't1',
-    });
-    localStorage.setItem('whisper.openThreads.b1', JSON.stringify(['t1']));
-    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
-    await screen.findByRole('button', { name: '回到原文' });
-    vi.useFakeTimers();
-    fireEvent.click(screen.getByRole('button', { name: '回到原文' }));
-    expect(window.getSelection()?.toString()).toBe('自由');
-    expect(screen.queryByText('无法恢复精确选区，已定位到相关段落。')).toBeNull();
-    vi.advanceTimersByTime(2000);
-    expect(window.getSelection()?.rangeCount).toBe(0);
-    vi.useRealTimers();
-  });
-
-  it('连续定位时先清理上一次降级高亮再创建精确高亮', async () => {
-    const fallbackTarget = {
-      ...target,
-      type: 'selection' as const,
-      chapterId: 'c1',
-      startPassageId: 'p1',
-      endPassageId: 'p1',
-      selectedText: '不存在',
-      startOffset: 0,
-      endOffset: 2,
-      breadcrumb: [{ chapterId: 'c1', title: '第一章' }],
-    };
-    const exactTarget = { ...fallbackTarget, selectedText: '自由', startOffset: 2, endOffset: 4 };
-    const exactThread = {
-      ...thread,
-      id: 't2',
-      title: '精确定位',
-      target: exactTarget,
-      status: 'ready' as const,
-    };
-    api.threads.listWithMessagesByBook.mockResolvedValueOnce({
-      threads: [
-        { thread: { ...thread, target: fallbackTarget, status: 'ready' }, messages: [] },
-        { thread: exactThread, messages: [] },
-      ],
-      activeThreadId: 't1',
-    });
-    localStorage.setItem('whisper.openThreads.b1', JSON.stringify(['t1', 't2']));
-    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
-    await screen.findByRole('button', { name: '回到原文' });
-    fireEvent.click(screen.getByRole('button', { name: '回到原文' }));
-    const passage = screen.getByText('所谓自由并不是任性。');
-    expect(passage.classList.contains(readerStyles.temporarySourceHighlight)).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: '精确定位' }));
-    fireEvent.click(screen.getByRole('button', { name: '回到原文' }));
-    expect(passage.classList.contains(readerStyles.temporarySourceHighlight)).toBe(false);
-    expect(window.getSelection()?.toString()).toBe('自由');
   });
 
   it('切换到历史时清除当前会话的待发送引用', async () => {

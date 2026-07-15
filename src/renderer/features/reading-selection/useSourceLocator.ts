@@ -8,7 +8,7 @@ export function useSourceLocator(
   onNotice: (notice: string) => void,
 ) {
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const highlightedPassage = useRef<HTMLElement | null>(null);
+  const highlightedBlock = useRef<HTMLElement | null>(null);
   const highlightedRange = useRef<Range | null>(null);
 
   const clear = useCallback(() => {
@@ -16,8 +16,8 @@ export function useSourceLocator(
       clearTimeout(highlightTimer.current);
     }
     highlightTimer.current = null;
-    highlightedPassage.current?.classList.remove(temporaryHighlightClass);
-    highlightedPassage.current = null;
+    highlightedBlock.current?.classList.remove(temporaryHighlightClass);
+    highlightedBlock.current = null;
     const createdRange = highlightedRange.current;
     const browserSelection = window.getSelection();
     if (
@@ -40,18 +40,17 @@ export function useSourceLocator(
         return;
       }
       const range = locateSnapshot(snapshot as ReadingTarget, article);
-      const passage = snapshot.startPassageId
-        ? ([...article.querySelectorAll<HTMLElement>('[data-passage-id]')].find(
-            (element) => element.dataset.passageId === snapshot.startPassageId,
+      const block = snapshot.start
+        ? ([...article.querySelectorAll<HTMLElement>('[data-block-id]')].find(
+            (element) => element.dataset.blockId === snapshot.start?.blockId,
           ) ?? null)
-        : article.querySelector<HTMLElement>('[data-passage-id]');
+        : article.querySelector<HTMLElement>('[data-block-id]');
       const exact = Boolean(
         range && (!snapshot.selectedText || range.toString() === snapshot.selectedText),
       );
       const anchor = exact
-        ? (range!.startContainer.parentElement?.closest<HTMLElement>('[data-passage-id]') ??
-          passage)
-        : passage;
+        ? (range!.startContainer.parentElement?.closest<HTMLElement>('[data-block-id]') ?? block)
+        : block;
       if (!anchor) {
         onNotice('无法恢复原文位置。');
         return;
@@ -65,7 +64,7 @@ export function useSourceLocator(
         onNotice('');
       } else {
         anchor.classList.add(temporaryHighlightClass);
-        highlightedPassage.current = anchor;
+        highlightedBlock.current = anchor;
         onNotice('无法恢复精确选区，已定位到相关段落。');
       }
       highlightTimer.current = setTimeout(clear, 2000);

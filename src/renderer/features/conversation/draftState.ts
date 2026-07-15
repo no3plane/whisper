@@ -25,11 +25,9 @@ function bookTarget(): ReadingTarget {
   return {
     type: 'book',
     chapterId: null,
-    startPassageId: null,
-    endPassageId: null,
+    start: null,
+    end: null,
     selectedText: '',
-    startOffset: null,
-    endOffset: null,
     breadcrumb: [],
   };
 }

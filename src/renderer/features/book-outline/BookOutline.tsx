@@ -83,23 +83,17 @@ export function BookOutline({ model, activeChapterId, onNavigate }: BookOutlineP
           ) : (
             <span className={styles.togglePlaceholder} aria-hidden="true" />
           )}
-          {node.chapter.startPassageId ? (
-            <a
-              className={styles.title}
-              href={`#${node.chapter.startPassageId}`}
-              aria-current={isCurrent ? 'location' : undefined}
-              onClick={(event) => {
-                event.preventDefault();
-                onNavigate(node.chapter);
-              }}
-            >
-              {node.chapter.title}
-            </a>
-          ) : (
-            <span className={styles.title} aria-current={isCurrent ? 'location' : undefined}>
-              {node.chapter.title}
-            </span>
-          )}
+          <a
+            className={styles.title}
+            href={`#${node.chapter.headingBlockId}`}
+            aria-current={isCurrent ? 'location' : undefined}
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate(node.chapter);
+            }}
+          >
+            {node.chapter.title}
+          </a>
         </div>
         {isExpanded ? <ul className={styles.children}>{node.children.map(renderNode)}</ul> : null}
       </li>

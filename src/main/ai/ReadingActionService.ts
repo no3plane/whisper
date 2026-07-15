@@ -115,7 +115,7 @@ export class ReadingActionService {
           .listMessages(thread.id)
           .filter((message) => message.id !== assistant.id),
         chapters: document.chapters,
-        passages: document.passages,
+        blocks: document.blocks,
         contextWindow: aiSettings.contextWindow,
       }),
     );
@@ -222,7 +222,7 @@ export class ReadingActionService {
       threadMessages:
         history ?? this.threads.listMessages(thread.id).filter((item) => item.id !== assistant.id),
       chapters: document.chapters,
-      passages: document.passages,
+      blocks: document.blocks,
       contextWindow: aiSettings.contextWindow,
     });
   }
@@ -317,20 +317,22 @@ export class ReadingActionService {
     if (!['book', 'chapter', 'selection'].includes(target.type)) {
       throw new Error('解读目标类型无效。');
     }
-    const nullableString = (value: unknown) => value === null || typeof value === 'string';
-    const nullableNumber = (value: unknown) => value === null || typeof value === 'number';
+    const validAnchor = (value: unknown) =>
+      value === null ||
+      (typeof value === 'object' &&
+        value !== null &&
+        typeof (value as { blockId?: unknown }).blockId === 'string' &&
+        typeof (value as { offset?: unknown }).offset === 'number');
     const validBreadcrumb =
       Array.isArray(target.breadcrumb) &&
       target.breadcrumb.every(
         (crumb) => crumb && typeof crumb.chapterId === 'string' && typeof crumb.title === 'string',
       );
     if (
-      !nullableString(target.chapterId) ||
-      !nullableString(target.startPassageId) ||
-      !nullableString(target.endPassageId) ||
+      !(target.chapterId === null || typeof target.chapterId === 'string') ||
+      !validAnchor(target.start) ||
+      !validAnchor(target.end) ||
       typeof target.selectedText !== 'string' ||
-      !nullableNumber(target.startOffset) ||
-      !nullableNumber(target.endOffset) ||
       !validBreadcrumb
     ) {
       throw new Error('解读目标字段无效。');
@@ -340,13 +342,9 @@ export class ReadingActionService {
     }
     if (
       target.type === 'selection' &&
-      (!target.startPassageId?.trim() ||
-        !target.endPassageId?.trim() ||
-        !target.selectedText.trim() ||
-        target.startOffset === null ||
-        target.endOffset === null)
+      (!target.start?.blockId.trim() || !target.end?.blockId.trim() || !target.selectedText.trim())
     ) {
-      throw new Error('框选目标必须包含 passage、文本和偏移量。');
+      throw new Error('框选目标必须包含 block anchor 和文本。');
     }
   }
 
@@ -376,10 +374,10 @@ export class ReadingActionService {
       );
     if (
       typeof reference.selectedText !== 'string' ||
-      typeof reference.startPassageId !== 'string' ||
-      typeof reference.endPassageId !== 'string' ||
-      typeof reference.startOffset !== 'number' ||
-      typeof reference.endOffset !== 'number' ||
+      !reference.start?.blockId ||
+      !reference.end?.blockId ||
+      typeof reference.start.offset !== 'number' ||
+      typeof reference.end.offset !== 'number' ||
       !validBreadcrumb
     ) {
       throw new Error('引用字段无效。');

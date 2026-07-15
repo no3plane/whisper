@@ -1,30 +1,30 @@
 import { useEffect, useState, type RefObject } from 'react';
-import type { Passage } from '../../../shared/types';
+import type { MarkdownBlock } from '../../../shared/types';
 
-interface PassageIdentity {
+interface BlockIdentity {
   id: string;
   chapterId: string | null;
 }
 
 export function chapterAtReadingLine(
-  passages: PassageIdentity[],
+  blocks: BlockIdentity[],
   topById: (id: string) => number | null,
   lineY: number,
 ) {
   let low = 0;
-  let high = passages.length - 1;
-  let candidate = passages[0]?.chapterId ?? null;
+  let high = blocks.length - 1;
+  let candidate = blocks[0]?.chapterId ?? null;
   while (low <= high) {
     const middle = Math.floor((low + high) / 2);
-    const passage = passages[middle];
-    const top = topById(passage.id);
+    const block = blocks[middle];
+    const top = topById(block.id);
     if (top === null) {
-      return chapterAtReadingLineLinear(passages, topById, lineY);
+      return chapterAtReadingLineLinear(blocks, topById, lineY);
     }
     if (top > lineY) {
       high = middle - 1;
     } else {
-      candidate = passage.chapterId;
+      candidate = block.chapterId;
       low = middle + 1;
     }
   }
@@ -32,29 +32,29 @@ export function chapterAtReadingLine(
 }
 
 function chapterAtReadingLineLinear(
-  passages: PassageIdentity[],
+  blocks: BlockIdentity[],
   topById: (id: string) => number | null,
   lineY: number,
 ) {
-  let candidate = passages[0]?.chapterId ?? null;
-  for (const passage of passages) {
-    const top = topById(passage.id);
+  let candidate = blocks[0]?.chapterId ?? null;
+  for (const block of blocks) {
+    const top = topById(block.id);
     if (top === null) {
       continue;
     }
     if (top > lineY) {
       break;
     }
-    candidate = passage.chapterId;
+    candidate = block.chapterId;
   }
   return candidate;
 }
 
 export function useReadingPosition(
   containerRef: RefObject<HTMLElement | null>,
-  passages: Passage[],
+  blocks: MarkdownBlock[],
 ) {
-  const [chapterId, setChapterId] = useState<string | null>(passages[0]?.chapterId ?? null);
+  const [chapterId, setChapterId] = useState<string | null>(blocks[0]?.chapterId ?? null);
 
   useEffect(() => {
     const scrollContainer = containerRef.current;
@@ -67,7 +67,7 @@ export function useReadingPosition(
       const readingLine = containerRect.top + scrollContainer.clientHeight * 0.3;
       setChapterId(
         chapterAtReadingLine(
-          passages,
+          blocks,
           (id) => globalThis.document.getElementById(id)?.getBoundingClientRect().top ?? null,
           readingLine,
         ),
@@ -93,7 +93,7 @@ export function useReadingPosition(
         cancelAnimationFrame(resizeFrame);
       }
     };
-  }, [containerRef, passages]);
+  }, [blocks, containerRef]);
 
   return chapterId;
 }

@@ -2,7 +2,7 @@ import type {
   Chapter,
   ContextStrategy,
   MessageReference,
-  Passage,
+  MarkdownBlock,
   ReadingTarget,
 } from '../../shared/types';
 
@@ -21,13 +21,13 @@ interface ReadingActionContextInput {
   isInitialTurn: boolean;
   threadMessages: ThreadMessageLike[];
   chapters: Chapter[];
-  passages: Passage[];
+  blocks: MarkdownBlock[];
   contextWindow?: number;
 }
 
 interface BookKnowledge {
   text: string;
-  coveredPassageIds: string[];
+  coveredBlockIds: string[];
 }
 
 export interface AssembledMessage {
@@ -37,7 +37,7 @@ export interface AssembledMessage {
 export interface AssembledContext {
   system: string;
   messages: AssembledMessage[];
-  coveredPassageIds: string[];
+  coveredBlockIds: string[];
   requestedStrategy?: ContextStrategy;
   effectiveStrategy?: ContextStrategy;
   estimatedTokens?: number;
@@ -46,8 +46,14 @@ export interface AssembledContext {
 
 const estimateTokens = (value: string) => Math.ceil(value.length / 3);
 
-function passagesInChapter(input: ReadingActionContextInput, chapterId: string | null) {
-  return input.passages.filter((passage) => passage.chapterId === chapterId);
+function blocksInChapter(input: ReadingActionContextInput, chapterId: string | null) {
+  const chapter = input.chapters.find((item) => item.id === chapterId);
+  return chapter
+    ? input.blocks.filter(
+        (block) =>
+          block.sourceStart >= chapter.sourceStart && block.sourceStart < chapter.sourceEnd,
+      )
+    : [];
 }
 
 function compressedKnowledge(
@@ -55,45 +61,45 @@ function compressedKnowledge(
   excludedChapterId: string | null = null,
 ): BookKnowledge {
   if (input.chapters.length === 0) {
-    return { text: input.fullText.slice(0, 24000), coveredPassageIds: [] };
+    return { text: input.fullText.slice(0, 24000), coveredBlockIds: [] };
   }
 
   const includedChapters = input.chapters.filter((chapter) => chapter.id !== excludedChapterId);
   const blocks: string[] = [];
-  const coveredPassageIds: string[] = [];
+  const coveredBlockIds: string[] = [];
   let truncated = false;
   for (const chapter of includedChapters) {
-    const chapterPassages = passagesInChapter(input, chapter.id);
+    const chapterBlocks = blocksInChapter(input, chapter.id);
     const samples =
-      chapterPassages.length <= 4
-        ? chapterPassages
+      chapterBlocks.length <= 4
+        ? chapterBlocks
         : [
-            chapterPassages[0],
-            chapterPassages[Math.floor(chapterPassages.length / 2)],
-            chapterPassages[chapterPassages.length - 1],
+            chapterBlocks[0],
+            chapterBlocks[Math.floor(chapterBlocks.length / 2)],
+            chapterBlocks[chapterBlocks.length - 1],
           ];
     const heading = `## ${chapter.title}`;
-    const chapterBlocks: string[] = [];
-    for (const passage of samples) {
-      const block = `[${passage.id}] ${passage.text}`;
-      const candidateChapter = `${heading}\n${[...chapterBlocks, block].join('\n')}`;
+    const renderedBlocks: string[] = [];
+    for (const sample of samples) {
+      const block = `[${sample.id}] ${sample.markdown}`;
+      const candidateChapter = `${heading}\n${[...renderedBlocks, block].join('\n')}`;
       const candidateText = [...blocks, candidateChapter].join('\n\n');
       if (candidateText.length > 36000) {
         truncated = true;
         break;
       }
-      chapterBlocks.push(block);
-      coveredPassageIds.push(passage.id);
+      renderedBlocks.push(block);
+      coveredBlockIds.push(sample.id);
     }
-    if (chapterBlocks.length > 0) {
-      const chapterBlock = `${heading}\n${chapterBlocks.join('\n')}`;
+    if (renderedBlocks.length > 0) {
+      const chapterBlock = `${heading}\n${renderedBlocks.join('\n')}`;
       blocks.push(chapterBlock);
     }
     if (truncated) {
       break;
     }
   }
-  return { text: blocks.join('\n\n'), coveredPassageIds };
+  return { text: blocks.join('\n\n'), coveredBlockIds };
 }
 
 function buildBookKnowledge(
@@ -103,7 +109,7 @@ function buildBookKnowledge(
   if (strategy === 'full_book') {
     return {
       text: `完整书籍内容：\n${input.fullText}`,
-      coveredPassageIds: input.passages.map((passage) => passage.id),
+      coveredBlockIds: input.blocks.map((block) => block.id),
     };
   }
 
@@ -115,25 +121,25 @@ function buildBookKnowledge(
     return { ...compressed, text: `全书压缩表示：\n${compressed.text}` };
   }
 
-  const targetChapter = passagesInChapter(input, input.target.chapterId);
-  const covered = new Set(compressed.coveredPassageIds);
-  targetChapter.forEach((passage) => covered.add(passage.id));
-  const current = targetChapter.map((passage) => `[${passage.id}] ${passage.text}`).join('\n\n');
+  const targetChapter = blocksInChapter(input, input.target.chapterId);
+  const covered = new Set(compressed.coveredBlockIds);
+  targetChapter.forEach((block) => covered.add(block.id));
+  const current = targetChapter.map((block) => `[${block.id}] ${block.markdown}`).join('\n\n');
   return {
     text: [`全书压缩表示：\n${compressed.text}`, current ? `目标章节原文：\n${current}` : '']
       .filter(Boolean)
       .join('\n\n'),
-    coveredPassageIds: [...covered],
+    coveredBlockIds: [...covered],
   };
 }
 
-function passageRange(input: ReadingActionContextInput) {
-  const start = input.passages.findIndex((passage) => passage.id === input.target.startPassageId);
-  const end = input.passages.findIndex((passage) => passage.id === input.target.endPassageId);
+function blockRange(input: ReadingActionContextInput) {
+  const start = input.blocks.findIndex((block) => block.id === input.target.start?.blockId);
+  const end = input.blocks.findIndex((block) => block.id === input.target.end?.blockId);
   if (start < 0 || end < 0) {
     return [];
   }
-  return input.passages.slice(Math.min(start, end), Math.max(start, end) + 1);
+  return input.blocks.slice(Math.min(start, end), Math.max(start, end) + 1);
 }
 
 function buildTargetSupplement(
@@ -145,13 +151,13 @@ function buildTargetSupplement(
     return '';
   }
 
-  const range = passageRange(input);
-  const missing = range.filter((passage) => !coveredIds.has(passage.id));
+  const range = blockRange(input);
+  const missing = range.filter((block) => !coveredIds.has(block.id));
   if (input.target.type === 'chapter') {
     if (missing.length === 0) {
       return '';
     }
-    return `解读目标补充：\n${missing.map((passage) => `[${passage.id}] ${passage.text}`).join('\n\n')}`;
+    return `解读目标补充：\n${missing.map((block) => `[${block.id}] ${block.markdown}`).join('\n\n')}`;
   }
 
   // 压缩全书只提供稀疏采样；选区任务仍需显式给出精确选区及相邻原文。
@@ -161,22 +167,18 @@ function buildTargetSupplement(
   if (range.length === 0) {
     return `解读目标补充：\n精确选区：${input.target.selectedText}`;
   }
-  const indices = range.map((passage) => input.passages.indexOf(passage));
+  const indices = range.map((block) => input.blocks.indexOf(block));
   const validIndices = indices.filter((index) => index >= 0);
   if (validIndices.length === 0) {
     return `解读目标补充：\n精确选区：${input.target.selectedText}`;
   }
   const start = Math.max(0, Math.min(...validIndices) - 1);
-  const end = Math.min(input.passages.length - 1, Math.max(...validIndices) + 1);
-  const nearby = input.passages
-    .slice(start, end + 1)
-    .filter((passage) => !coveredIds.has(passage.id));
+  const end = Math.min(input.blocks.length - 1, Math.max(...validIndices) + 1);
+  const nearby = input.blocks.slice(start, end + 1).filter((block) => !coveredIds.has(block.id));
   return [
     '解读目标补充：',
     `精确选区：${input.target.selectedText}`,
-    nearby.length > 0
-      ? nearby.map((passage) => `[${passage.id}] ${passage.text}`).join('\n\n')
-      : '',
+    nearby.length > 0 ? nearby.map((block) => `[${block.id}] ${block.markdown}`).join('\n\n') : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -213,7 +215,7 @@ export class ContextAssembler {
     const knowledge = buildBookKnowledge(input, effectiveStrategy);
     const supplement = buildTargetSupplement(
       input,
-      new Set(knowledge.coveredPassageIds),
+      new Set(knowledge.coveredBlockIds),
       effectiveStrategy,
     );
     const reference = input.reference
@@ -257,7 +259,7 @@ export class ContextAssembler {
     return {
       system,
       messages,
-      coveredPassageIds: knowledge.coveredPassageIds,
+      coveredBlockIds: knowledge.coveredBlockIds,
       requestedStrategy,
       effectiveStrategy,
       estimatedTokens: estimated,

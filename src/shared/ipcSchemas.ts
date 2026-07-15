@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 const nonEmptyString = z.string().trim().min(1);
 const nullableString = z.string().nullable();
-const nullableOffset = z.number().int().nonnegative().nullable();
 
 const contextStrategySchema = z.enum(['full_book', 'compressed_book', 'hybrid']);
 const breadcrumbSchema = z
@@ -15,10 +14,8 @@ const breadcrumbSchema = z
 const referenceSchema = z
   .object({
     selectedText: z.string(),
-    startPassageId: z.string(),
-    endPassageId: z.string(),
-    startOffset: z.number().int().nonnegative(),
-    endOffset: z.number().int().nonnegative(),
+    start: z.object({ blockId: nonEmptyString, offset: z.number().int().nonnegative() }).strict(),
+    end: z.object({ blockId: nonEmptyString, offset: z.number().int().nonnegative() }).strict(),
     breadcrumb: z.array(breadcrumbSchema),
   })
   .strict();
@@ -27,11 +24,9 @@ const readingTargetSchema = z
   .object({
     type: z.enum(['book', 'chapter', 'selection']),
     chapterId: nullableString,
-    startPassageId: nullableString,
-    endPassageId: nullableString,
+    start: referenceSchema.shape.start.nullable(),
+    end: referenceSchema.shape.end.nullable(),
     selectedText: z.string(),
-    startOffset: nullableOffset,
-    endOffset: nullableOffset,
     breadcrumb: z.array(breadcrumbSchema),
   })
   .strict();
@@ -59,10 +54,7 @@ export const ipcInputSchemas = {
       defaultContextStrategy: contextStrategySchema,
     })
     .strict(),
-  importBook: z.union([nonEmptyString, z.object({ filePath: nonEmptyString }).strict()]),
-  importBookFiles: z
-    .array(nonEmptyString.regex(/\.(md|markdown|epub)$/i, '仅支持 Markdown 和 EPUB 文件'))
-    .min(1),
+  importBookFiles: z.array(nonEmptyString.regex(/\.md$/i, '仅支持 .md 文件')).min(1),
   bookId: nonEmptyString,
   setContextStrategy: z
     .object({ bookId: nonEmptyString, strategy: contextStrategySchema })
@@ -86,6 +78,9 @@ export const ipcInputSchemas = {
   retry: z.object({ threadId: nonEmptyString, messageId: nonEmptyString }).strict(),
   deleteThread: z.object({ threadId: nonEmptyString }).strict(),
   setActiveThread: z.object({ bookId: nonEmptyString, threadId: z.string().nullable() }).strict(),
+  externalUrl: nonEmptyString
+    .url()
+    .refine((value) => /^(https?:|mailto:)/i.test(value), '不支持的链接协议'),
 } as const;
 
 export function parseIpcInput<T>(channel: string, schema: z.ZodType<T>, input: unknown): T {

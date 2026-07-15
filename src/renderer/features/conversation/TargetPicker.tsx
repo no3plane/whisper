@@ -41,11 +41,9 @@ export function TargetPicker({
     onTargetChange({
       type: 'chapter',
       chapterId: crumb.chapterId,
-      startPassageId: null,
-      endPassageId: null,
+      start: null,
+      end: null,
       selectedText: '',
-      startOffset: null,
-      endOffset: null,
       breadcrumb: draft.target.breadcrumb.slice(0, index + 1),
     });
   };

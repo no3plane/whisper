@@ -11,29 +11,25 @@ import {
 const selection: ReadingTarget = {
   type: 'selection',
   chapterId: 'chapter-1',
-  startPassageId: 'p1',
-  endPassageId: 'p1',
+  start: { blockId: 'p1', offset: 0 },
+  end: { blockId: 'p1', offset: 6 },
   selectedText: '选中的原文',
-  startOffset: 0,
-  endOffset: 6,
   breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
 };
 
 const anotherSelection: ReadingTarget = {
   ...selection,
   selectedText: '另一段原文',
-  startOffset: 7,
-  endOffset: 12,
+  start: { blockId: 'p1', offset: 7 },
+  end: { blockId: 'p1', offset: 12 },
 };
 
 const chapter: ReadingTarget = {
   type: 'chapter',
   chapterId: 'chapter-1',
-  startPassageId: 'p1',
-  endPassageId: 'p9',
+  start: { blockId: 'p1', offset: 0 },
+  end: { blockId: 'p9', offset: 0 },
   selectedText: '',
-  startOffset: null,
-  endOffset: null,
   breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
 };
 
@@ -72,10 +68,8 @@ describe('新会话草稿状态', () => {
   it('围绕新选区会从书籍默认值重建草稿并清空旧输入', () => {
     const reference: MessageReference = {
       selectedText: '引用',
-      startPassageId: 'p2',
-      endPassageId: 'p2',
-      startOffset: 0,
-      endOffset: 2,
+      start: { blockId: 'p2', offset: 0 },
+      end: { blockId: 'p2', offset: 2 },
       breadcrumb: [],
     };
     const old = {

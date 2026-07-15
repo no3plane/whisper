@@ -7,22 +7,19 @@ import { schemaSql } from '../../src/main/storage/schema';
 const selectionTarget = {
   type: 'selection' as const,
   chapterId: 'chapter-1',
-  startPassageId: 'passage-1',
-  endPassageId: 'passage-1',
+  start: { blockId: 'passage-1', offset: 0 },
+  end: { blockId: 'passage-1', offset: 3 },
   selectedText: '第一段',
-  startOffset: 0,
-  endOffset: 3,
   breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
 };
 
 function insertBook(db: AppDatabase) {
   const now = new Date().toISOString();
   db.prepare(
-    `INSERT OR IGNORE INTO books (id,title,format,original_file_path,library_file_path,created_at,updated_at,preprocess_status,token_estimate,default_context_strategy) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    `INSERT OR IGNORE INTO books (id,title,original_file_path,library_file_path,created_at,updated_at,preprocess_status,token_estimate,default_context_strategy) VALUES (?,?,?,?,?,?,?,?,?)`,
   ).run(
     'book-1',
     '测试书',
-    'markdown',
     '/tmp/original.md',
     '/tmp/library.md',
     now,
@@ -50,7 +47,6 @@ describe('ThreadStore', () => {
         id,
         title,
         author,
-        format,
         original_file_path,
         library_file_path,
         created_at,
@@ -59,12 +55,11 @@ describe('ThreadStore', () => {
         preprocess_status,
         token_estimate,
         default_context_strategy
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       'book-1',
       '测试书',
       null,
-      'markdown',
       '/tmp/original.md',
       '/tmp/library.md',
       now,
@@ -115,10 +110,8 @@ describe('ThreadStore', () => {
     });
     const reference = {
       selectedText: '引用',
-      startPassageId: 'passage-2',
-      endPassageId: 'passage-2',
-      startOffset: 1,
-      endOffset: 3,
+      start: { blockId: 'passage-2', offset: 1 },
+      end: { blockId: 'passage-2', offset: 3 },
       breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
     };
     const message = store.addMessage({
@@ -184,8 +177,8 @@ describe('ThreadStore', () => {
     db.exec(schemaSql);
     const now = new Date().toISOString();
     db.prepare(
-      `INSERT INTO books (id,title,format,original_file_path,library_file_path,created_at,updated_at,preprocess_status,token_estimate,default_context_strategy,active_thread_id) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-    ).run('book-1', '书', 'markdown', 'a', 'b', now, now, 'ready', 1, 'full_book', null);
+      `INSERT INTO books (id,title,original_file_path,library_file_path,created_at,updated_at,preprocess_status,token_estimate,default_context_strategy,active_thread_id) VALUES (?,?,?,?,?,?,?,?,?,?)`,
+    ).run('book-1', '书', 'a', 'b', now, now, 'ready', 1, 'full_book', null);
     const store = new ThreadStore(db);
     const thread = store.createThread({
       bookId: 'book-1',

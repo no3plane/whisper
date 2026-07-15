@@ -16,6 +16,7 @@ import { SelectionMenu } from '../../features/reading-selection/SelectionMenu';
 import { captureSelection } from '../../features/reading-selection/selectionSnapshot';
 import { useSourceLocator } from '../../features/reading-selection/useSourceLocator';
 import { whisper } from '../../api/whisper';
+import { MarkdownDocument } from '../../features/markdown-reading/MarkdownDocument';
 import styles from './ReaderPage.module.css';
 
 interface ReaderPageProps {
@@ -34,7 +35,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const articleRef = useRef<HTMLElement>(null);
   const readerStageRef = useRef<HTMLElement>(null);
   const outlineModel = useMemo(() => buildOutlineModel(document?.chapters ?? []), [document]);
-  const activeChapterId = useReadingPosition(readerStageRef, document?.passages ?? []);
+  const activeChapterId = useReadingPosition(readerStageRef, document?.blocks ?? []);
   const locateSource = useSourceLocator(articleRef, styles.temporarySourceHighlight, setNotice);
 
   useEffect(() => {
@@ -82,7 +83,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
       return;
     }
     const selected = window.getSelection();
-    const next = selected ? captureSelection(selected, document.chapters, document.passages) : null;
+    const next = selected ? captureSelection(selected, document.chapters, document.blocks) : null;
     if (!next) {
       return;
     }
@@ -104,10 +105,8 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     }
     conversation.commands.setReference({
       selectedText: selection.selectedText,
-      startPassageId: selection.startPassageId!,
-      endPassageId: selection.endPassageId!,
-      startOffset: selection.startOffset!,
-      endOffset: selection.endOffset!,
+      start: selection.start!,
+      end: selection.end!,
       breadcrumb: selection.breadcrumb,
     });
   }
@@ -119,11 +118,8 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     }
   }
   function navigateToChapter(chapter: Chapter) {
-    if (!chapter.startPassageId) {
-      return;
-    }
     setNavigationChapterId(chapter.id);
-    globalThis.document.getElementById(chapter.startPassageId)?.scrollIntoView({
+    globalThis.document.getElementById(chapter.headingBlockId)?.scrollIntoView({
       behavior: 'instant',
       block: 'start',
     });
@@ -191,16 +187,11 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
           ) : null}
           {error ? <p className="error">{error}</p> : null}
           {notice ? <p role="status">{notice}</p> : null}
-          {document.passages.map((passage) => (
-            <p
-              id={passage.id}
-              data-passage-id={passage.id}
-              data-chapter-id={passage.chapterId ?? undefined}
-              key={passage.id}
-            >
-              {passage.text}
-            </p>
-          ))}
+          <MarkdownDocument
+            markdown={document.markdown}
+            blocks={document.blocks}
+            resources={document.resources}
+          />
         </article>
       </main>
       <RightAiPanel

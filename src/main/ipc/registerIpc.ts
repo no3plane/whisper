@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow, ipcMain, shell } from 'electron';
 import { ipcChannels } from '../../shared/ipc';
 import { ipcInputSchemas, parseIpcInput } from '../../shared/ipcSchemas';
 import type {
@@ -7,7 +7,6 @@ import type {
   CreateConversationInput,
   DeleteThreadInput,
   FollowUpInput,
-  ImportBookInput,
   RetryMessageInput,
   SetActiveThreadInput,
 } from '../../shared/types';
@@ -62,6 +61,16 @@ function validated<T, Result>(
 
 export function registerIpc(services: IpcServices) {
   ipcMain.handle(
+    ipcChannels.shellOpenExternal,
+    validated(
+      ipcChannels.shellOpenExternal,
+      ipcInputSchemas.externalUrl,
+      async (_event, url: string) => {
+        await shell.openExternal(url);
+      },
+    ),
+  );
+  ipcMain.handle(
     ipcChannels.settingsGet,
     withIpcLog(ipcChannels.settingsGet, () => services.settings.getAISettings()),
   );
@@ -92,33 +101,6 @@ export function registerIpc(services: IpcServices) {
       ipcChannels.booksImportFiles,
       ipcInputSchemas.importBookFiles,
       (_event, filePaths: string[]) => importBookFiles(filePaths, services.library),
-    ),
-  );
-
-  ipcMain.handle(
-    ipcChannels.booksImportMarkdown,
-    validated(
-      ipcChannels.booksImportMarkdown,
-      ipcInputSchemas.importBook,
-      (_event, input: ImportBookInput | string) => {
-        const filePath = typeof input === 'string' ? input : input.filePath;
-        const book = services.library.importMarkdown(filePath);
-        return book;
-      },
-    ),
-  );
-
-  ipcMain.handle(
-    ipcChannels.booksImportEpub,
-    validated(
-      ipcChannels.booksImportEpub,
-      ipcInputSchemas.importBook,
-      (_event, input: ImportBookInput | string) => {
-        const book = services.library.importEpub(
-          typeof input === 'string' ? input : input.filePath,
-        );
-        return book;
-      },
     ),
   );
 

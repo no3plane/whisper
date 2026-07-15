@@ -1,4 +1,3 @@
-export type BookFormat = 'markdown' | 'epub';
 export type PreprocessStatus = 'not_started' | 'running' | 'ready' | 'failed';
 export type ContextStrategy = 'full_book' | 'compressed_book' | 'hybrid';
 export type ReadingTargetType = 'book' | 'chapter' | 'selection';
@@ -21,20 +20,21 @@ export interface ChapterCrumb {
 
 export interface SelectionSnapshot {
   selectedText: string;
-  startPassageId: string;
-  endPassageId: string;
-  startOffset: number;
-  endOffset: number;
+  start: ContentAnchor;
+  end: ContentAnchor;
+}
+
+export interface ContentAnchor {
+  blockId: string;
+  offset: number;
 }
 
 export interface ReadingTarget {
   type: ReadingTargetType;
   chapterId: string | null;
-  startPassageId: string | null;
-  endPassageId: string | null;
+  start: ContentAnchor | null;
+  end: ContentAnchor | null;
   selectedText: string;
-  startOffset: number | null;
-  endOffset: number | null;
   breadcrumb: ChapterCrumb[];
 }
 
@@ -46,7 +46,6 @@ export interface Book {
   id: string;
   title: string;
   author: string | null;
-  format: BookFormat;
   originalFilePath: string;
   libraryFilePath: string;
   createdAt: string;
@@ -65,25 +64,35 @@ export interface Chapter {
   title: string;
   level: number;
   order: number;
-  startPassageId: string;
-  endPassageId: string;
-  summary: string | null;
+  headingBlockId: string;
+  sourceStart: number;
+  sourceEnd: number;
 }
 
-export interface Passage {
+export interface MarkdownBlock {
   id: string;
-  bookId: string;
   chapterId: string | null;
   order: number;
-  text: string;
-  sourceHref: string | null;
-  sourceOffset: number;
+  type: string;
+  sourceStart: number;
+  sourceEnd: number;
+  markdown: string;
+  plainText: string;
+}
+
+export interface MarkdownAnalysis {
+  chapters: Chapter[];
+  blocks: MarkdownBlock[];
+  structuredText: string;
+  plainText: string;
 }
 
 export interface BookDocument {
   book: Book;
+  markdown: string;
   chapters: Chapter[];
-  passages: Passage[];
+  blocks: MarkdownBlock[];
+  resources: Record<string, string>;
   fullText: string;
 }
 
@@ -122,10 +131,6 @@ export interface ThreadMessage {
   reference: MessageReference | null;
   status: 'streaming' | 'complete' | 'failed';
   error: string | null;
-}
-
-export interface ImportBookInput {
-  filePath: string;
 }
 
 export interface ImportBooksResult {

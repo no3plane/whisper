@@ -8,11 +8,9 @@ import type { ReadingThread, ThreadMessage } from '../../src/shared/types';
 const target = {
   type: 'book' as const,
   chapterId: null,
-  startPassageId: null,
-  endPassageId: null,
+  start: null,
+  end: null,
   selectedText: '',
-  startOffset: null,
-  endOffset: null,
   breadcrumb: [],
 };
 const thread = (id: string): ReadingThread => ({
@@ -73,10 +71,8 @@ describe('conversationWorkspaceReducer', () => {
       ...initialized,
       pendingReference: {
         selectedText: '引用',
-        startPassageId: 'p1',
-        endPassageId: 'p1',
-        startOffset: 0,
-        endOffset: 2,
+        start: { blockId: 'p1', offset: 0 },
+        end: { blockId: 'p1', offset: 2 },
         breadcrumb: [],
       },
     };

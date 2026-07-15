@@ -5,11 +5,9 @@ import type { ReadingTarget, ThreadMessage } from '../../src/shared/types';
 const target: ReadingTarget = {
   type: 'selection',
   chapterId: 'c1',
-  startPassageId: 'p1',
-  endPassageId: 'p1',
+  start: { blockId: 'p1', offset: 0 },
+  end: { blockId: 'p1', offset: 2 },
   selectedText: '原文',
-  startOffset: 0,
-  endOffset: 2,
   breadcrumb: [{ chapterId: 'c1', title: '第一章' }],
 };
 const document = {
@@ -22,20 +20,21 @@ const document = {
       title: '第一章',
       level: 1,
       order: 0,
-      startPassageId: 'p1',
-      endPassageId: 'p1',
-      summary: null,
+      headingBlockId: 'p1',
+      sourceStart: 0,
+      sourceEnd: 2,
     },
   ],
-  passages: [
+  blocks: [
     {
       id: 'p1',
-      bookId: 'book-1',
       chapterId: 'c1',
       order: 0,
-      text: '原文',
-      sourceHref: null,
-      sourceOffset: 0,
+      type: 'paragraph',
+      sourceStart: 0,
+      sourceEnd: 2,
+      markdown: '原文',
+      plainText: '原文',
     },
   ],
   fullText: '原文',
@@ -201,10 +200,8 @@ describe('ReadingActionService', () => {
     );
     const reference = {
       selectedText: '引用',
-      startPassageId: 'p1',
-      endPassageId: 'p1',
-      startOffset: 0,
-      endOffset: 2,
+      start: { blockId: 'p1', offset: 0 },
+      end: { blockId: 'p1', offset: 2 },
       breadcrumb: [],
     };
     await service.followUp(
@@ -420,12 +417,12 @@ describe('ReadingActionService', () => {
 
   it.each([
     [{ ...target, type: 'chapter', chapterId: null }, '章节目标必须包含 chapterId'],
+    [{ ...target, type: 'selection', start: null }, '框选目标必须包含 block anchor 和文本。'],
+    [{ ...target, type: 'selection', selectedText: '' }, '框选目标必须包含 block anchor 和文本。'],
     [
-      { ...target, type: 'selection', startPassageId: null },
-      '框选目标必须包含 passage、文本和偏移量',
+      { ...target, type: 'selection', start: { blockId: '', offset: 0 } },
+      '框选目标必须包含 block anchor 和文本。',
     ],
-    [{ ...target, type: 'selection', selectedText: '' }, '框选目标必须包含 passage、文本和偏移量'],
-    [{ ...target, type: 'selection', startOffset: null }, '框选目标必须包含 passage、文本和偏移量'],
   ])('createConversation 拒绝缺少类型必要字段的目标 %#', async (invalidTarget, message) => {
     const { service, window } = setup();
     await expect(

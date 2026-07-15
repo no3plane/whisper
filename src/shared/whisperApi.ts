@@ -8,7 +8,6 @@ import type {
   CreateConversationInput,
   DeleteThreadInput,
   FollowUpInput,
-  ImportBookInput,
   ImportBooksResult,
   ReadingThread,
   RetryMessageInput,
@@ -29,8 +28,6 @@ export interface WhisperApi {
   };
   books: {
     importFiles(files: File[]): Promise<ImportBooksResult>;
-    importMarkdown(input: ImportBookInput): Promise<Book>;
-    importEpub(input: ImportBookInput): Promise<Book>;
     list(): Promise<Book[]>;
     open(bookId: string): Promise<BookDocument>;
     setActiveThread(input: SetActiveThreadInput): Promise<void>;
@@ -46,5 +43,8 @@ export interface WhisperApi {
     delete(input: DeleteThreadInput): Promise<void>;
     listByBook(bookId: string): Promise<ReadingThread[]>;
     listWithMessagesByBook(bookId: string): Promise<BookThreadsPayload>;
+  };
+  shell: {
+    openExternal(url: string): Promise<void>;
   };
 }

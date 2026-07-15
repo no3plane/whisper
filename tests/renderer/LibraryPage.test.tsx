@@ -18,9 +18,8 @@ const book: Book = {
   id: 'book-1',
   title: '局外人',
   author: null,
-  format: 'epub',
-  originalFilePath: '/books/the-stranger.epub',
-  libraryFilePath: '/library/the-stranger.epub',
+  originalFilePath: '/books/the-stranger.md',
+  libraryFilePath: '/library/the-stranger.md',
   createdAt: '2026-07-15T00:00:00Z',
   updatedAt: '2026-07-15T00:00:00Z',
   lastOpenedAt: null,
@@ -55,7 +54,7 @@ describe('LibraryPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: '打开《局外人》' }));
 
     expect(onOpenBook).toHaveBeenCalledWith(book.id);
-    expect(screen.getByText('作者未知 · EPUB')).toBeTruthy();
+    expect(screen.getByText('作者未知 · Markdown')).toBeTruthy();
     expect(screen.queryByRole('toolbar')).toBeNull();
     const shelf = screen.getByRole('region', { name: '藏书' });
     expect(
@@ -71,7 +70,7 @@ describe('LibraryPage', () => {
     const emptyState = await screen.findByRole('region', { name: '空书库' });
     expect(within(emptyState).getByText('书房还是空的')).toBeTruthy();
     expect(within(emptyState).getByRole('button', { name: '导入书籍' })).toBeTruthy();
-    expect(screen.queryByText('支持 Markdown 和 EPUB，可多选')).toBeNull();
+    expect(screen.queryByText('支持多种文档格式，可多选')).toBeNull();
   });
 
   it('书库加载完成前不提前显示空状态', () => {
@@ -92,7 +91,7 @@ describe('LibraryPage', () => {
 
     expect(click).toHaveBeenCalledOnce();
     expect(input.multiple).toBe(true);
-    expect(input.accept).toBe('.md,.markdown,.epub');
+    expect(input.accept).toBe('.md');
   });
 
   it('选择多本书导入后重新加载书库并显示成功数量', async () => {
@@ -101,7 +100,7 @@ describe('LibraryPage', () => {
     const { container } = render(<LibraryPage onOpenBook={vi.fn()} />);
     await screen.findByText('书房还是空的');
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const files = [new File(['a'], 'notes.md'), new File(['b'], 'novel.epub')];
+    const files = [new File(['a'], 'notes.md'), new File(['b'], 'novel.md')];
 
     fireEvent.change(input, { target: { files } });
 
@@ -127,17 +126,17 @@ describe('LibraryPage', () => {
     api.books.list.mockResolvedValueOnce([]).mockResolvedValueOnce([book]);
     api.books.importFiles.mockResolvedValueOnce({
       imported: [book],
-      failed: [{ fileName: 'broken.epub', reason: '无法解析 EPUB' }],
+      failed: [{ fileName: 'broken.md', reason: '无法读取 Markdown' }],
     });
     const { container } = render(<LibraryPage onOpenBook={vi.fn()} />);
     await screen.findByText('书房还是空的');
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
 
-    fireEvent.change(input, { target: { files: [new File(['bad'], 'broken.epub')] } });
+    fireEvent.change(input, { target: { files: [new File(['bad'], 'broken.md')] } });
 
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('成功 1 本，失败 1 本');
-    expect(alert.textContent).toContain('broken.epub：无法解析 EPUB');
+    expect(alert.textContent).toContain('broken.md：无法读取 Markdown');
     expect(api.books.list).toHaveBeenCalledTimes(2);
   });
 });

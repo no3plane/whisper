@@ -16,8 +16,8 @@ interface ReadingThreadRow {
   title: string;
   target_type: ReadingTarget['type'];
   target_chapter_id: string | null;
-  target_start_passage_id: string | null;
-  target_end_passage_id: string | null;
+  target_start_block_id: string | null;
+  target_end_block_id: string | null;
   target_selected_text: string;
   target_start_offset: number | null;
   target_end_offset: number | null;
@@ -112,11 +112,15 @@ function mapThreadRow(row: ReadingThreadRow): ReadingThread {
     target: {
       type: row.target_type,
       chapterId: row.target_chapter_id,
-      startPassageId: row.target_start_passage_id,
-      endPassageId: row.target_end_passage_id,
+      start:
+        row.target_start_block_id === null || row.target_start_offset === null
+          ? null
+          : { blockId: row.target_start_block_id, offset: row.target_start_offset },
+      end:
+        row.target_end_block_id === null || row.target_end_offset === null
+          ? null
+          : { blockId: row.target_end_block_id, offset: row.target_end_offset },
       selectedText: row.target_selected_text,
-      startOffset: row.target_start_offset,
-      endOffset: row.target_end_offset,
       breadcrumb: parseJsonOr(row.target_breadcrumb_json, [], Array.isArray),
     },
     skillType: safeSkillType(row.skill_type),
@@ -174,7 +178,7 @@ export class ThreadStore {
           id,
           book_id,
           title,
-          target_type, target_chapter_id, target_start_passage_id, target_end_passage_id,
+          target_type, target_chapter_id, target_start_block_id, target_end_block_id,
           target_selected_text, target_start_offset, target_end_offset, target_breadcrumb_json, skill_type,
           context_strategy,
           created_at,
@@ -188,11 +192,11 @@ export class ThreadStore {
         thread.title,
         thread.target.type,
         thread.target.chapterId,
-        thread.target.startPassageId,
-        thread.target.endPassageId,
+        thread.target.start?.blockId ?? null,
+        thread.target.end?.blockId ?? null,
         thread.target.selectedText,
-        thread.target.startOffset,
-        thread.target.endOffset,
+        thread.target.start?.offset ?? null,
+        thread.target.end?.offset ?? null,
         JSON.stringify(thread.target.breadcrumb),
         thread.skillType,
         thread.contextStrategy,

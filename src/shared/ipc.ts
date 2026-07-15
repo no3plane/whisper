@@ -2,8 +2,6 @@ export const ipcChannels = {
   settingsGet: 'settings.get',
   settingsSave: 'settings.save',
   settingsTestConnection: 'settings.testConnection',
-  booksImportMarkdown: 'books.importMarkdown',
-  booksImportEpub: 'books.importEpub',
   booksImportFiles: 'books.importFiles',
   booksList: 'books.list',
   booksOpen: 'books.open',
@@ -16,4 +14,5 @@ export const ipcChannels = {
   threadsDelete: 'threads.delete',
   booksSetActiveThread: 'books.setActiveThread',
   booksSetContextStrategy: 'books.setContextStrategy',
+  shellOpenExternal: 'shell.openExternal',
 } as const;
