@@ -7,63 +7,40 @@
   box-shadow: var(--shadow-paper);
 }
 
-.header {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  margin-bottom: 28px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  padding-bottom: 18px;
+.fileInput {
+  display: none;
 }
 
-.header span {
-  color: var(--color-accent-amber-strong);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-}
-
-.header h2 {
-  margin: 6px 0 0;
-  color: var(--color-text-primary);
-  font-family: var(--font-reading);
-  font-size: clamp(1.8rem, 4vw, 2.7rem);
-  font-weight: 600;
-}
-
-.importRow {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 24px;
-}
-
-.importRow input {
-  min-width: 0;
-  flex: 1 1 20rem;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-raised);
-  color: var(--color-text-primary);
-  padding: 10px 12px;
-}
-
-.importRow button {
+.importButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   border: 1px solid var(--color-structure-walnut);
   border-radius: var(--radius-sm);
-  background: var(--color-structure-walnut);
-  color: var(--color-text-inverse);
-  padding: 10px 14px;
+  background: var(--color-surface-raised);
+  color: var(--color-structure-walnut);
+  font-weight: 600;
+  padding: 8px 12px;
   transition:
+    background-color var(--duration-fast),
+    box-shadow var(--duration-fast),
     transform var(--duration-fast),
     opacity var(--duration-fast);
 }
 
-.importRow button:not(:disabled):hover {
+.importButton span {
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.importButton:not(:disabled):hover {
+  background: var(--color-surface-paper);
+  box-shadow: 0 4px 10px rgb(49 41 32 / 10%);
   transform: translateY(-1px);
 }
 
-.importRow button:disabled {
+.importButton:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
@@ -72,6 +49,53 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: clamp(22px, 3vw, 36px);
+}
+
+.cover,
+.addBookButton {
+  box-sizing: border-box;
+  width: 100%;
+  height: 278px;
+  border-radius: 3px 8px 8px 3px;
+}
+
+.addBookButton {
+  display: grid;
+  place-content: center;
+  gap: 10px;
+  align-self: start;
+  border: 1px dashed rgb(49 41 32 / 34%);
+  background: rgb(255 255 255 / 16%);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  transition:
+    border-color var(--duration-fast),
+    background-color var(--duration-fast),
+    color var(--duration-fast),
+    transform var(--duration-fast);
+}
+
+.addBookButton span {
+  font-size: 1.7rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.addBookButton:not(:disabled):hover {
+  border-color: var(--color-structure-walnut);
+  background: var(--color-surface-raised);
+  color: var(--color-structure-walnut);
+  transform: translateY(-2px);
+}
+
+.addBookButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.feedback {
+  color: var(--color-text-secondary);
+  margin: -12px 0 20px;
 }
 
 .bookItem {
@@ -92,8 +116,8 @@
 }
 
 .bookItem button:focus-visible,
-.importRow input:focus-visible,
-.importRow button:focus-visible {
+.importButton:focus-visible,
+.addBookButton:focus-visible {
   outline: 3px solid var(--color-accent-amber);
   outline-offset: 3px;
 }
@@ -101,12 +125,10 @@
 .cover {
   position: relative;
   display: flex;
-  min-height: 220px;
   align-items: center;
   justify-content: center;
   overflow-wrap: anywhere;
   border: 1px solid rgb(49 41 32 / 32%);
-  border-radius: 3px 8px 8px 3px;
   background: #66766d;
   box-shadow:
     inset 9px 0 0 rgb(49 41 32 / 15%),
@@ -172,12 +194,7 @@
   margin: 0;
 }
 
-@media (max-width: 680px) {
-  .importRow {
-    flex-wrap: wrap;
-  }
-
-  .importRow input {
-    flex-basis: 100%;
-  }
+.emptyState .importButton {
+  justify-self: center;
+  margin-top: 22px;
 }

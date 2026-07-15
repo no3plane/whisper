@@ -14,16 +14,8 @@
   padding-bottom: var(--space-4);
 }
 
-.header span {
-  color: var(--color-accent-amber-strong);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-}
-
 .header h2 {
-  margin: 6px 0 8px;
+  margin: 0 0 8px;
   font-family: var(--font-reading);
   font-size: 1.8rem;
   font-weight: 600;

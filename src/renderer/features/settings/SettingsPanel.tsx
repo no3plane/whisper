@@ -55,7 +55,6 @@ export function SettingsPanel() {
   return (
     <aside className={styles.panel} aria-labelledby="settings-title">
       <header className={styles.header}>
-        <span>WORKBENCH</span>
         <h2 id="settings-title">模型设置</h2>
         <p>连接你的模型服务，并选择阅读时默认使用的上下文。</p>
       </header>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Book } from '../../../shared/types';
 import { whisper } from '../../api/whisper';
 import styles from './LibraryPage.module.css';
@@ -9,9 +9,11 @@ interface LibraryPageProps {
 
 export function LibraryPage({ onOpenBook }: LibraryPageProps) {
   const [books, setBooks] = useState<Book[]>([]);
-  const [filePath, setFilePath] = useState('');
   const [error, setError] = useState('');
+  const [feedback, setFeedback] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadBooks() {
     setIsLoading(true);
@@ -26,53 +28,71 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
     void loadBooks().catch((reason) => setError(messageOf(reason)));
   }, []);
 
-  async function importMarkdown() {
+  async function importBooks(files: File[]) {
+    setIsImporting(true);
     try {
       setError('');
-      await whisper.books.importMarkdown({ filePath });
-      setFilePath('');
-      await loadBooks();
+      setFeedback('');
+      const result = await whisper.books.importFiles(files);
+
+      if (result.imported.length > 0) {
+        await loadBooks();
+      }
+      if (result.failed.length > 0) {
+        const details = result.failed
+          .map((failure) => `${failure.fileName}：${failure.reason}`)
+          .join('；');
+        setError(`成功 ${result.imported.length} 本，失败 ${result.failed.length} 本。${details}`);
+      } else if (result.imported.length > 0) {
+        setFeedback(`已导入 ${result.imported.length} 本书`);
+      }
     } catch (err) {
       setError(messageOf(err));
+    } finally {
+      setIsImporting(false);
     }
   }
 
-  async function importEpub() {
-    try {
-      setError('');
-      await whisper.books.importEpub({ filePath });
-      setFilePath('');
-      await loadBooks();
-    } catch (err) {
-      setError(messageOf(err));
+  function handleFileSelection(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (files.length > 0) {
+      void importBooks(files);
     }
   }
+
+  const importButton = (
+    <button
+      className={styles.importButton}
+      title="支持 Markdown 和 EPUB，可多选"
+      onClick={() => fileInputRef.current?.click()}
+      disabled={isImporting}
+    >
+      <span aria-hidden="true">＋</span>
+      {isImporting ? '正在导入…' : '导入书籍'}
+    </button>
+  );
 
   return (
-    <section className={styles.page} aria-labelledby="library-title">
-      <header className={styles.header}>
-        <div>
-          <span>YOUR READING ROOM</span>
-          <h2 id="library-title">我的书房</h2>
-        </div>
-      </header>
-      <div className={styles.importRow}>
-        <input
-          aria-label="本机书籍文件路径"
-          placeholder="输入本机书籍文件路径"
-          value={filePath}
-          onChange={(event) => setFilePath(event.target.value)}
-        />
-        <button onClick={importMarkdown} disabled={!filePath.trim()}>
-          导入 Markdown
-        </button>
-        <button onClick={importEpub} disabled={!filePath.trim()}>
-          导入 EPUB
-        </button>
-      </div>
+    <section className={styles.page} aria-label="书库">
+      <input
+        ref={fileInputRef}
+        className={styles.fileInput}
+        type="file"
+        accept=".md,.markdown,.epub"
+        multiple
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={handleFileSelection}
+      />
       {error ? (
         <p className="error" role="alert">
           {error}
+        </p>
+      ) : null}
+      {feedback ? (
+        <p className={styles.feedback} role="status">
+          {feedback}
         </p>
       ) : null}
       {isLoading ? (
@@ -80,12 +100,23 @@ export function LibraryPage({ onOpenBook }: LibraryPageProps) {
           正在整理书房…
         </div>
       ) : books.length === 0 ? (
-        <div className={styles.emptyState}>
+        <div className={styles.emptyState} role="region" aria-label="空书库">
           <h3>书房还是空的</h3>
-          <p>输入本机 Markdown 或 EPUB 路径开始阅读。</p>
+          <p>选择 Markdown 或 EPUB，把第一本书放进书房。</p>
+          {importButton}
         </div>
       ) : (
-        <div className={styles.bookList}>
+        <div className={styles.bookList} role="region" aria-label="藏书">
+          <button
+            className={styles.addBookButton}
+            aria-label="导入书籍"
+            title="支持 Markdown 和 EPUB，可多选"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isImporting}
+          >
+            <span aria-hidden="true">＋</span>
+            {isImporting ? '正在导入…' : '导入书籍'}
+          </button>
           {books.map((book, index) => (
             <article className={styles.bookItem} key={book.id}>
               <button aria-label={`打开《${book.title}》`} onClick={() => onOpenBook(book.id)}>

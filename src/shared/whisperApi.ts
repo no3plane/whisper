@@ -9,6 +9,7 @@ import type {
   DeleteThreadInput,
   FollowUpInput,
   ImportBookInput,
+  ImportBooksResult,
   ReadingThread,
   RetryMessageInput,
   SetActiveThreadInput,
@@ -27,6 +28,7 @@ export interface WhisperApi {
     testConnection(settings: AISettings): Promise<{ ok: boolean; message: string }>;
   };
   books: {
+    importFiles(files: File[]): Promise<ImportBooksResult>;
     importMarkdown(input: ImportBookInput): Promise<Book>;
     importEpub(input: ImportBookInput): Promise<Book>;
     list(): Promise<Book[]>;

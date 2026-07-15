@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { ipcChannels } from '../shared/ipc';
 import type { WhisperApi } from '../shared/whisperApi';
 import type {
@@ -11,6 +11,7 @@ import type {
   DeleteThreadInput,
   FollowUpInput,
   ImportBookInput,
+  ImportBooksResult,
   ReadingThread,
   RetryMessageInput,
   SetActiveThreadInput,
@@ -30,6 +31,11 @@ const whisper: WhisperApi = {
       }>,
   },
   books: {
+    importFiles: (files: File[]) =>
+      ipcRenderer.invoke(
+        ipcChannels.booksImportFiles,
+        files.map((file) => webUtils.getPathForFile(file)),
+      ) as Promise<ImportBooksResult>,
     importMarkdown: (input: ImportBookInput) =>
       ipcRenderer.invoke(ipcChannels.booksImportMarkdown, input) as Promise<Book>,
     importEpub: (input: ImportBookInput) =>

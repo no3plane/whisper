@@ -60,6 +60,9 @@ export const ipcInputSchemas = {
     })
     .strict(),
   importBook: z.union([nonEmptyString, z.object({ filePath: nonEmptyString }).strict()]),
+  importBookFiles: z
+    .array(nonEmptyString.regex(/\.(md|markdown|epub)$/i, '仅支持 Markdown 和 EPUB 文件'))
+    .min(1),
   bookId: nonEmptyString,
   setContextStrategy: z
     .object({ bookId: nonEmptyString, strategy: contextStrategySchema })

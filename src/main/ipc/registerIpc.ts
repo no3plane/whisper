@@ -17,6 +17,7 @@ import type { LibraryService } from '../library/LibraryService';
 import { logger } from '../logging/logger';
 import type { SettingsService } from '../settings/SettingsService';
 import type { ThreadStore } from '../threads/ThreadStore';
+import { importBookFiles } from './importBookFiles';
 
 export interface IpcServices {
   settings: SettingsService;
@@ -82,6 +83,15 @@ export function registerIpc(services: IpcServices) {
       ipcChannels.settingsTestConnection,
       ipcInputSchemas.aiSettings,
       (_event, settings: AISettings) => aiProvider.testConnection(settings),
+    ),
+  );
+
+  ipcMain.handle(
+    ipcChannels.booksImportFiles,
+    validated(
+      ipcChannels.booksImportFiles,
+      ipcInputSchemas.importBookFiles,
+      (_event, filePaths: string[]) => importBookFiles(filePaths, services.library),
     ),
   );
 

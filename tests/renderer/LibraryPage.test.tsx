@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LibraryPage } from '../../src/renderer/pages/library-page/LibraryPage';
 import type { Book } from '../../src/shared/types';
@@ -7,8 +7,7 @@ const { api } = vi.hoisted(() => ({
   api: {
     books: {
       list: vi.fn(),
-      importMarkdown: vi.fn(),
-      importEpub: vi.fn(),
+      importFiles: vi.fn(),
     },
   },
 }));
@@ -32,15 +31,22 @@ const book: Book = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   api.books.list.mockResolvedValue([]);
-  api.books.importMarkdown.mockResolvedValue(book);
-  api.books.importEpub.mockResolvedValue(book);
+  api.books.importFiles.mockResolvedValue({ imported: [], failed: [] });
 });
 
 afterEach(cleanup);
 
 describe('LibraryPage', () => {
+  it('不显示书库标题但保留区域名称', async () => {
+    render(<LibraryPage onOpenBook={vi.fn()} />);
+
+    expect(screen.queryByRole('heading', { level: 2, name: '书库' })).toBeNull();
+    expect(screen.getByRole('region', { name: '书库' })).toBeTruthy();
+    await screen.findByRole('region', { name: '空书库' });
+  });
+
   it('加载书籍并从封面式按钮打开', async () => {
     api.books.list.mockResolvedValueOnce([book]);
     const onOpenBook = vi.fn();
@@ -50,13 +56,22 @@ describe('LibraryPage', () => {
 
     expect(onOpenBook).toHaveBeenCalledWith(book.id);
     expect(screen.getByText('作者未知 · EPUB')).toBeTruthy();
+    expect(screen.queryByRole('toolbar')).toBeNull();
+    const shelf = screen.getByRole('region', { name: '藏书' });
+    expect(
+      within(shelf)
+        .getAllByRole('button')
+        .map((button) => button.getAttribute('aria-label') ?? button.textContent),
+    ).toEqual(['导入书籍', '打开《局外人》']);
   });
 
   it('没有书时显示现有导入能力的空状态', async () => {
     render(<LibraryPage onOpenBook={vi.fn()} />);
 
-    expect(await screen.findByText('书房还是空的')).toBeTruthy();
-    expect(screen.getByPlaceholderText('输入本机书籍文件路径')).toBeTruthy();
+    const emptyState = await screen.findByRole('region', { name: '空书库' });
+    expect(within(emptyState).getByText('书房还是空的')).toBeTruthy();
+    expect(within(emptyState).getByRole('button', { name: '导入书籍' })).toBeTruthy();
+    expect(screen.queryByText('支持 Markdown 和 EPUB，可多选')).toBeNull();
   });
 
   it('书库加载完成前不提前显示空状态', () => {
@@ -67,50 +82,62 @@ describe('LibraryPage', () => {
     expect(screen.queryByText('书房还是空的')).toBeNull();
   });
 
-  it('导入 Markdown 后清空路径并重新加载书库', async () => {
-    api.books.list.mockResolvedValueOnce([]).mockResolvedValueOnce([book]);
-    render(<LibraryPage onOpenBook={vi.fn()} />);
+  it('点击导入按钮时直接打开支持多选的文件输入', async () => {
+    const { container } = render(<LibraryPage onOpenBook={vi.fn()} />);
     await screen.findByText('书房还是空的');
-    const pathInput = screen.getByPlaceholderText('输入本机书籍文件路径');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const click = vi.spyOn(input, 'click');
 
-    fireEvent.change(pathInput, { target: { value: '/books/notes.md' } });
-    fireEvent.click(screen.getByRole('button', { name: '导入 Markdown' }));
+    fireEvent.click(screen.getByRole('button', { name: '导入书籍' }));
 
-    await waitFor(() =>
-      expect(api.books.importMarkdown).toHaveBeenCalledWith({ filePath: '/books/notes.md' }),
-    );
+    expect(click).toHaveBeenCalledOnce();
+    expect(input.multiple).toBe(true);
+    expect(input.accept).toBe('.md,.markdown,.epub');
+  });
+
+  it('选择多本书导入后重新加载书库并显示成功数量', async () => {
+    api.books.list.mockResolvedValueOnce([]).mockResolvedValueOnce([book]);
+    api.books.importFiles.mockResolvedValueOnce({ imported: [book, book], failed: [] });
+    const { container } = render(<LibraryPage onOpenBook={vi.fn()} />);
+    await screen.findByText('书房还是空的');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    const files = [new File(['a'], 'notes.md'), new File(['b'], 'novel.epub')];
+
+    fireEvent.change(input, { target: { files } });
+
+    await waitFor(() => expect(api.books.importFiles).toHaveBeenCalledWith(files));
     await waitFor(() => expect(api.books.list).toHaveBeenCalledTimes(2));
-    expect((pathInput as HTMLInputElement).value).toBe('');
+    expect(screen.getByRole('status').textContent).toContain('已导入 2 本书');
     expect(await screen.findByRole('button', { name: '打开《局外人》' })).toBeTruthy();
   });
 
-  it('导入 EPUB 后清空路径并重新加载书库', async () => {
-    api.books.list.mockResolvedValueOnce([]).mockResolvedValueOnce([book]);
-    render(<LibraryPage onOpenBook={vi.fn()} />);
+  it('取消文件选择时不重新加载书库也不显示反馈', async () => {
+    const { container } = render(<LibraryPage onOpenBook={vi.fn()} />);
     await screen.findByText('书房还是空的');
-    const pathInput = screen.getByPlaceholderText('输入本机书籍文件路径');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
 
-    fireEvent.change(pathInput, { target: { value: '/books/novel.epub' } });
-    fireEvent.click(screen.getByRole('button', { name: '导入 EPUB' }));
+    fireEvent.change(input, { target: { files: [] } });
 
-    await waitFor(() =>
-      expect(api.books.importEpub).toHaveBeenCalledWith({ filePath: '/books/novel.epub' }),
-    );
-    await waitFor(() => expect(api.books.list).toHaveBeenCalledTimes(2));
-    expect((pathInput as HTMLInputElement).value).toBe('');
+    expect(api.books.importFiles).not.toHaveBeenCalled();
+    expect(api.books.list).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/已导入/)).toBeNull();
   });
 
-  it('导入失败时展示错误且保留路径', async () => {
-    api.books.importEpub.mockRejectedValueOnce(new Error('无法解析 EPUB'));
-    render(<LibraryPage onOpenBook={vi.fn()} />);
+  it('部分导入失败时刷新书库并展示失败文件和原因', async () => {
+    api.books.list.mockResolvedValueOnce([]).mockResolvedValueOnce([book]);
+    api.books.importFiles.mockResolvedValueOnce({
+      imported: [book],
+      failed: [{ fileName: 'broken.epub', reason: '无法解析 EPUB' }],
+    });
+    const { container } = render(<LibraryPage onOpenBook={vi.fn()} />);
     await screen.findByText('书房还是空的');
-    const pathInput = screen.getByPlaceholderText('输入本机书籍文件路径');
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
 
-    fireEvent.change(pathInput, { target: { value: '/books/broken.epub' } });
-    fireEvent.click(screen.getByRole('button', { name: '导入 EPUB' }));
+    fireEvent.change(input, { target: { files: [new File(['bad'], 'broken.epub')] } });
 
-    expect((await screen.findByRole('alert')).textContent).toContain('无法解析 EPUB');
-    expect((pathInput as HTMLInputElement).value).toBe('/books/broken.epub');
-    expect(api.books.list).toHaveBeenCalledTimes(1);
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('成功 1 本，失败 1 本');
+    expect(alert.textContent).toContain('broken.epub：无法解析 EPUB');
+    expect(api.books.list).toHaveBeenCalledTimes(2);
   });
 });

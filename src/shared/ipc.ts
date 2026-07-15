@@ -4,6 +4,7 @@ export const ipcChannels = {
   settingsTestConnection: 'settings.testConnection',
   booksImportMarkdown: 'books.importMarkdown',
   booksImportEpub: 'books.importEpub',
+  booksImportFiles: 'books.importFiles',
   booksList: 'books.list',
   booksOpen: 'books.open',
   aiCreateConversation: 'ai.createConversation',

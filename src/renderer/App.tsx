@@ -26,8 +26,8 @@ export function App() {
   return (
     <main className={styles.shell}>
       <header className={styles.topBar}>
-        <span>WHISPER READING COMPANION</span>
-        <h1>我的书房</h1>
+        <h1>Whisper</h1>
+        <span>你的本地阅读伴侣</span>
       </header>
       <div className={styles.homeGrid}>
         <LibraryPage onOpenBook={setActiveBookId} />

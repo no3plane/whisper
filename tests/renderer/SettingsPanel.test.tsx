@@ -33,6 +33,12 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('SettingsPanel', () => {
+  it('不显示 WORKBENCH 装饰文案', () => {
+    render(<SettingsPanel />);
+
+    expect(screen.queryByText('WORKBENCH')).toBeNull();
+  });
+
   it('加载并保存完整模型设置', async () => {
     render(<SettingsPanel />);
 

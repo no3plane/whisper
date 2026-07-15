@@ -33,4 +33,19 @@ describe('IPC 输入 schema', () => {
       filePath: '/tmp/a.md',
     });
   });
+
+  it('批量导入只接受非空的本机路径数组', () => {
+    expect(
+      parseIpcInput('books.importFiles', ipcInputSchemas.importBookFiles, [
+        '/tmp/a.md',
+        '/tmp/b.epub',
+      ]),
+    ).toEqual(['/tmp/a.md', '/tmp/b.epub']);
+    expect(() => parseIpcInput('books.importFiles', ipcInputSchemas.importBookFiles, [])).toThrow(
+      'books.importFiles',
+    );
+    expect(() =>
+      parseIpcInput('books.importFiles', ipcInputSchemas.importBookFiles, ['/tmp/a.md', '  ']),
+    ).toThrow('books.importFiles');
+  });
 });

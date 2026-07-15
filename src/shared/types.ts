@@ -128,6 +128,11 @@ export interface ImportBookInput {
   filePath: string;
 }
 
+export interface ImportBooksResult {
+  imported: Book[];
+  failed: Array<{ fileName: string; reason: string }>;
+}
+
 export interface CreateConversationInput {
   bookId: string;
   target: ReadingTarget;
