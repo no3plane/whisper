@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 const css = readFileSync('src/renderer/styles.css', 'utf8');
 const readerCss = readFileSync('src/renderer/pages/reader-page/ReaderPage.module.css', 'utf8');
+const outlineCss = readFileSync(
+  'src/renderer/features/book-outline/BookOutline.module.css',
+  'utf8',
+);
 const aiPanelCss = readFileSync(
   'src/renderer/features/conversation/RightAiPanel.module.css',
   'utf8',
@@ -46,5 +50,11 @@ describe('renderer visual system', () => {
     expect(readerCss).toMatch(/@media[^]*\.readerPaper\s*{[^]*padding:/);
     expect(aiPanelCss).toMatch(/@media\s*\([^)]*max-width:\s*1100px[^)]*\)/);
     expect(aiPanelCss).toMatch(/@media[^]*\.panel\s*{[^]*padding:/);
+  });
+
+  it('层级目录提供连续祖先线、当前位置和长标题换行', () => {
+    expect(outlineCss).toMatch(/\.children\s*{[^}]*border-left:/s);
+    expect(outlineCss).toMatch(/\[data-current='true'\]/);
+    expect(outlineCss).toContain('overflow-wrap: anywhere');
   });
 });

@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import type { BookDocument, MessageReference, ReadingTarget } from '../../../shared/types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { BookDocument, Chapter, MessageReference, ReadingTarget } from '../../../shared/types';
+import { BookOutline } from '../../features/book-outline/BookOutline';
+import { buildOutlineModel } from '../../features/book-outline/outlineModel';
+import { useReadingPosition } from '../../features/book-outline/useReadingPosition';
 import {
   createBookDraft,
   applyAutomaticSelection,
@@ -23,11 +26,15 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const [document, setDocument] = useState<BookDocument | null>(null);
   const [draft, setDraft] = useState<ConversationDraft | null>(null);
   const [selection, setSelection] = useState<ReadingTarget | null>(null);
+  const [navigationChapterId, setNavigationChapterId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const conversation = useConversationWorkspace(bookId, setError);
   const { threads, activeView } = conversation.workspace;
   const articleRef = useRef<HTMLElement>(null);
+  const readerStageRef = useRef<HTMLElement>(null);
+  const outlineModel = useMemo(() => buildOutlineModel(document?.chapters ?? []), [document]);
+  const activeChapterId = useReadingPosition(readerStageRef, document?.passages ?? []);
   const locateSource = useSourceLocator(articleRef, styles.temporarySourceHighlight, setNotice);
 
   useEffect(() => {
@@ -50,6 +57,19 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
       cancelled = true;
     };
   }, [bookId]);
+
+  useEffect(() => {
+    const readerStage = readerStageRef.current;
+    if (!readerStage || !navigationChapterId) {
+      return;
+    }
+
+    const finishNavigation = () => setNavigationChapterId(null);
+    readerStage.addEventListener('scrollend', finishNavigation, { once: true });
+    return () => {
+      readerStage.removeEventListener('scrollend', finishNavigation);
+    };
+  }, [navigationChapterId]);
 
   function openDraft() {
     if (document) {
@@ -98,6 +118,16 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
       locateSource(snapshot);
     }
   }
+  function navigateToChapter(chapter: Chapter) {
+    if (!chapter.startPassageId) {
+      return;
+    }
+    setNavigationChapterId(chapter.id);
+    globalThis.document.getElementById(chapter.startPassageId)?.scrollIntoView({
+      behavior: 'instant',
+      block: 'start',
+    });
+  }
 
   if (!document || !draft) {
     return (
@@ -125,17 +155,15 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         <button className={styles.backButton} onClick={onBack}>
           返回书库
         </button>
-        <p className={styles.navEyebrow}>正在阅读</p>
-        <h2 aria-hidden="true">{document.book.title}</h2>
         <div className={styles.chapterList}>
-          {document.chapters.map((chapter) => (
-            <a key={chapter.id} href={`#${chapter.startPassageId}`}>
-              {chapter.title}
-            </a>
-          ))}
+          <BookOutline
+            model={outlineModel}
+            activeChapterId={navigationChapterId ?? activeChapterId}
+            onNavigate={navigateToChapter}
+          />
         </div>
       </nav>
-      <main className={styles.readerStage}>
+      <main ref={readerStageRef} className={styles.readerStage}>
         <article
           ref={articleRef}
           className={styles.readerPaper}
@@ -164,7 +192,12 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
           {error ? <p className="error">{error}</p> : null}
           {notice ? <p role="status">{notice}</p> : null}
           {document.passages.map((passage) => (
-            <p id={passage.id} data-passage-id={passage.id} key={passage.id}>
+            <p
+              id={passage.id}
+              data-passage-id={passage.id}
+              data-chapter-id={passage.chapterId ?? undefined}
+              key={passage.id}
+            >
               {passage.text}
             </p>
           ))}

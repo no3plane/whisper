@@ -148,6 +148,148 @@ describe('ReaderPage 会话编排', () => {
     expect(screen.getByRole('heading', { name: bookDocument.book.title })).toBeTruthy();
   });
 
+  it('渲染层级目录并把标题导航和折叠操作分开', async () => {
+    const scroll = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scroll;
+    api.books.open.mockResolvedValueOnce({
+      ...bookDocument,
+      chapters: [
+        { ...bookDocument.chapters[0], id: 'part', title: '第一部', endPassageId: 'p2' },
+        {
+          ...bookDocument.chapters[0],
+          id: 'chapter',
+          parentChapterId: 'part',
+          title: '第一章',
+          order: 1,
+          startPassageId: 'p2',
+          endPassageId: 'p2',
+        },
+      ],
+      passages: [
+        bookDocument.passages[0],
+        { ...bookDocument.passages[0], id: 'p2', chapterId: 'chapter', order: 1 },
+      ],
+    });
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+
+    const toggle = await screen.findByRole('button', { name: /“第一部”/ });
+    if (toggle.getAttribute('aria-expanded') === 'false') {
+      fireEvent.click(toggle);
+    }
+    fireEvent.click(await screen.findByRole('link', { name: '第一章' }));
+    expect(scroll).toHaveBeenCalledWith({ behavior: 'instant', block: 'start' });
+    fireEvent.click(screen.getByRole('button', { name: '折叠“第一部”' }));
+    expect(scroll).toHaveBeenCalledOnce();
+  });
+
+  it('目录导航滚动期间锁定目标分支，不展开沿途分支', async () => {
+    const scroll = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scroll;
+    let scrollPosition = 'start';
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const topById: Record<string, number> =
+          scrollPosition === 'start'
+            ? { p1: -10, p2: 200, p7: 400 }
+            : { p1: -400, p2: -10, p7: 200 };
+        return { top: topById[this.id] ?? 0 } as DOMRect;
+      });
+    api.books.open.mockResolvedValueOnce({
+      ...bookDocument,
+      chapters: [
+        { ...bookDocument.chapters[0], id: 'part-1', title: 'Part 1' },
+        {
+          ...bookDocument.chapters[0],
+          id: 'part-2',
+          title: 'Part 2',
+          order: 1,
+          startPassageId: 'p2',
+          endPassageId: 'p2',
+        },
+        {
+          ...bookDocument.chapters[0],
+          id: 'part-2-child',
+          parentChapterId: 'part-2',
+          title: 'Part 2 小节',
+          order: 2,
+          startPassageId: 'p2',
+          endPassageId: 'p2',
+        },
+        {
+          ...bookDocument.chapters[0],
+          id: 'part-7',
+          title: 'Part 7',
+          order: 3,
+          startPassageId: 'p7',
+          endPassageId: 'p7',
+        },
+        {
+          ...bookDocument.chapters[0],
+          id: 'part-7-child',
+          parentChapterId: 'part-7',
+          title: 'Part 7 小节',
+          order: 4,
+          startPassageId: 'p7',
+          endPassageId: 'p7',
+        },
+      ],
+      passages: [
+        bookDocument.passages[0],
+        { ...bookDocument.passages[0], id: 'p2', chapterId: 'part-2-child', order: 1 },
+        { ...bookDocument.passages[0], id: 'p7', chapterId: 'part-7-child', order: 2 },
+      ],
+    });
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Part 7' }));
+    expect(screen.getByRole('link', { name: 'Part 7' }).getAttribute('aria-current')).toBe(
+      'location',
+    );
+    scrollPosition = 'middle';
+    fireEvent.scroll(screen.getByRole('main'));
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: 'Part 7' }).getAttribute('aria-current')).toBe(
+        'location',
+      ),
+    );
+    expect(screen.queryByRole('link', { name: 'Part 2 小节' })).toBeNull();
+    expect(scroll).toHaveBeenCalledOnce();
+    fireEvent(screen.getByRole('main'), new Event('scrollend'));
+    expect(await screen.findByRole('link', { name: 'Part 2 小节' })).toBeTruthy();
+    rect.mockRestore();
+  });
+
+  it('第五层正文由第四层目录项承接当前位置', async () => {
+    const chapters = Array.from({ length: 5 }, (_, index) => ({
+      ...bookDocument.chapters[0],
+      id: `level-${index + 1}`,
+      parentChapterId: index === 0 ? null : `level-${index}`,
+      title: `第${index + 1}层`,
+      order: index,
+      startPassageId: 'deep-passage',
+      endPassageId: 'deep-passage',
+    }));
+    api.books.open.mockResolvedValueOnce({
+      ...bookDocument,
+      chapters,
+      passages: [
+        {
+          ...bookDocument.passages[0],
+          id: 'deep-passage',
+          chapterId: 'level-5',
+        },
+      ],
+    });
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+
+    expect(await screen.findByRole('link', { name: '第4层' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: '第5层' })).toBeNull();
+    expect(screen.getByRole('link', { name: '第4层' }).getAttribute('aria-current')).toBe(
+      'location',
+    );
+  });
+
   it('打开书籍期间显示与阅读面一致的加载状态', () => {
     api.books.open.mockReturnValueOnce(new Promise(() => undefined));
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
