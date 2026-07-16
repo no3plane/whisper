@@ -60,14 +60,7 @@ describe('SelectionMenu', () => {
 describe('TargetPicker', () => {
   it('点击父章节更新目标且技能只呈现当前目标可用项', () => {
     const onTargetChange = vi.fn();
-    render(
-      <TargetPicker
-        draft={draft}
-        onTargetChange={onTargetChange}
-        onSkillChange={vi.fn()}
-        onStrategyChange={vi.fn()}
-      />,
-    );
+    render(<TargetPicker draft={draft} onTargetChange={onTargetChange} onSkillChange={vi.fn()} />);
     fireEvent.click(screen.getByRole('button', { name: '第八章' }));
     expect(onTargetChange).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'chapter', chapterId: 'chapter' }),
@@ -77,19 +70,13 @@ describe('TargetPicker', () => {
 
   it('父状态清除技能时显示轻提示', () => {
     const { rerender } = render(
-      <TargetPicker
-        draft={draft}
-        onTargetChange={vi.fn()}
-        onSkillChange={vi.fn()}
-        onStrategyChange={vi.fn()}
-      />,
+      <TargetPicker draft={draft} onTargetChange={vi.fn()} onSkillChange={vi.fn()} />,
     );
     rerender(
       <TargetPicker
         draft={{ ...draft, skillType: null }}
         onTargetChange={vi.fn()}
         onSkillChange={vi.fn()}
-        onStrategyChange={vi.fn()}
       />,
     );
     expect(screen.getByRole('status').textContent).toContain('技能已清除');

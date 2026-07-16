@@ -28,7 +28,7 @@
   padding: var(--space-3);
   border-left: 3px solid var(--color-accent-amber-strong);
   background: color-mix(in srgb, var(--color-accent-amber) 12%, transparent);
-  font-family: var(--font-reading);
+  font-family: var(--font-interface);
   line-height: 1.6;
 }
 .picker fieldset {

@@ -90,62 +90,58 @@ export function ThreadChat({
       {streamError ? <p className="error">{streamError}</p> : null}
       <div className={styles.threadRoot}>
         <div className={styles.threadViewport} ref={viewportRef} onScroll={handleScroll}>
-          <div>
-            {item.messages
-              .filter((message) => message.role !== 'system')
-              .map((message) => (
-                <article
-                  className={`${styles.message} ${message.role === 'user' ? styles.userMessage : ''}`}
-                  key={message.id}
-                >
-                  <div className={styles.messageLabel}>
-                    {message.role === 'user' ? '你' : '助手'}
-                  </div>
-                  {message.reference ? (
-                    <button onClick={() => onLocate(item.thread.id, message.reference)}>
-                      引用：{message.reference.breadcrumb.map((crumb) => crumb.title).join(' > ')}
-                    </button>
-                  ) : null}
-                  <div className={`${styles.messageBody} ${styles.markdown}`}>
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
-                  </div>
-                  {message.status === 'failed' ? (
-                    <button onClick={() => onRetryMessage(item.thread.id, message.id)}>
-                      重试回答
-                    </button>
-                  ) : null}
-                </article>
-              ))}
-            {item.thread.status === 'streaming' ? (
-              <div className={styles.thinkingStatus} aria-live="polite">
-                模型思考中…
-              </div>
-            ) : null}
-          </div>
-          <div>
-            {pendingReference ? (
-              <aside className={styles.pendingReference}>
-                <span>{pendingReference.breadcrumb.map((crumb) => crumb.title).join(' > ')}</span>
-                <blockquote>{pendingReference.selectedText}</blockquote>
-                <button aria-label="移除引用" onClick={onClearReference}>
-                  ×
-                </button>
-              </aside>
-            ) : null}
-            <form className={styles.composer} onSubmit={submit}>
-              <textarea
-                className={styles.composerInput}
-                placeholder={pendingReference ? '结合这段文字追问什么？' : '继续追问这个回答'}
-                rows={1}
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                onKeyDown={handleKeyDown}
-              />
-              <button className={styles.composerSend} aria-label="发送追问" disabled={!canSend}>
-                发送
+          {item.messages
+            .filter((message) => message.role !== 'system')
+            .map((message) => (
+              <article
+                className={`${styles.message} ${message.role === 'user' ? styles.userMessage : ''}`}
+                key={message.id}
+              >
+                <div className={styles.messageLabel}>{message.role === 'user' ? '你' : '助手'}</div>
+                {message.reference ? (
+                  <button onClick={() => onLocate(item.thread.id, message.reference)}>
+                    引用：{message.reference.breadcrumb.map((crumb) => crumb.title).join(' > ')}
+                  </button>
+                ) : null}
+                <div className={`${styles.messageBody} ${styles.markdown}`}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                </div>
+                {message.status === 'failed' ? (
+                  <button onClick={() => onRetryMessage(item.thread.id, message.id)}>
+                    重试回答
+                  </button>
+                ) : null}
+              </article>
+            ))}
+          {item.thread.status === 'streaming' ? (
+            <div className={styles.thinkingStatus} aria-live="polite">
+              模型思考中…
+            </div>
+          ) : null}
+        </div>
+        <div className={styles.threadComposerArea}>
+          {pendingReference ? (
+            <aside className={styles.pendingReference}>
+              <span>{pendingReference.breadcrumb.map((crumb) => crumb.title).join(' > ')}</span>
+              <blockquote>{pendingReference.selectedText}</blockquote>
+              <button aria-label="移除引用" onClick={onClearReference}>
+                ×
               </button>
-            </form>
-          </div>
+            </aside>
+          ) : null}
+          <form className={styles.composer} onSubmit={submit}>
+            <textarea
+              className={styles.composerInput}
+              placeholder={pendingReference ? '结合这段文字追问什么？' : '继续追问这个回答'}
+              rows={1}
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              onKeyDown={handleKeyDown}
+            />
+            <button className={styles.composerSend} aria-label="发送追问" disabled={!canSend}>
+              发送
+            </button>
+          </form>
         </div>
       </div>
     </div>

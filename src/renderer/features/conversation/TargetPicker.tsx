@@ -8,7 +8,6 @@ interface TargetPickerProps {
   draft: ConversationDraft;
   onTargetChange: (target: ReadingTarget) => void;
   onSkillChange: (skill: ReadingSkillType | null) => void;
-  onStrategyChange: (strategy: ContextStrategy) => void;
 }
 
 const strategyLabels: Record<ContextStrategy, string> = {
@@ -17,12 +16,7 @@ const strategyLabels: Record<ContextStrategy, string> = {
   hybrid: '混合',
 };
 
-export function TargetPicker({
-  draft,
-  onTargetChange,
-  onSkillChange,
-  onStrategyChange,
-}: TargetPickerProps) {
+export function TargetPicker({ draft, onTargetChange, onSkillChange }: TargetPickerProps) {
   const previousSkill = useRef(draft.skillType);
   const [skillCleared, setSkillCleared] = useState(false);
 
@@ -83,20 +77,26 @@ export function TargetPicker({
         ))}
       </fieldset>
       {skillCleared ? <p role="status">目标已变化，原技能已清除</p> : null}
-
-      <label>
-        全书认知
-        <select
-          value={draft.contextStrategy}
-          onChange={(event) => onStrategyChange(event.target.value as ContextStrategy)}
-        >
-          {Object.entries(strategyLabels).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </label>
     </section>
+  );
+}
+
+interface ContextStrategyPickerProps {
+  value: ContextStrategy;
+  onChange: (strategy: ContextStrategy) => void;
+}
+
+export function ContextStrategyPicker({ value, onChange }: ContextStrategyPickerProps) {
+  return (
+    <label>
+      全书认知
+      <select value={value} onChange={(event) => onChange(event.target.value as ContextStrategy)}>
+        {Object.entries(strategyLabels).map(([strategy, label]) => (
+          <option key={strategy} value={strategy}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
