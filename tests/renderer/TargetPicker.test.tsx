@@ -32,42 +32,28 @@ const draft: ConversationDraft = {
 };
 
 describe('SelectionMenu', () => {
-  it('选区操作以命名工具条呈现', () => {
-    render(<SelectionMenu selectedText="一段原文" mode="thread" />);
+  it('选区操作只提供提问入口', () => {
+    render(<SelectionMenu selectedText="一段原文" />);
     expect(screen.getByRole('toolbar', { name: '选区操作' })).toBeTruthy();
-  });
-
-  it('草稿态只显示设为解读目标', () => {
-    render(
-      <SelectionMenu
-        mode="draft"
-        selectedText="所谓自由"
-        onSetTarget={vi.fn()}
-        onStartConversation={vi.fn()}
-        onReference={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole('button', { name: '设为解读目标' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
+    expect(screen.queryByText('一段原文')).toBeNull();
+    expect(screen.queryByRole('button', { name: '设为解读目标' })).toBeNull();
     expect(screen.queryByRole('button', { name: '围绕此处提问' })).toBeNull();
     expect(screen.queryByRole('button', { name: '引用到当前会话' })).toBeNull();
   });
 
-  it('正式态提供新会话和引用两个入口', () => {
-    const onStartConversation = vi.fn();
-    const onReference = vi.fn();
-    render(
-      <SelectionMenu
-        mode="thread"
-        selectedText="所谓自由"
-        onSetTarget={vi.fn()}
-        onStartConversation={onStartConversation}
-        onReference={onReference}
-      />,
+  it('点击提问调用唯一动作', () => {
+    const onAsk = vi.fn();
+    render(<SelectionMenu selectedText="所谓自由" onAsk={onAsk} />);
+    fireEvent.click(screen.getByRole('button', { name: '提问' }));
+    expect(onAsk).toHaveBeenCalledOnce();
+  });
+
+  it('按选区计算结果固定定位', () => {
+    render(<SelectionMenu selectedText="所谓自由" position={{ left: 320, top: 180 }} />);
+    expect(screen.getByRole('toolbar', { name: '选区操作' }).getAttribute('style')).toContain(
+      'left: 320px; top: 180px',
     );
-    fireEvent.click(screen.getByRole('button', { name: '围绕此处提问' }));
-    fireEvent.click(screen.getByRole('button', { name: '引用到当前会话' }));
-    expect(onStartConversation).toHaveBeenCalledOnce();
-    expect(onReference).toHaveBeenCalledOnce();
   });
 });
 

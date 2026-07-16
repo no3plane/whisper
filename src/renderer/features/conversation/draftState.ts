@@ -81,7 +81,11 @@ export function replaceDraftFromSelection(
   selection: ReadingTarget,
   bookDefaultStrategy: ContextStrategy,
 ): ConversationDraft {
-  return { ...createBookDraft(draft.bookId, bookDefaultStrategy), target: selection };
+  return {
+    ...createBookDraft(draft.bookId, bookDefaultStrategy),
+    target: selection,
+    prompt: draft.prompt,
+  };
 }
 
 export function validateDraft(draft: ConversationDraft): DraftValidation {

@@ -65,7 +65,7 @@ describe('新会话草稿状态', () => {
     expect(applyAutomaticSelection(draft, anotherSelection)).toBe(draft);
   });
 
-  it('围绕新选区会从书籍默认值重建草稿并清空旧输入', () => {
+  it('围绕新选区会从书籍默认值重建草稿并保留旧输入', () => {
     const reference: MessageReference = {
       selectedText: '引用',
       start: { blockId: 'p2', offsetInBlock: 0 },
@@ -86,6 +86,7 @@ describe('新会话草稿状态', () => {
     expect(replaceDraftFromSelection(old, anotherSelection, 'hybrid')).toEqual({
       ...createBookDraft('book-1', 'hybrid'),
       target: anotherSelection,
+      prompt: '补充要求',
     });
   });
 

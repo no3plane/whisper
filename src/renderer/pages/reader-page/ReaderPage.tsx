@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { BookDocument, Chapter, MessageReference, ReadingTarget } from '../../../shared/types';
+import type { BookDocument, Chapter, MessageReference } from '../../../shared/types';
 import { BookOutline } from '../../features/book-outline/BookOutline';
 import { buildOutlineModel } from '../../features/book-outline/outlineModel';
 import { useReadingPosition } from '../../features/book-outline/useReadingPosition';
 import {
   createBookDraft,
-  applyAutomaticSelection,
-  clearAutomaticSelection,
   replaceDraftFromSelection,
   selectTarget,
   type ConversationDraft,
@@ -14,8 +12,8 @@ import {
 import { RightAiPanel } from '../../features/conversation/RightAiPanel';
 import { useConversationWorkspace } from '../../features/conversation/useConversationWorkspace';
 import { SelectionMenu } from '../../features/reading-selection/SelectionMenu';
-import { createSelectionTargetFromDOMSelection } from '../../features/reading-selection/renderedTextSelection';
 import { useReadingTargetNavigation } from '../../features/reading-selection/useReadingTargetNavigation';
+import { useReadingSelection } from '../../features/reading-selection/useReadingSelection';
 import { whisper } from '../../api/whisper';
 import { MarkdownDocument } from '../../features/markdown-reading/MarkdownDocument';
 import styles from './ReaderPage.module.css';
@@ -27,21 +25,26 @@ interface ReaderPageProps {
 export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const [document, setDocument] = useState<BookDocument | null>(null);
   const [draft, setDraft] = useState<ConversationDraft | null>(null);
-  const [selection, setSelection] = useState<ReadingTarget | null>(null);
   const [navigationChapterId, setNavigationChapterId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const conversation = useConversationWorkspace(bookId, setError);
-  const { threads, activeView } = conversation.workspace;
-  const articleRef = useRef<HTMLElement>(null);
-  const readerStageRef = useRef<HTMLElement>(null);
+  const { threads } = conversation.workspace;
+  const articleElRef = useRef<HTMLElement>(null);
+  const scrollElRef = useRef<HTMLElement>(null);
   const outlineModel = useMemo(() => buildOutlineModel(document?.chapters ?? []), [document]);
-  const activeChapterId = useReadingPosition(readerStageRef, document?.blocks ?? []);
+  const activeChapterId = useReadingPosition(scrollElRef, document?.blocks ?? []);
   const { navigateToReadingTarget, isRevealedSelection } = useReadingTargetNavigation(
-    articleRef,
+    articleElRef,
     styles.temporaryReadingTargetHighlight,
     setNotice,
   );
+  const readingSelection = useReadingSelection({
+    document,
+    articleElRef,
+    scrollElRef,
+    isRevealedSelection,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -65,7 +68,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   }, [bookId]);
 
   useEffect(() => {
-    const readerStage = readerStageRef.current;
+    const readerStage = scrollElRef.current;
     if (!readerStage || !navigationChapterId) {
       return;
     }
@@ -77,67 +80,6 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     };
   }, [navigationChapterId]);
 
-  useEffect(() => {
-    function clearReadingSelection() {
-      setSelection(null);
-      if (activeView?.type === 'draft') {
-        setDraft((current) => (current ? clearAutomaticSelection(current) : current));
-      }
-    }
-
-    function syncSelection() {
-      if (!document) {
-        return;
-      }
-      const browserSelection = window.getSelection();
-      const article = articleRef.current;
-      if (!browserSelection || !article) {
-        return;
-      }
-      if (browserSelection.rangeCount === 0) {
-        if (!selection) {
-          return;
-        }
-        clearReadingSelection();
-        return;
-      }
-      if (browserSelection.rangeCount !== 1) {
-        return;
-      }
-      const range = browserSelection.getRangeAt(0);
-      if (!article.contains(range.commonAncestorContainer)) {
-        return;
-      }
-      if (isRevealedSelection(browserSelection)) {
-        return;
-      }
-      const selectionTarget = createSelectionTargetFromDOMSelection(
-        browserSelection,
-        document.chapters,
-        document.blocks,
-      );
-      if (!selectionTarget) {
-        clearReadingSelection();
-        return;
-      }
-      setSelection(selectionTarget);
-      if (activeView?.type !== 'draft') {
-        return;
-      }
-      setDraft((current) => {
-        if (!current) {
-          return current;
-        }
-        return applyAutomaticSelection(current, selectionTarget);
-      });
-    }
-
-    globalThis.document.addEventListener('selectionchange', syncSelection);
-    return () => {
-      globalThis.document.removeEventListener('selectionchange', syncSelection);
-    };
-  }, [activeView?.type, document, isRevealedSelection, selection]);
-
   function openDraft() {
     if (document) {
       setDraft(createBookDraft(bookId, document.book.defaultContextStrategy));
@@ -145,22 +87,18 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     conversation.commands.selectView({ type: 'draft' });
   }
   function startFromSelection() {
-    if (!selection || !document || !draft) {
+    if (!readingSelection.target || !document || !draft) {
       return;
     }
-    setDraft(replaceDraftFromSelection(draft, selection, document.book.defaultContextStrategy));
+    setDraft(
+      replaceDraftFromSelection(
+        draft,
+        readingSelection.target,
+        document.book.defaultContextStrategy,
+      ),
+    );
+    readingSelection.dismissMenu();
     conversation.commands.selectView({ type: 'draft' });
-  }
-  function referenceSelection() {
-    if (!selection) {
-      return;
-    }
-    conversation.commands.setReference({
-      selectedText: selection.selectedText,
-      start: selection.start!,
-      end: selection.end!,
-      breadcrumb: selection.breadcrumb,
-    });
   }
   function navigateToConversationTarget(threadId: string, reference?: MessageReference | null) {
     const item = threads.find(({ thread }) => thread.id === threadId);
@@ -211,24 +149,17 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
           />
         </div>
       </nav>
-      <main ref={readerStageRef} className={styles.readerStage}>
-        <article ref={articleRef} className={styles.readerPaper} aria-label="阅读正文">
+      <main ref={scrollElRef} className={styles.readerStage}>
+        <article ref={articleElRef} className={styles.readerPaper} aria-label="阅读正文">
           <header className={styles.readerHeader}>
             <span>WHISPER READING</span>
             <h1>{document.book.title}</h1>
           </header>
-          {activeView?.type === 'draft' || activeView?.type === 'thread' ? (
+          {readingSelection.target && readingSelection.menuPosition ? (
             <SelectionMenu
-              selectedText={selection?.selectedText ?? ''}
-              mode={activeView.type}
-              onSetTarget={() =>
-                selection &&
-                setDraft((current) =>
-                  current ? applyAutomaticSelection(current, selection) : current,
-                )
-              }
-              onStartConversation={startFromSelection}
-              onReference={referenceSelection}
+              selectedText={readingSelection.target.selectedText}
+              position={readingSelection.menuPosition}
+              onAsk={startFromSelection}
             />
           ) : null}
           {error ? <p className="error">{error}</p> : null}
@@ -254,6 +185,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     </section>
   );
 }
+
 function messageOf(reason: unknown) {
   return reason instanceof Error ? reason.message : String(reason);
 }
