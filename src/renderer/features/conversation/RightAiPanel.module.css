@@ -11,27 +11,6 @@
   background: var(--color-surface-workbench);
 }
 
-.panelHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: var(--space-3);
-  color: var(--color-text-secondary);
-}
-
-.panelHeader span {
-  font-size: 0.62rem;
-  font-weight: 750;
-  letter-spacing: 0.18em;
-}
-
-.panelHeader strong {
-  color: var(--color-text-primary);
-  font-family: var(--font-reading);
-  font-size: 1rem;
-  font-weight: 500;
-}
-
 .tabs {
   display: flex;
   flex: none;

@@ -651,7 +651,7 @@ describe('ReaderPage 会话编排', () => {
     fireEvent(document, new Event('selectionchange'));
     expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
 
-    const panelText = screen.getByText('WHISPER').firstChild!;
+    const panelText = screen.getByRole('button', { name: '新建会话' });
     const panelRange = document.createRange();
     panelRange.selectNodeContents(panelText);
     selection.removeAllRanges();
