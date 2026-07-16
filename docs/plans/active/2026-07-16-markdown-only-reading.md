@@ -515,32 +515,32 @@ git commit -m "feat: render complete markdown documents"
 - Modify: `src/main/storage/schema.ts`
 - Modify: `src/main/threads/ThreadStore.ts`
 - Modify: `src/main/ai/ReadingActionService.ts`
-- Modify: `src/renderer/features/reading-selection/selectionSnapshot.ts`
-- Modify: `src/renderer/features/reading-selection/useSourceLocator.ts`
+- Modify: `src/renderer/features/reading-selection/renderedTextSelection.ts`
+- Modify: `src/renderer/features/reading-selection/useReadingTargetNavigation.ts`
 - Modify: `src/renderer/features/conversation/draftState.ts`
 - Test: `tests/shared/ipcSchemas.test.ts`
 - Test: `tests/main/ThreadStore.test.ts`
 - Test: `tests/main/ReadingActionService.test.ts`
-- Test: `tests/renderer/selectionSnapshot.test.ts`
+- Test: `tests/renderer/renderedTextSelection.test.ts`
 
 **Interfaces:**
 
-- Produces: `ContentAnchor { blockId: string; offset: number }`。
-- `SelectionSnapshot` 产生 `start: ContentAnchor` 与 `end: ContentAnchor`。
+- Produces: `RenderedTextPosition { blockId: string; offsetInBlock: number }`。
+- `RenderedTextSelection` 产生 `start: RenderedTextPosition` 与 `end: RenderedTextPosition`。
 - `ReadingTarget`/`MessageReference` 删除 passage ID 与散落 offset 字段，改用 nullable `start`/`end`。
 
 - [ ] **Step 1: 写跨 block 选区与 IPC 失败测试**
 
 ```ts
-it('把跨 block DOM Range 保存为稳定 anchor', () => {
-  const snapshot = captureSelection(
+it('把跨 block DOM Range 保存为渲染文本位置', () => {
+  const snapshot = createSelectionTargetFromDOMSelection(
     selectionForRange('block-a', 2, 'block-b', 3),
     chapters,
     blocks,
   );
   expect(snapshot).toMatchObject({
-    start: { blockId: 'block-a', offset: 2 },
-    end: { blockId: 'block-b', offset: 3 },
+    start: { blockId: 'block-a', offsetInBlock: 2 },
+    end: { blockId: 'block-b', offsetInBlock: 3 },
   });
 });
 
@@ -551,40 +551,46 @@ it('拒绝旧 passage 引用契约', () => {
 
 - [ ] **Step 2: 运行测试并确认旧契约失败原因正确**
 
-Run: `pnpm vitest run tests/renderer/selectionSnapshot.test.ts tests/shared/ipcSchemas.test.ts tests/main/ThreadStore.test.ts`
+Run: `pnpm vitest run tests/renderer/renderedTextSelection.test.ts tests/shared/ipcSchemas.test.ts tests/main/ThreadStore.test.ts`
 
 Expected: FAIL，类型和 store 仍要求 `startPassageId/endPassageId`。
 
 - [ ] **Step 3: 一次性替换共享与数据库契约**
 
 ```ts
-export interface ContentAnchor {
+export interface RenderedTextPosition {
   blockId: string;
-  offset: number;
+  offsetInBlock: number;
 }
 
-export interface SelectionSnapshot {
+export interface RenderedTextSelection {
   selectedText: string;
-  start: ContentAnchor;
-  end: ContentAnchor;
+  start: RenderedTextPosition;
+  end: RenderedTextPosition;
 }
 ```
 
 `reading_threads` 使用 `target_start_block_id/target_start_offset/target_end_block_id/target_end_offset`；`thread_messages.reference_json` 保存同一结构。因为旧库不兼容，不保留旧列读取 fallback。
 
-- [ ] **Step 4: 更新 capture 与 locate**
+- [ ] **Step 4: 更新 DOM 选区与渲染文本位置的双向转换**
 
 ```ts
-function anchorFromBoundary(node: Node, offset: number): ContentAnchor | null {
+function renderedTextPositionFromDOMBoundary(
+  node: Node,
+  offset: number,
+): RenderedTextPosition | null {
   const element = parentElement(node)?.closest<HTMLElement>('[data-block-id]');
   if (!element?.dataset.blockId) {
     return null;
   }
-  return { blockId: element.dataset.blockId, offset: textOffsetWithin(element, node, offset) };
+  return {
+    blockId: element.dataset.blockId,
+    offsetInBlock: textOffsetWithin(element, node, offset),
+  };
 }
 ```
 
-`useSourceLocator` 通过 `document.getElementById(anchor.blockId)` 定位，再用 TreeWalker 按文本 offset 恢复 Range；找不到 block 时显示现有 notice，不猜测相邻节点。
+`useReadingTargetNavigation` 通过 `blockId` 定位 DOM block，再用 TreeWalker 按 `offsetInBlock` 恢复 Range；找不到 block 时显示现有 notice，不猜测相邻节点。
 
 - [ ] **Step 5: 更新 ThreadStore、ReadingActionService 和 fixture**
 
@@ -592,7 +598,7 @@ function anchorFromBoundary(node: Node, offset: number): ContentAnchor | null {
 
 - [ ] **Step 6: 运行契约、存储和 renderer 测试**
 
-Run: `pnpm vitest run tests/shared/ipcSchemas.test.ts tests/main/ThreadStore.test.ts tests/main/ReadingActionService.test.ts tests/renderer/selectionSnapshot.test.ts tests/renderer/draftState.test.ts tests/renderer/ReaderPage.test.tsx`
+Run: `pnpm vitest run tests/shared/ipcSchemas.test.ts tests/main/ThreadStore.test.ts tests/main/ReadingActionService.test.ts tests/renderer/renderedTextSelection.test.ts tests/renderer/draftState.test.ts tests/renderer/ReaderPage.test.tsx`
 
 Expected: PASS。
 

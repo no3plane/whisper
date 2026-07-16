@@ -35,8 +35,8 @@ const target = {
 };
 const reference: MessageReference = {
   selectedText: '另一段原文',
-  start: { blockId: 'p2', offset: 0 },
-  end: { blockId: 'p2', offset: 5 },
+  start: { blockId: 'p2', offsetInBlock: 0 },
+  end: { blockId: 'p2', offsetInBlock: 5 },
   breadcrumb: [{ chapterId: 'c1', title: '第一章' }],
 };
 

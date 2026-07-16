@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Chapter, MarkdownBlock, ReadingTarget } from '../../src/shared/types';
 import {
-  breadcrumbsForSelection,
-  captureSelection,
-  locateSnapshot,
-} from '../../src/renderer/features/reading-selection/selectionSnapshot';
+  breadcrumbsForRenderedTextSelection,
+  createSelectionTargetFromDOMSelection,
+  renderedTextSelectionToDOMRange,
+} from '../../src/renderer/features/reading-selection/renderedTextSelection';
 
 const chapters: Chapter[] = [
   {
@@ -71,8 +71,8 @@ function select(range: Range) {
   return selection;
 }
 
-describe('selectionSnapshot', () => {
-  it('捕获跨 block 的文本与 block 内偏移', () => {
+describe('renderedTextSelection', () => {
+  it('把跨 block DOM 选区转换为渲染文本位置', () => {
     document.body.innerHTML =
       '<p data-block-id="p1">甲<strong>乙</strong>丙</p><p data-block-id="p2">丁戊己</p>';
     const paragraphs = document.querySelectorAll('p');
@@ -80,22 +80,22 @@ describe('selectionSnapshot', () => {
     range.setStart(paragraphs[0].firstChild!, 0);
     range.setEnd(paragraphs[1].firstChild!, 2);
 
-    expect(captureSelection(select(range), chapters, blocks)).toMatchObject({
+    expect(createSelectionTargetFromDOMSelection(select(range), chapters, blocks)).toMatchObject({
       type: 'selection',
       selectedText: '甲乙丙丁戊',
-      start: { blockId: 'p1', offset: 0 },
-      end: { blockId: 'p2', offset: 2 },
+      start: { blockId: 'p1', offsetInBlock: 0 },
+      end: { blockId: 'p2', offsetInBlock: 2 },
       breadcrumb: [{ chapterId: 'part', title: '上篇' }],
     });
   });
 
   it('跨兄弟章节返回最低共同祖先', () => {
-    expect(breadcrumbsForSelection('p1', 'p2', chapters, blocks)).toEqual([
+    expect(breadcrumbsForRenderedTextSelection('p1', 'p2', chapters, blocks)).toEqual([
       { chapterId: 'part', title: '上篇' },
     ]);
   });
 
-  it('按锚点恢复选区，文本不一致或 block 缺失时拒绝恢复', () => {
+  it('把渲染文本位置恢复为 DOM Range，文本不一致或 block 缺失时拒绝恢复', () => {
     document.body.innerHTML =
       '<article><p data-block-id="p1">甲乙丙</p><p data-block-id="p2">丁戊己</p></article>';
     const snapshot: ReadingTarget = {
@@ -103,15 +103,18 @@ describe('selectionSnapshot', () => {
       chapterId: 'part',
       selectedText: '乙丙丁戊',
       breadcrumb: [],
-      start: { blockId: 'p1', offset: 1 },
-      end: { blockId: 'p2', offset: 2 },
+      start: { blockId: 'p1', offsetInBlock: 1 },
+      end: { blockId: 'p2', offsetInBlock: 2 },
     };
     const root = document.querySelector('article')!;
 
-    expect(locateSnapshot(snapshot, root)?.toString()).toBe('乙丙丁戊');
-    expect(locateSnapshot({ ...snapshot, selectedText: '变化' }, root)).toBeNull();
+    expect(renderedTextSelectionToDOMRange(snapshot, root)?.toString()).toBe('乙丙丁戊');
+    expect(renderedTextSelectionToDOMRange({ ...snapshot, selectedText: '变化' }, root)).toBeNull();
     expect(
-      locateSnapshot({ ...snapshot, end: { blockId: 'missing', offset: 2 } }, root),
+      renderedTextSelectionToDOMRange(
+        { ...snapshot, end: { blockId: 'missing', offsetInBlock: 2 } },
+        root,
+      ),
     ).toBeNull();
   });
 
@@ -121,6 +124,22 @@ describe('selectionSnapshot', () => {
     const range = document.createRange();
     range.setStart(node, 0);
     range.setEnd(node, 1);
-    expect(captureSelection(select(range), chapters, blocks)).toBeNull();
+    expect(createSelectionTargetFromDOMSelection(select(range), chapters, blocks)).toBeNull();
+  });
+
+  it('offsetInBlock 使用 DOM 和 JavaScript 一致的 UTF-16 offset', () => {
+    document.body.innerHTML = '<p data-block-id="p1">甲😀乙</p>';
+    const text = document.querySelector('p')!.firstChild!;
+    const range = document.createRange();
+    range.setStart(text, 1);
+    range.setEnd(text, 3);
+
+    const target = createSelectionTargetFromDOMSelection(select(range), chapters, blocks);
+
+    expect(target).toMatchObject({
+      selectedText: '😀',
+      start: { blockId: 'p1', offsetInBlock: 1 },
+      end: { blockId: 'p1', offsetInBlock: 3 },
+    });
   });
 });

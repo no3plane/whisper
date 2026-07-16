@@ -115,11 +115,17 @@ function mapThreadRow(row: ReadingThreadRow): ReadingThread {
       start:
         row.target_start_block_id === null || row.target_start_offset === null
           ? null
-          : { blockId: row.target_start_block_id, offset: row.target_start_offset },
+          : {
+              blockId: row.target_start_block_id,
+              offsetInBlock: row.target_start_offset,
+            },
       end:
         row.target_end_block_id === null || row.target_end_offset === null
           ? null
-          : { blockId: row.target_end_block_id, offset: row.target_end_offset },
+          : {
+              blockId: row.target_end_block_id,
+              offsetInBlock: row.target_end_offset,
+            },
       selectedText: row.target_selected_text,
       breadcrumb: parseJsonOr(row.target_breadcrumb_json, [], Array.isArray),
     },
@@ -195,8 +201,8 @@ export class ThreadStore {
         thread.target.start?.blockId ?? null,
         thread.target.end?.blockId ?? null,
         thread.target.selectedText,
-        thread.target.start?.offset ?? null,
-        thread.target.end?.offset ?? null,
+        thread.target.start?.offsetInBlock ?? null,
+        thread.target.end?.offsetInBlock ?? null,
         JSON.stringify(thread.target.breadcrumb),
         thread.skillType,
         thread.contextStrategy,

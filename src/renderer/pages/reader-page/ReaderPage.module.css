@@ -83,7 +83,7 @@
   background: color-mix(in srgb, var(--color-accent-amber) 48%, transparent);
 }
 
-.temporarySourceHighlight {
+.temporaryReadingTargetHighlight {
   background: color-mix(in srgb, var(--color-accent-amber) 42%, transparent);
   transition: background-color var(--duration-normal) ease;
 }

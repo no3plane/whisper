@@ -7,8 +7,8 @@ import { schemaSql } from '../../src/main/storage/schema';
 const selectionTarget = {
   type: 'selection' as const,
   chapterId: 'chapter-1',
-  start: { blockId: 'passage-1', offset: 0 },
-  end: { blockId: 'passage-1', offset: 3 },
+  start: { blockId: 'passage-1', offsetInBlock: 0 },
+  end: { blockId: 'passage-1', offsetInBlock: 3 },
   selectedText: '第一段',
   breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
 };
@@ -110,8 +110,8 @@ describe('ThreadStore', () => {
     });
     const reference = {
       selectedText: '引用',
-      start: { blockId: 'passage-2', offset: 1 },
-      end: { blockId: 'passage-2', offset: 3 },
+      start: { blockId: 'passage-2', offsetInBlock: 1 },
+      end: { blockId: 'passage-2', offsetInBlock: 3 },
       breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
     };
     const message = store.addMessage({

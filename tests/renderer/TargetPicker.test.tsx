@@ -10,8 +10,8 @@ afterEach(cleanup);
 const selectionTarget: ReadingTarget = {
   type: 'selection',
   chapterId: 'section',
-  start: { blockId: 'p1', offset: 0 },
-  end: { blockId: 'p1', offset: 4 },
+  start: { blockId: 'p1', offsetInBlock: 0 },
+  end: { blockId: 'p1', offsetInBlock: 4 },
   selectedText: '所谓自由',
   breadcrumb: [
     { chapterId: 'part', title: '第三编' },

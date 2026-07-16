@@ -77,16 +77,16 @@ const blocks: MarkdownBlock[] = [
 const chapterTarget: ReadingTarget = {
   type: 'chapter',
   chapterId: 'c2',
-  start: { blockId: 'p3', offset: 0 },
-  end: { blockId: 'p4', offset: 0 },
+  start: { blockId: 'p3', offsetInBlock: 0 },
+  end: { blockId: 'p4', offsetInBlock: 0 },
   selectedText: '',
   breadcrumb: [{ chapterId: 'c2', title: '第三章' }],
 };
 const selectionTarget: ReadingTarget = {
   type: 'selection',
   chapterId: 'c2',
-  start: { blockId: 'p3', offset: 3 },
-  end: { blockId: 'p3', offset: 7 },
+  start: { blockId: 'p3', offsetInBlock: 3 },
+  end: { blockId: 'p3', offsetInBlock: 7 },
   selectedText: '完整文本',
   breadcrumb: [{ chapterId: 'c2', title: '第三章' }],
 };
@@ -140,8 +140,8 @@ describe('ContextAssembler', () => {
   it('把当轮引用作为独立段落', () => {
     const reference: MessageReference = {
       selectedText: '另一处原文',
-      start: { blockId: 'p1', offset: 0 },
-      end: { blockId: 'p1', offset: 5 },
+      start: { blockId: 'p1', offsetInBlock: 0 },
+      end: { blockId: 'p1', offsetInBlock: 5 },
       breadcrumb: [{ chapterId: 'c1', title: '第一章' }],
     };
     const result = new ContextAssembler().forReadingAction({
@@ -193,8 +193,8 @@ describe('ContextAssembler', () => {
   it('选区 passage 定位失效时仍安全输出精确选区', () => {
     const invalidTarget: ReadingTarget = {
       ...selectionTarget,
-      start: { blockId: 'missing-start', offset: 0 },
-      end: { blockId: 'missing-end', offset: 0 },
+      start: { blockId: 'missing-start', offsetInBlock: 0 },
+      end: { blockId: 'missing-end', offsetInBlock: 0 },
       selectedText: '孤立选区',
     };
     const result = new ContextAssembler().forReadingAction({

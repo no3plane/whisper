@@ -5,8 +5,8 @@ import type { ReadingTarget, ThreadMessage } from '../../src/shared/types';
 const target: ReadingTarget = {
   type: 'selection',
   chapterId: 'c1',
-  start: { blockId: 'p1', offset: 0 },
-  end: { blockId: 'p1', offset: 2 },
+  start: { blockId: 'p1', offsetInBlock: 0 },
+  end: { blockId: 'p1', offsetInBlock: 2 },
   selectedText: '原文',
   breadcrumb: [{ chapterId: 'c1', title: '第一章' }],
 };
@@ -200,8 +200,8 @@ describe('ReadingActionService', () => {
     );
     const reference = {
       selectedText: '引用',
-      start: { blockId: 'p1', offset: 0 },
-      end: { blockId: 'p1', offset: 2 },
+      start: { blockId: 'p1', offsetInBlock: 0 },
+      end: { blockId: 'p1', offsetInBlock: 2 },
       breadcrumb: [],
     };
     await service.followUp(
@@ -420,7 +420,7 @@ describe('ReadingActionService', () => {
     [{ ...target, type: 'selection', start: null }, '框选目标必须包含 block anchor 和文本。'],
     [{ ...target, type: 'selection', selectedText: '' }, '框选目标必须包含 block anchor 和文本。'],
     [
-      { ...target, type: 'selection', start: { blockId: '', offset: 0 } },
+      { ...target, type: 'selection', start: { blockId: '', offsetInBlock: 0 } },
       '框选目标必须包含 block anchor 和文本。',
     ],
   ])('createConversation 拒绝缺少类型必要字段的目标 %#', async (invalidTarget, message) => {

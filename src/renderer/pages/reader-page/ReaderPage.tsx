@@ -13,8 +13,8 @@ import {
 import { RightAiPanel } from '../../features/conversation/RightAiPanel';
 import { useConversationWorkspace } from '../../features/conversation/useConversationWorkspace';
 import { SelectionMenu } from '../../features/reading-selection/SelectionMenu';
-import { captureSelection } from '../../features/reading-selection/selectionSnapshot';
-import { useSourceLocator } from '../../features/reading-selection/useSourceLocator';
+import { createSelectionTargetFromDOMSelection } from '../../features/reading-selection/renderedTextSelection';
+import { useReadingTargetNavigation } from '../../features/reading-selection/useReadingTargetNavigation';
 import { whisper } from '../../api/whisper';
 import { MarkdownDocument } from '../../features/markdown-reading/MarkdownDocument';
 import styles from './ReaderPage.module.css';
@@ -36,7 +36,11 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const readerStageRef = useRef<HTMLElement>(null);
   const outlineModel = useMemo(() => buildOutlineModel(document?.chapters ?? []), [document]);
   const activeChapterId = useReadingPosition(readerStageRef, document?.blocks ?? []);
-  const locateSource = useSourceLocator(articleRef, styles.temporarySourceHighlight, setNotice);
+  const navigateToReadingTarget = useReadingTargetNavigation(
+    articleRef,
+    styles.temporaryReadingTargetHighlight,
+    setNotice,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -82,14 +86,18 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     if (!document) {
       return;
     }
-    const selected = window.getSelection();
-    const next = selected ? captureSelection(selected, document.chapters, document.blocks) : null;
-    if (!next) {
+    const browserSelection = window.getSelection();
+    const selectionTarget = browserSelection
+      ? createSelectionTargetFromDOMSelection(browserSelection, document.chapters, document.blocks)
+      : null;
+    if (!selectionTarget) {
       return;
     }
-    setSelection(next);
+    setSelection(selectionTarget);
     if (activeView?.type === 'draft') {
-      setDraft((current) => (current ? applyAutomaticSelection(current, next) : current));
+      setDraft((current) =>
+        current ? applyAutomaticSelection(current, selectionTarget) : current,
+      );
     }
   }
   function startFromSelection() {
@@ -110,11 +118,11 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
       breadcrumb: selection.breadcrumb,
     });
   }
-  function locate(threadId: string, reference?: MessageReference | null) {
+  function navigateToConversationTarget(threadId: string, reference?: MessageReference | null) {
     const item = threads.find(({ thread }) => thread.id === threadId);
-    const snapshot = reference ?? item?.thread.target;
-    if (snapshot) {
-      locateSource(snapshot);
+    const targetToReveal = reference ?? item?.thread.target;
+    if (targetToReveal) {
+      navigateToReadingTarget(targetToReveal);
     }
   }
   function navigateToChapter(chapter: Chapter) {
@@ -203,7 +211,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
           selectTarget: (target) =>
             setDraft((current) => (current ? selectTarget(current, target) : current)),
         }}
-        onLocate={locate}
+        onLocate={navigateToConversationTarget}
       />
     </section>
   );

@@ -18,27 +18,28 @@ export interface ChapterCrumb {
   title: string;
 }
 
-export interface SelectionSnapshot {
+export interface RenderedTextSelection {
   selectedText: string;
-  start: ContentAnchor;
-  end: ContentAnchor;
+  start: RenderedTextPosition;
+  end: RenderedTextPosition;
 }
 
-export interface ContentAnchor {
+/** Markdown block 渲染文本中的 UTF-16 位置。 */
+export interface RenderedTextPosition {
   blockId: string;
-  offset: number;
+  offsetInBlock: number;
 }
 
 export interface ReadingTarget {
   type: ReadingTargetType;
   chapterId: string | null;
-  start: ContentAnchor | null;
-  end: ContentAnchor | null;
+  start: RenderedTextPosition | null;
+  end: RenderedTextPosition | null;
   selectedText: string;
   breadcrumb: ChapterCrumb[];
 }
 
-export interface MessageReference extends SelectionSnapshot {
+export interface MessageReference extends RenderedTextSelection {
   breadcrumb: ChapterCrumb[];
 }
 

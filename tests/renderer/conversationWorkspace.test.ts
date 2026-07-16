@@ -71,8 +71,8 @@ describe('conversationWorkspaceReducer', () => {
       ...initialized,
       pendingReference: {
         selectedText: '引用',
-        start: { blockId: 'p1', offset: 0 },
-        end: { blockId: 'p1', offset: 2 },
+        start: { blockId: 'p1', offsetInBlock: 0 },
+        end: { blockId: 'p1', offsetInBlock: 2 },
         breadcrumb: [],
       },
     };

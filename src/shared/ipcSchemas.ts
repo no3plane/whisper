@@ -11,11 +11,18 @@ const breadcrumbSchema = z
   })
   .strict();
 
+const renderedTextPositionSchema = z
+  .object({
+    blockId: nonEmptyString,
+    offsetInBlock: z.number().int().nonnegative(),
+  })
+  .strict();
+
 const referenceSchema = z
   .object({
     selectedText: z.string(),
-    start: z.object({ blockId: nonEmptyString, offset: z.number().int().nonnegative() }).strict(),
-    end: z.object({ blockId: nonEmptyString, offset: z.number().int().nonnegative() }).strict(),
+    start: renderedTextPositionSchema,
+    end: renderedTextPositionSchema,
     breadcrumb: z.array(breadcrumbSchema),
   })
   .strict();

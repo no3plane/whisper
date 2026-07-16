@@ -317,12 +317,12 @@ export class ReadingActionService {
     if (!['book', 'chapter', 'selection'].includes(target.type)) {
       throw new Error('解读目标类型无效。');
     }
-    const validAnchor = (value: unknown) =>
+    const validRenderedTextPosition = (value: unknown) =>
       value === null ||
       (typeof value === 'object' &&
         value !== null &&
         typeof (value as { blockId?: unknown }).blockId === 'string' &&
-        typeof (value as { offset?: unknown }).offset === 'number');
+        typeof (value as { offsetInBlock?: unknown }).offsetInBlock === 'number');
     const validBreadcrumb =
       Array.isArray(target.breadcrumb) &&
       target.breadcrumb.every(
@@ -330,8 +330,8 @@ export class ReadingActionService {
       );
     if (
       !(target.chapterId === null || typeof target.chapterId === 'string') ||
-      !validAnchor(target.start) ||
-      !validAnchor(target.end) ||
+      !validRenderedTextPosition(target.start) ||
+      !validRenderedTextPosition(target.end) ||
       typeof target.selectedText !== 'string' ||
       !validBreadcrumb
     ) {
@@ -376,8 +376,8 @@ export class ReadingActionService {
       typeof reference.selectedText !== 'string' ||
       !reference.start?.blockId ||
       !reference.end?.blockId ||
-      typeof reference.start.offset !== 'number' ||
-      typeof reference.end.offset !== 'number' ||
+      typeof reference.start.offsetInBlock !== 'number' ||
+      typeof reference.end.offsetInBlock !== 'number' ||
       !validBreadcrumb
     ) {
       throw new Error('引用字段无效。');
