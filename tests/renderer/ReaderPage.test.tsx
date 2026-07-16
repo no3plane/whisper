@@ -469,6 +469,32 @@ describe('ReaderPage 会话编排', () => {
     expect(scroll).toHaveBeenCalledOnce();
   });
 
+  it('回到原文产生的程序化选区不触发选区操作', async () => {
+    const selectionThread = {
+      ...thread,
+      target: {
+        type: 'selection' as const,
+        chapterId: 'c1',
+        start: { blockId: 'p-body', offsetInBlock: 0 },
+        end: { blockId: 'p-body', offsetInBlock: 4 },
+        selectedText: '所谓自由',
+        breadcrumb: [],
+      },
+      status: 'ready' as const,
+    };
+    api.threads.listWithMessagesByBook.mockResolvedValueOnce({
+      threads: [{ thread: selectionThread, messages: [] }],
+      activeThreadId: 't1',
+    });
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+
+    fireEvent.click(screen.getByRole('button', { name: '回到原文' }));
+    fireEvent(document, new Event('selectionchange'));
+
+    expect(screen.queryByRole('toolbar', { name: '选区操作' })).toBeNull();
+  });
+
   it('手动选择章节目标后以章节目标创建会话', async () => {
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
     await screen.findByText('所谓自由并不是任性。');
@@ -480,7 +506,7 @@ describe('ReaderPage 会话编排', () => {
     const selection = window.getSelection()!;
     selection.removeAllRanges();
     selection.addRange(range);
-    fireEvent.mouseUp(screen.getByText('所谓自由并不是任性。'));
+    fireEvent(document, new Event('selectionchange'));
     fireEvent.click(await screen.findByRole('button', { name: '第一章' }));
     fireEvent.change(screen.getByPlaceholderText('你想了解什么？'), {
       target: { value: '解释本章' },
@@ -493,6 +519,78 @@ describe('ReaderPage 会话编排', () => {
         }),
       ),
     );
+  });
+
+  it('浏览器在 mouseup 后折叠选区时清除选区菜单和自动选区目标', async () => {
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
+    const paragraph = screen.getByText('所谓自由并不是任性。');
+    const text = paragraph.firstChild!;
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, 4);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    fireEvent(document, new Event('selectionchange'));
+    expect(screen.getByRole('button', { name: '设为解读目标' })).toBeTruthy();
+
+    const collapsedRange = document.createRange();
+    collapsedRange.setStart(text, 4);
+    collapsedRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(collapsedRange);
+    fireEvent(document, new Event('selectionchange'));
+
+    expect(screen.queryByRole('button', { name: '设为解读目标' })).toBeNull();
+    expect(screen.getByText('完整全书')).toBeTruthy();
+  });
+
+  it('浏览器清空正文选区的所有 Range 时清除选区状态', async () => {
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
+    const text = screen.getByText('所谓自由并不是任性。').firstChild!;
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, 4);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    fireEvent(document, new Event('selectionchange'));
+    expect(screen.getByRole('button', { name: '设为解读目标' })).toBeTruthy();
+
+    selection.removeAllRanges();
+    fireEvent(document, new Event('selectionchange'));
+
+    expect(screen.queryByRole('button', { name: '设为解读目标' })).toBeNull();
+    expect(screen.getByText('完整全书')).toBeTruthy();
+  });
+
+  it('阅读正文外的选区变化不影响正文选区状态', async () => {
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
+    const paragraphText = screen.getByText('所谓自由并不是任性。').firstChild!;
+    const selection = window.getSelection()!;
+    const readingRange = document.createRange();
+    readingRange.setStart(paragraphText, 0);
+    readingRange.setEnd(paragraphText, 4);
+    selection.removeAllRanges();
+    selection.addRange(readingRange);
+    fireEvent(document, new Event('selectionchange'));
+    expect(screen.getByRole('button', { name: '设为解读目标' })).toBeTruthy();
+
+    const panelText = screen.getByText('WHISPER').firstChild!;
+    const panelRange = document.createRange();
+    panelRange.selectNodeContents(panelText);
+    selection.removeAllRanges();
+    selection.addRange(panelRange);
+    fireEvent(document, new Event('selectionchange'));
+
+    expect(screen.getByRole('button', { name: '设为解读目标' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '框选内容' })).toBeTruthy();
   });
 
   it('关闭活动 Tab 后激活相邻 Tab 并清除待发送引用', async () => {
@@ -525,7 +623,7 @@ describe('ReaderPage 会话编排', () => {
     range.setEnd(text, 2);
     window.getSelection()!.removeAllRanges();
     window.getSelection()!.addRange(range);
-    fireEvent.mouseUp(screen.getByText('所谓自由并不是任性。'));
+    fireEvent(document, new Event('selectionchange'));
     fireEvent.click(screen.getByRole('button', { name: '引用到当前会话' }));
     expect(document.querySelector(`.${panelStyles.pendingReference} blockquote`)?.textContent).toBe(
       '所谓',

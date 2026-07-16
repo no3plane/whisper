@@ -37,7 +37,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const readerStageRef = useRef<HTMLElement>(null);
   const outlineModel = useMemo(() => buildOutlineModel(document?.chapters ?? []), [document]);
   const activeChapterId = useReadingPosition(readerStageRef, document?.blocks ?? []);
-  const navigateToReadingTarget = useReadingTargetNavigation(
+  const { navigateToReadingTarget, isRevealedSelection } = useReadingTargetNavigation(
     articleRef,
     styles.temporaryReadingTargetHighlight,
     setNotice,
@@ -77,33 +77,72 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     };
   }, [navigationChapterId]);
 
+  useEffect(() => {
+    function clearReadingSelection() {
+      setSelection(null);
+      if (activeView?.type === 'draft') {
+        setDraft((current) => (current ? clearAutomaticSelection(current) : current));
+      }
+    }
+
+    function syncSelection() {
+      if (!document) {
+        return;
+      }
+      const browserSelection = window.getSelection();
+      const article = articleRef.current;
+      if (!browserSelection || !article) {
+        return;
+      }
+      if (browserSelection.rangeCount === 0) {
+        if (!selection) {
+          return;
+        }
+        clearReadingSelection();
+        return;
+      }
+      if (browserSelection.rangeCount !== 1) {
+        return;
+      }
+      const range = browserSelection.getRangeAt(0);
+      if (!article.contains(range.commonAncestorContainer)) {
+        return;
+      }
+      if (isRevealedSelection(browserSelection)) {
+        return;
+      }
+      const selectionTarget = createSelectionTargetFromDOMSelection(
+        browserSelection,
+        document.chapters,
+        document.blocks,
+      );
+      if (!selectionTarget) {
+        clearReadingSelection();
+        return;
+      }
+      setSelection(selectionTarget);
+      if (activeView?.type !== 'draft') {
+        return;
+      }
+      setDraft((current) => {
+        if (!current) {
+          return current;
+        }
+        return applyAutomaticSelection(current, selectionTarget);
+      });
+    }
+
+    globalThis.document.addEventListener('selectionchange', syncSelection);
+    return () => {
+      globalThis.document.removeEventListener('selectionchange', syncSelection);
+    };
+  }, [activeView?.type, document, isRevealedSelection, selection]);
+
   function openDraft() {
     if (document) {
       setDraft(createBookDraft(bookId, document.book.defaultContextStrategy));
     }
     conversation.commands.selectView({ type: 'draft' });
-  }
-  function updateSelection() {
-    if (!document) {
-      return;
-    }
-    const browserSelection = window.getSelection();
-    const selectionTarget = browserSelection
-      ? createSelectionTargetFromDOMSelection(browserSelection, document.chapters, document.blocks)
-      : null;
-    if (!selectionTarget) {
-      setSelection(null);
-      if (activeView?.type === 'draft') {
-        setDraft((current) => (current ? clearAutomaticSelection(current) : current));
-      }
-      return;
-    }
-    setSelection(selectionTarget);
-    if (activeView?.type === 'draft') {
-      setDraft((current) =>
-        current ? applyAutomaticSelection(current, selectionTarget) : current,
-      );
-    }
   }
   function startFromSelection() {
     if (!selection || !document || !draft) {
@@ -173,13 +212,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         </div>
       </nav>
       <main ref={readerStageRef} className={styles.readerStage}>
-        <article
-          ref={articleRef}
-          className={styles.readerPaper}
-          aria-label="阅读正文"
-          onMouseUp={updateSelection}
-          onKeyUp={updateSelection}
-        >
+        <article ref={articleRef} className={styles.readerPaper} aria-label="阅读正文">
           <header className={styles.readerHeader}>
             <span>WHISPER READING</span>
             <h1>{document.book.title}</h1>

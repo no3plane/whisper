@@ -32,6 +32,15 @@ export function useReadingTargetNavigation(
 
   useEffect(() => clearRevealedTarget, [clearRevealedTarget]);
 
+  const isRevealedSelection = useCallback((selection: Selection | null) => {
+    const revealedRange = revealedDOMRange.current;
+    return Boolean(
+      revealedRange &&
+      selection?.rangeCount === 1 &&
+      rangesEqual(selection.getRangeAt(0), revealedRange),
+    );
+  }, []);
+
   const navigateToReadingTarget = useCallback(
     (target: ReadingTarget | MessageReference) => {
       clearRevealedTarget();
@@ -72,7 +81,7 @@ export function useReadingTargetNavigation(
     [articleRef, clearRevealedTarget, onNotice, temporaryHighlightClass],
   );
 
-  return navigateToReadingTarget;
+  return { navigateToReadingTarget, isRevealedSelection };
 }
 
 function rangesEqual(left: Range, right: Range) {
