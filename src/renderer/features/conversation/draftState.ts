@@ -60,6 +60,16 @@ export function applyAutomaticSelection(
   return { ...draft, target: selection, skillType };
 }
 
+export function clearAutomaticSelection(draft: ConversationDraft): ConversationDraft {
+  if (draft.mode === 'manual' || draft.target.type !== 'selection') {
+    return draft;
+  }
+  const target = bookTarget();
+  const skillType =
+    draft.skillType && isSkillAllowed(target.type, draft.skillType) ? draft.skillType : null;
+  return { ...draft, target, skillType };
+}
+
 export function selectTarget(draft: ConversationDraft, target: ReadingTarget): ConversationDraft {
   const skillType =
     draft.skillType && isSkillAllowed(target.type, draft.skillType) ? draft.skillType : null;

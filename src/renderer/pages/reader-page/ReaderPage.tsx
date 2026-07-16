@@ -6,6 +6,7 @@ import { useReadingPosition } from '../../features/book-outline/useReadingPositi
 import {
   createBookDraft,
   applyAutomaticSelection,
+  clearAutomaticSelection,
   replaceDraftFromSelection,
   selectTarget,
   type ConversationDraft,
@@ -91,6 +92,10 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
       ? createSelectionTargetFromDOMSelection(browserSelection, document.chapters, document.blocks)
       : null;
     if (!selectionTarget) {
+      setSelection(null);
+      if (activeView?.type === 'draft') {
+        setDraft((current) => (current ? clearAutomaticSelection(current) : current));
+      }
       return;
     }
     setSelection(selectionTarget);
