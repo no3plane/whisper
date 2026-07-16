@@ -1,4 +1,5 @@
-import type { MessageReference } from '../../../shared/types';
+import type { ContextStrategy, MessageReference, ReadingTarget } from '../../../shared/types';
+import { BookCognitionMenu } from './BookCognitionMenu';
 import type { ConversationDraft } from './draftState';
 import type { ThreadItem } from './conversationWorkspace';
 import type { ConversationController } from './useConversationWorkspace';
@@ -20,10 +21,22 @@ export interface DraftController {
 export interface RightAiPanelProps {
   conversation: ConversationController;
   draft: DraftController;
+  targetOptions: ReadingTarget[];
+  bookTitle: string;
+  contextStrategy: ContextStrategy;
+  onContextStrategyChange(strategy: ContextStrategy): Promise<void>;
   onLocate: (threadId: string, reference?: MessageReference | null) => void;
 }
 
-export function RightAiPanel({ conversation, draft, onLocate }: RightAiPanelProps) {
+export function RightAiPanel({
+  conversation,
+  draft,
+  targetOptions,
+  bookTitle,
+  contextStrategy,
+  onContextStrategyChange,
+  onLocate,
+}: RightAiPanelProps) {
   const { workspace, commands } = conversation;
   const openThreads = workspace.openThreadIds
     .map((id) => workspace.threads.find((item) => item.thread.id === id))
@@ -36,17 +49,25 @@ export function RightAiPanel({ conversation, draft, onLocate }: RightAiPanelProp
 
   return (
     <aside className={styles.panel} aria-label="书旁低语">
-      <ThreadTabs
-        activeView={workspace.activeView}
-        openThreads={openThreads}
-        onOpenDraft={draft.open}
-        onSelectThread={commands.selectThread}
-        onCloseThread={commands.closeThread}
-        onOpenHistory={() => commands.selectView({ type: 'history' })}
-      />
+      <div className={styles.panelTop}>
+        <ThreadTabs
+          activeView={workspace.activeView}
+          openThreads={openThreads}
+          onOpenDraft={draft.open}
+          onSelectThread={commands.selectThread}
+          onCloseThread={commands.closeThread}
+          onOpenHistory={() => commands.selectView({ type: 'history' })}
+        />
+        <BookCognitionMenu
+          bookTitle={bookTitle}
+          value={contextStrategy}
+          onChange={onContextStrategyChange}
+        />
+      </div>
       {workspace.activeView?.type === 'draft' ? (
         <DraftComposer
           draft={draft.value}
+          targetOptions={targetOptions}
           onUpdate={draft.update}
           onSelectTarget={draft.selectTarget}
           onCreate={commands.createConversation}
@@ -54,9 +75,7 @@ export function RightAiPanel({ conversation, draft, onLocate }: RightAiPanelProp
       ) : active ? (
         <ThreadChat
           item={active}
-          pendingReference={workspace.pendingReference}
           onFollowUp={commands.followUp}
-          onClearReference={() => commands.setReference(null)}
           onRetryMessage={(threadId, messageId) => void commands.retryMessage(threadId, messageId)}
           onLocate={onLocate}
         />

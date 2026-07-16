@@ -32,6 +32,16 @@ export function isSkillAllowed(type: ReadingTargetType, skill: ReadingSkillType)
   return skillsForTarget(type).some((item) => item.id === skill);
 }
 
+export function labelForSkill(skill: ReadingSkillType): string {
+  for (const definitions of Object.values(SKILLS_BY_TARGET)) {
+    const definition = definitions.find((item) => item.id === skill);
+    if (definition) {
+      return definition.label;
+    }
+  }
+  return skill;
+}
+
 interface BuildThreadTitleInput {
   targetLabel: string;
   skillLabel: string | null;

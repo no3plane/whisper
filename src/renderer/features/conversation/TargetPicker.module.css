@@ -1,73 +1,75 @@
 .picker {
-  display: grid;
-  gap: var(--space-3);
+  position: relative;
+  min-width: 0;
 }
-.breadcrumb {
+
+.trigger {
+  width: 100%;
+  height: 30px;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-1);
-}
-.breadcrumb button {
-  padding: var(--space-1) var(--space-2);
-  border-color: transparent;
-  color: var(--color-text-secondary);
-  background: transparent;
-}
-.breadcrumb button + button::before {
-  margin-right: var(--space-2);
-  color: var(--color-border-subtle);
-  content: '›';
-}
-.breadcrumb button[aria-pressed='true'] {
-  color: var(--color-text-inverse);
-  background: var(--color-structure-walnut);
-}
-.picker blockquote {
-  margin: 0;
-  padding: var(--space-3);
-  border-left: 3px solid var(--color-accent-amber-strong);
-  background: color-mix(in srgb, var(--color-accent-amber) 12%, transparent);
-  font-family: var(--font-interface);
-  line-height: 1.6;
-}
-.picker fieldset {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: 0;
-  padding: var(--space-3);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
-}
-.picker legend {
-  padding: 0 var(--space-1);
-  color: var(--color-text-secondary);
-  font-size: 0.72rem;
-  font-weight: 700;
-}
-.picker fieldset button[aria-pressed='true'] {
-  border-color: var(--color-structure-walnut);
-  color: var(--color-text-inverse);
-  background: var(--color-structure-walnut);
-}
-.picker label {
-  display: grid;
-  gap: var(--space-2);
-  color: var(--color-text-secondary);
-  font-size: 0.78rem;
-  font-weight: 650;
-}
-.picker select {
-  width: 100%;
-  padding: var(--space-2) var(--space-3);
+  padding: 0 var(--space-2);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
   color: var(--color-text-primary);
   background: var(--color-surface-raised);
+  text-align: left;
 }
-.picker select:focus {
-  border-color: var(--color-accent-amber-strong);
-  outline: 2px solid color-mix(in srgb, var(--color-accent-amber) 38%, transparent);
-  outline-offset: 1px;
+
+.targetValue {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  bottom: calc(100% + var(--space-1));
+  left: 0;
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--color-structure-walnut) 18%, transparent);
+}
+
+.menu button {
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+}
+
+.menu button + button {
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.menu button[aria-selected='true'] {
+  color: var(--color-text-inverse);
+  background: var(--color-structure-walnut);
+}
+
+.optionExcerpt {
+  overflow: hidden;
+  color: inherit;
+  font-size: 0.7rem;
+  opacity: 0.72;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker p {
+  position: absolute;
+  right: 0;
+  margin: 2px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.68rem;
 }

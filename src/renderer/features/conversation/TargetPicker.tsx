@@ -1,102 +1,109 @@
 import { useEffect, useRef, useState } from 'react';
-import { skillsForTarget } from '../../../shared/skills';
+import type { ReadingTarget } from '../../../shared/types';
 import type { ConversationDraft } from './draftState';
-import type { ContextStrategy, ReadingSkillType, ReadingTarget } from '../../../shared/types';
+import { targetLabel } from './targetOptions';
 import styles from './TargetPicker.module.css';
 
 interface TargetPickerProps {
   draft: ConversationDraft;
-  onTargetChange: (target: ReadingTarget) => void;
-  onSkillChange: (skill: ReadingSkillType | null) => void;
+  options: ReadingTarget[];
+  onTargetChange(target: ReadingTarget): void;
 }
 
-const strategyLabels: Record<ContextStrategy, string> = {
-  full_book: '完整全书',
-  compressed_book: '压缩全书',
-  hybrid: '混合',
-};
-
-export function TargetPicker({ draft, onTargetChange, onSkillChange }: TargetPickerProps) {
-  const previousSkill = useRef(draft.skillType);
-  const [skillCleared, setSkillCleared] = useState(false);
+export function TargetPicker({ draft, options, onTargetChange }: TargetPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [methodCleared, setMethodCleared] = useState(false);
+  const previousMethod = useRef(draft.skillType);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (previousSkill.current && !draft.skillType) {
-      setSkillCleared(true);
-    }
-    if (draft.skillType) {
-      setSkillCleared(false);
-    }
-    previousSkill.current = draft.skillType;
+    setMethodCleared(Boolean(previousMethod.current && !draft.skillType));
+    previousMethod.current = draft.skillType;
   }, [draft.skillType]);
 
-  const selectChapter = (index: number) => {
-    const crumb = draft.target.breadcrumb[index];
-    onTargetChange({
-      type: 'chapter',
-      chapterId: crumb.chapterId,
-      start: null,
-      end: null,
-      selectedText: '',
-      breadcrumb: draft.target.breadcrumb.slice(0, index + 1),
-    });
-  };
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    }
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
 
   return (
-    <section className={styles.picker} aria-label="解读设置">
-      <div className={styles.breadcrumb} aria-label="解读目标">
-        {draft.target.type === 'selection' ? (
-          <button type="button" aria-pressed>
-            框选内容
-          </button>
-        ) : draft.target.type === 'book' ? (
-          <button type="button" aria-pressed>
-            整本书
-          </button>
-        ) : null}
-        {draft.target.breadcrumb.map((crumb, index) => (
-          <button type="button" key={crumb.chapterId} onClick={() => selectChapter(index)}>
-            {crumb.title}
-          </button>
-        ))}
-      </div>
-
-      {draft.target.selectedText ? <blockquote>{draft.target.selectedText}</blockquote> : null}
-
-      <fieldset>
-        <legend>技能</legend>
-        {skillsForTarget(draft.target.type).map((skill) => (
-          <button
-            type="button"
-            key={skill.id}
-            aria-pressed={draft.skillType === skill.id}
-            onClick={() => onSkillChange(draft.skillType === skill.id ? null : skill.id)}
-          >
-            {skill.label}
-          </button>
-        ))}
-      </fieldset>
-      {skillCleared ? <p role="status">目标已变化，原技能已清除</p> : null}
-    </section>
+    <div className={styles.picker} ref={rootRef}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={styles.trigger}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className={styles.targetValue}>
+          {targetLabel(draft.target)}
+          {draft.target.type === 'selection' ? ` · ${draft.target.selectedText}` : ''}
+        </span>
+        <span aria-hidden>⌄</span>
+      </button>
+      {open ? (
+        <div className={styles.menu} role="listbox" aria-label="解读目标">
+          {options.map((target) => {
+            const selected = sameTarget(target, draft.target);
+            return (
+              <button
+                type="button"
+                role="option"
+                aria-selected={selected}
+                key={targetKey(target)}
+                onClick={() => {
+                  onTargetChange(target);
+                  setOpen(false);
+                }}
+              >
+                <span>{targetLabel(target)}</span>
+                {target.type === 'selection' ? (
+                  <span className={styles.optionExcerpt}>{target.selectedText}</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+      {methodCleared ? <p role="status">目标已变化，请重新选择解读方式</p> : null}
+    </div>
   );
 }
 
-interface ContextStrategyPickerProps {
-  value: ContextStrategy;
-  onChange: (strategy: ContextStrategy) => void;
+function sameTarget(left: ReadingTarget, right: ReadingTarget) {
+  return (
+    left.type === right.type &&
+    left.chapterId === right.chapterId &&
+    left.start?.blockId === right.start?.blockId &&
+    left.start?.offsetInBlock === right.start?.offsetInBlock
+  );
 }
 
-export function ContextStrategyPicker({ value, onChange }: ContextStrategyPickerProps) {
-  return (
-    <label>
-      全书认知
-      <select value={value} onChange={(event) => onChange(event.target.value as ContextStrategy)}>
-        {Object.entries(strategyLabels).map(([strategy, label]) => (
-          <option key={strategy} value={strategy}>
-            {label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
+function targetKey(target: ReadingTarget) {
+  return [
+    target.type,
+    target.chapterId ?? '',
+    target.start?.blockId ?? '',
+    target.start?.offsetInBlock ?? '',
+  ].join(':');
 }

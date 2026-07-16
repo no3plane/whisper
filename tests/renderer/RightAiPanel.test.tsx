@@ -78,15 +78,14 @@ interface PanelOptions {
   threads?: Array<{ thread: ReadingThread; messages: ThreadMessage[] }>;
   activeView?: React.ComponentProps<typeof RightAiPanel>['conversation']['workspace']['activeView'];
   draft?: React.ComponentProps<typeof RightAiPanel>['draft']['value'];
-  pendingReference?: MessageReference | null;
   onOpenDraft?: ReturnType<typeof vi.fn>;
   onCreate?: ReturnType<typeof vi.fn>;
   onOpenThread?: ReturnType<typeof vi.fn>;
   onDeleteThread?: ReturnType<typeof vi.fn>;
   onFollowUp?: ReturnType<typeof vi.fn>;
-  onClearReference?: ReturnType<typeof vi.fn>;
   onCloseThread?: ReturnType<typeof vi.fn>;
   onRetryMessage?: ReturnType<typeof vi.fn>;
+  onContextStrategyChange?: ReturnType<typeof vi.fn>;
 }
 
 function renderPanel(options: PanelOptions = {}) {
@@ -96,9 +95,9 @@ function renderPanel(options: PanelOptions = {}) {
     onOpenThread: options.onOpenThread ?? vi.fn(),
     onDeleteThread: options.onDeleteThread ?? vi.fn(async () => undefined),
     onFollowUp: options.onFollowUp ?? vi.fn(async () => undefined),
-    onClearReference: options.onClearReference ?? vi.fn(),
     onCloseThread: options.onCloseThread ?? vi.fn(),
     onRetryMessage: options.onRetryMessage ?? vi.fn(async () => undefined),
+    onContextStrategyChange: options.onContextStrategyChange ?? vi.fn(async () => undefined),
   };
   const props: React.ComponentProps<typeof RightAiPanel> = {
     conversation: {
@@ -109,14 +108,12 @@ function renderPanel(options: PanelOptions = {}) {
           options.activeView === undefined
             ? { type: 'thread', threadId: 't1' }
             : options.activeView,
-        pendingReference: options.pendingReference ?? null,
       },
       commands: {
         selectView: vi.fn(),
         selectThread: vi.fn(),
         openThread: spies.onOpenThread,
         closeThread: spies.onCloseThread,
-        setReference: spies.onClearReference,
         createConversation: spies.onCreate,
         deleteThread: spies.onDeleteThread,
         followUp: spies.onFollowUp,
@@ -129,6 +126,10 @@ function renderPanel(options: PanelOptions = {}) {
       update: vi.fn(),
       selectTarget: vi.fn(),
     },
+    targetOptions: [target],
+    bookTitle: '测试书籍',
+    contextStrategy: 'hybrid',
+    onContextStrategyChange: spies.onContextStrategyChange,
     onLocate: vi.fn(),
   };
   const rendered = render(<RightAiPanel {...props} />);
@@ -145,6 +146,31 @@ describe('RightAiPanel', () => {
     expect(screen.getByRole('complementary', { name: '书旁低语' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '新建会话' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '历史' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '全书认知设置' })).toBeTruthy();
+  });
+
+  it('全书认知菜单展示三种策略并立即提交选择', async () => {
+    const onContextStrategyChange = vi.fn(async () => undefined);
+    renderPanel({ onContextStrategyChange });
+    fireEvent.click(screen.getByRole('button', { name: '全书认知设置' }));
+    expect(screen.getByRole('radiogroup', { name: '全书认知' })).toBeTruthy();
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    fireEvent.click(screen.getByRole('radio', { name: /完整全书/ }));
+    await waitFor(() => expect(onContextStrategyChange).toHaveBeenCalledWith('full_book'));
+    expect(screen.queryByRole('radiogroup', { name: '全书认知' })).toBeNull();
+  });
+
+  it('全书认知菜单支持 Escape 和外部点击关闭', () => {
+    renderPanel();
+    const trigger = screen.getByRole('button', { name: '全书认知设置' });
+    fireEvent.click(trigger);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('radiogroup', { name: '全书认知' })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    fireEvent.click(trigger);
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole('radiogroup', { name: '全书认知' })).toBeNull();
   });
 
   it('+ 只打开草稿而不创建会话', () => {
@@ -188,7 +214,7 @@ describe('RightAiPanel', () => {
       draft: { ...createBookDraft('b1', 'hybrid'), skillType: 'book_summary' },
       onCreate,
     });
-    fireEvent.click(screen.getByRole('button', { name: '发送首次问题' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始解读' }));
     expect(onCreate).toHaveBeenCalledWith(
       expect.objectContaining({ skillType: 'book_summary', prompt: '' }),
     );
@@ -196,9 +222,9 @@ describe('RightAiPanel', () => {
 
   it('草稿无技能且 prompt 为空时禁止发送', () => {
     renderPanel({ activeView: { type: 'draft' } });
-    expect(
-      (screen.getByRole('button', { name: '发送首次问题' }) as HTMLButtonElement).disabled,
-    ).toBe(true);
+    expect((screen.getByRole('button', { name: '开始解读' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
   });
 
   it('关闭正式 Tab 只调用 close，streaming 时也可关闭', () => {
@@ -211,49 +237,38 @@ describe('RightAiPanel', () => {
     expect(onCloseThread).toHaveBeenCalledWith('t1');
   });
 
-  it('引用附件要求输入问题并随追问发送', async () => {
+  it('旧引用消息继续展示并可定位', () => {
     const onFollowUp = vi.fn(async () => undefined);
-    const onClearReference = vi.fn();
-    renderPanel({ pendingReference: reference, onFollowUp, onClearReference });
-    expect(screen.getByText('另一段原文')).not.toBeNull();
-    expect((screen.getByRole('button', { name: '发送追问' }) as HTMLButtonElement).disabled).toBe(
-      true,
-    );
-    fireEvent.change(screen.getByPlaceholderText('结合这段文字追问什么？'), {
-      target: { value: '它与全书有什么关系？' },
+    renderPanel({
+      onFollowUp,
+      threads: [{ thread: thread(), messages: [message({ reference })] }],
     });
-    fireEvent.click(screen.getByRole('button', { name: '发送追问' }));
-    await waitFor(() =>
-      expect(onFollowUp).toHaveBeenCalledWith('t1', '它与全书有什么关系？', reference),
-    );
-    expect(onClearReference).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: '引用：第一章' })).toBeTruthy();
+    expect(screen.queryByLabelText('移除引用')).toBeNull();
   });
 
   it('Enter 发送追问，Shift+Enter 保留换行', async () => {
     const onFollowUp = vi.fn(async () => undefined);
     renderPanel({ onFollowUp });
-    const input = screen.getByPlaceholderText('继续追问这个回答');
+    const input = screen.getByPlaceholderText('继续追问……');
     fireEvent.change(input, { target: { value: '第一行' } });
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', shiftKey: true });
     expect(onFollowUp).not.toHaveBeenCalled();
     fireEvent.change(input, { target: { value: '第一行\n第二行' } });
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
-    await waitFor(() => expect(onFollowUp).toHaveBeenCalledWith('t1', '第一行\n第二行', null));
+    await waitFor(() => expect(onFollowUp).toHaveBeenCalledWith('t1', '第一行\n第二行'));
   });
 
-  it('追问发送失败时保留输入和引用', async () => {
+  it('追问发送失败时保留输入', async () => {
     const onFollowUp = vi.fn(async () => {
       throw new Error('网络错误');
     });
-    const onClearReference = vi.fn();
-    renderPanel({ pendingReference: reference, onFollowUp, onClearReference });
-    const input = screen.getByPlaceholderText('结合这段文字追问什么？');
+    renderPanel({ onFollowUp });
+    const input = screen.getByPlaceholderText('继续追问……');
     fireEvent.change(input, { target: { value: '请重试' } });
     fireEvent.click(screen.getByRole('button', { name: '发送追问' }));
     await waitFor(() => expect(onFollowUp).toHaveBeenCalledOnce());
     expect((input as HTMLTextAreaElement).value).toBe('请重试');
-    expect(screen.getByText('另一段原文')).not.toBeNull();
-    expect(onClearReference).not.toHaveBeenCalled();
   });
 
   it('失败消息把原 message ID 传给重试 callback', () => {

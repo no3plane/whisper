@@ -19,7 +19,7 @@ export interface ConversationDraft {
 
 export type DraftValidation =
   | { valid: true }
-  | { valid: false; reason: 'prompt-required' | 'skill-not-allowed' };
+  | { valid: false; reason: 'method-required' | 'method-not-allowed' };
 
 function bookTarget(): ReadingTarget {
   return {
@@ -89,10 +89,11 @@ export function replaceDraftFromSelection(
 }
 
 export function validateDraft(draft: ConversationDraft): DraftValidation {
-  if (draft.skillType && !isSkillAllowed(draft.target.type, draft.skillType)) {
-    return { valid: false, reason: 'skill-not-allowed' };
+  if (!draft.skillType) {
+    return { valid: false, reason: 'method-required' };
   }
-  return draft.skillType || draft.prompt.trim()
-    ? { valid: true }
-    : { valid: false, reason: 'prompt-required' };
+  if (!isSkillAllowed(draft.target.type, draft.skillType)) {
+    return { valid: false, reason: 'method-not-allowed' };
+  }
+  return { valid: true };
 }

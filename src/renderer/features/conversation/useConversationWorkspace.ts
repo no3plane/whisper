@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react';
-import type { CreateConversationInput, MessageReference } from '../../../shared/types';
+import type { CreateConversationInput } from '../../../shared/types';
 import { whisper } from '../../api/whisper';
 import {
   conversationWorkspaceReducer,
@@ -12,10 +12,9 @@ export interface ConversationCommands {
   selectThread(threadId: string): void;
   openThread(threadId: string): void;
   closeThread(threadId: string): void;
-  setReference(reference: MessageReference | null): void;
   createConversation(input: CreateConversationInput): Promise<void>;
   deleteThread(threadId: string): Promise<void>;
-  followUp(threadId: string, question: string, reference: MessageReference | null): Promise<void>;
+  followUp(threadId: string, question: string): Promise<void>;
   retryMessage(threadId: string, messageId: string): Promise<void>;
 }
 
@@ -152,7 +151,6 @@ export function useConversationWorkspace(bookId: string, onError: (message: stri
     selectThread,
     openThread,
     closeThread,
-    setReference: (reference) => dispatch({ type: 'referenceChanged', reference }),
     createConversation: (input: CreateConversationInput) =>
       run(async () => {
         const result = await whisper.ai.createConversation(input);
@@ -164,9 +162,9 @@ export function useConversationWorkspace(bookId: string, onError: (message: stri
         await whisper.threads.delete({ threadId });
         dispatch({ type: 'threadRemoved', threadId });
       }),
-    followUp: (threadId: string, question: string, reference: MessageReference | null) =>
+    followUp: (threadId: string, question: string) =>
       run(async () => {
-        const result = await whisper.ai.followUp({ threadId, question, reference });
+        const result = await whisper.ai.followUp({ threadId, question, reference: null });
         dispatch({ type: 'threadUpserted', thread: result.thread, messages: result.messages });
       }, true),
     retryMessage: (threadId: string, messageId: string) =>

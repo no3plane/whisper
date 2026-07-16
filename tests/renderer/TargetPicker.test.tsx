@@ -32,21 +32,21 @@ const draft: ConversationDraft = {
 };
 
 describe('SelectionMenu', () => {
-  it('选区操作只提供提问入口', () => {
+  it('选区操作只提供新建解读入口', () => {
     render(<SelectionMenu selectedText="一段原文" />);
     expect(screen.getByRole('toolbar', { name: '选区操作' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '新建解读' })).toBeTruthy();
     expect(screen.queryByText('一段原文')).toBeNull();
     expect(screen.queryByRole('button', { name: '设为解读目标' })).toBeNull();
     expect(screen.queryByRole('button', { name: '围绕此处提问' })).toBeNull();
     expect(screen.queryByRole('button', { name: '引用到当前会话' })).toBeNull();
   });
 
-  it('点击提问调用唯一动作', () => {
-    const onAsk = vi.fn();
-    render(<SelectionMenu selectedText="所谓自由" onAsk={onAsk} />);
-    fireEvent.click(screen.getByRole('button', { name: '提问' }));
-    expect(onAsk).toHaveBeenCalledOnce();
+  it('点击新建解读调用唯一动作', () => {
+    const onStartInterpretation = vi.fn();
+    render(<SelectionMenu selectedText="所谓自由" onStartInterpretation={onStartInterpretation} />);
+    fireEvent.click(screen.getByRole('button', { name: '新建解读' }));
+    expect(onStartInterpretation).toHaveBeenCalledOnce();
   });
 
   it('按选区计算结果固定定位', () => {
@@ -58,27 +58,55 @@ describe('SelectionMenu', () => {
 });
 
 describe('TargetPicker', () => {
-  it('点击父章节更新目标且技能只呈现当前目标可用项', () => {
+  it('展开菜单后点击父章节更新目标', () => {
     const onTargetChange = vi.fn();
-    render(<TargetPicker draft={draft} onTargetChange={onTargetChange} onSkillChange={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: '第八章' }));
+    const chapterTarget = {
+      ...selectionTarget,
+      type: 'chapter' as const,
+      chapterId: 'chapter',
+      start: null,
+      end: null,
+      selectedText: '',
+      breadcrumb: selectionTarget.breadcrumb.slice(0, 2),
+    };
+    render(
+      <TargetPicker
+        draft={draft}
+        options={[chapterTarget, selectionTarget]}
+        onTargetChange={onTargetChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /框选内容/ }));
+    fireEvent.click(screen.getByRole('option', { name: '第八章' }));
     expect(onTargetChange).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'chapter', chapterId: 'chapter' }),
     );
-    expect(screen.getAllByRole('button', { name: '白话解释' })).toHaveLength(1);
   });
 
   it('父状态清除技能时显示轻提示', () => {
     const { rerender } = render(
-      <TargetPicker draft={draft} onTargetChange={vi.fn()} onSkillChange={vi.fn()} />,
+      <TargetPicker draft={draft} options={[selectionTarget]} onTargetChange={vi.fn()} />,
     );
     rerender(
       <TargetPicker
         draft={{ ...draft, skillType: null }}
+        options={[selectionTarget]}
         onTargetChange={vi.fn()}
-        onSkillChange={vi.fn()}
       />,
     );
-    expect(screen.getByRole('status').textContent).toContain('技能已清除');
+    expect(screen.getByRole('status').textContent).toContain('重新选择解读方式');
+  });
+
+  it('目标菜单支持 Escape 和外部点击关闭', () => {
+    render(<TargetPicker draft={draft} options={[selectionTarget]} onTargetChange={vi.fn()} />);
+    const trigger = screen.getByRole('button', { name: /框选内容/ });
+    fireEvent.click(trigger);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('listbox', { name: '解读目标' })).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    fireEvent.click(trigger);
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole('listbox', { name: '解读目标' })).toBeNull();
   });
 });

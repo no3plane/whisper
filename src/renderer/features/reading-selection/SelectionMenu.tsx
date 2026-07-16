@@ -3,13 +3,13 @@ import styles from './SelectionMenu.module.css';
 interface SelectionMenuProps {
   selectedText: string;
   position?: { left: number; top: number };
-  onAsk?: () => void;
+  onStartInterpretation?: () => void;
 }
 
 export function SelectionMenu({
   selectedText,
   position,
-  onAsk = () => undefined,
+  onStartInterpretation = () => undefined,
 }: SelectionMenuProps) {
   if (!selectedText.trim()) {
     return null;
@@ -24,7 +24,7 @@ export function SelectionMenu({
       style={position}
       onMouseDown={(event) => event.preventDefault()}
     >
-      <button onClick={onAsk}>提问</button>
+      <button onClick={onStartInterpretation}>新建解读</button>
     </div>
   );
 }

@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { BookDocument, Chapter, MessageReference } from '../../../shared/types';
+import type {
+  BookDocument,
+  Chapter,
+  ContextStrategy,
+  MessageReference,
+} from '../../../shared/types';
 import { BookOutline } from '../../features/book-outline/BookOutline';
 import { buildOutlineModel } from '../../features/book-outline/outlineModel';
 import { useReadingPosition } from '../../features/book-outline/useReadingPosition';
 import {
+  applyAutomaticSelection,
   createBookDraft,
   replaceDraftFromSelection,
   selectTarget,
@@ -11,6 +17,7 @@ import {
 } from '../../features/conversation/draftState';
 import { RightAiPanel } from '../../features/conversation/RightAiPanel';
 import { useConversationWorkspace } from '../../features/conversation/useConversationWorkspace';
+import { buildTargetOptions } from '../../features/conversation/targetOptions';
 import { SelectionMenu } from '../../features/reading-selection/SelectionMenu';
 import { useReadingTargetNavigation } from '../../features/reading-selection/useReadingTargetNavigation';
 import { useReadingSelection } from '../../features/reading-selection/useReadingSelection';
@@ -25,6 +32,9 @@ interface ReaderPageProps {
 export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
   const [document, setDocument] = useState<BookDocument | null>(null);
   const [draft, setDraft] = useState<ConversationDraft | null>(null);
+  const [draftSelectionTarget, setDraftSelectionTarget] = useState<
+    ConversationDraft['target'] | null
+  >(null);
   const [navigationChapterId, setNavigationChapterId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -45,6 +55,22 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
     scrollElRef,
     isRevealedSelection,
   });
+  const targetOptions = useMemo(
+    () => buildTargetOptions(document?.chapters ?? [], activeChapterId, draftSelectionTarget),
+    [activeChapterId, document?.chapters, draftSelectionTarget],
+  );
+
+  useEffect(() => {
+    if (!readingSelection.target) {
+      return;
+    }
+    setDraftSelectionTarget(readingSelection.target);
+    if (conversation.workspace.activeView?.type === 'draft') {
+      setDraft((current) =>
+        current ? applyAutomaticSelection(current, readingSelection.target!) : current,
+      );
+    }
+  }, [conversation.workspace.activeView, readingSelection.target]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,8 +123,27 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
         document.book.defaultContextStrategy,
       ),
     );
+    setDraftSelectionTarget(readingSelection.target);
     readingSelection.dismissMenu();
     conversation.commands.selectView({ type: 'draft' });
+  }
+  async function changeBookContextStrategy(strategy: ContextStrategy) {
+    try {
+      await whisper.books.setContextStrategy({ bookId, strategy });
+      setDocument((current) =>
+        current
+          ? { ...current, book: { ...current.book, defaultContextStrategy: strategy } }
+          : current,
+      );
+      setDraft((current) =>
+        current?.strategySource === 'book-default'
+          ? { ...current, contextStrategy: strategy }
+          : current,
+      );
+    } catch (reason) {
+      setError(messageOf(reason));
+      throw reason;
+    }
   }
   function navigateToConversationTarget(threadId: string, reference?: MessageReference | null) {
     const item = threads.find(({ thread }) => thread.id === threadId);
@@ -159,7 +204,7 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
             <SelectionMenu
               selectedText={readingSelection.target.selectedText}
               position={readingSelection.menuPosition}
-              onAsk={startFromSelection}
+              onStartInterpretation={startFromSelection}
             />
           ) : null}
           {error ? <p className="error">{error}</p> : null}
@@ -173,6 +218,10 @@ export function ReaderPage({ bookId, onBack }: ReaderPageProps) {
       </main>
       <RightAiPanel
         conversation={conversation}
+        targetOptions={targetOptions}
+        bookTitle={document.book.title}
+        contextStrategy={document.book.defaultContextStrategy}
+        onContextStrategyChange={changeBookContextStrategy}
         draft={{
           value: draft,
           open: openDraft,

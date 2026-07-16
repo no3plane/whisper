@@ -174,6 +174,38 @@ describe('ReaderPage 会话编排', () => {
     expect(screen.getByRole('heading', { name: bookDocument.book.title })).toBeTruthy();
   });
 
+  it('修改全书认知后新草稿使用新策略', async () => {
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    fireEvent.click(screen.getByRole('button', { name: '全书认知设置' }));
+    fireEvent.click(screen.getByRole('radio', { name: /完整全书/ }));
+    await waitFor(() =>
+      expect(api.books.setContextStrategy).toHaveBeenCalledWith({
+        bookId: 'b1',
+        strategy: 'full_book',
+      }),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
+    fireEvent.click(screen.getByRole('radio', { name: '总结全书' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始解读' }));
+    await waitFor(() =>
+      expect(api.ai.createConversation).toHaveBeenCalledWith(
+        expect.objectContaining({ contextStrategy: 'full_book' }),
+      ),
+    );
+  });
+
+  it('全书认知保存失败时保留原策略并显示错误', async () => {
+    api.books.setContextStrategy.mockRejectedValueOnce(new Error('保存策略失败'));
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    await screen.findByText('所谓自由并不是任性。');
+    fireEvent.click(screen.getByRole('button', { name: '全书认知设置' }));
+    fireEvent.click(screen.getByRole('radio', { name: /完整全书/ }));
+    expect(await screen.findByText('保存策略失败')).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /混合/ }).getAttribute('aria-checked')).toBe('true');
+  });
+
   it('渲染层级目录并把标题导航和折叠操作分开', async () => {
     const scroll = vi.fn();
     HTMLElement.prototype.scrollIntoView = scroll;
@@ -295,7 +327,7 @@ describe('ReaderPage 会话编排', () => {
       activeThreadId: 't1',
     });
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
-    expect(await screen.findByRole('button', { name: '回到原文' })).toBeTruthy();
+    expect((await screen.findByLabelText('当前解读任务')).textContent).toContain('整本书');
   });
 
   it('activeThreadId 与历史首条不同时只打开 active 会话', async () => {
@@ -328,10 +360,11 @@ describe('ReaderPage 会话编排', () => {
     await screen.findByText('所谓自由并不是任性。');
     fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
     expect(api.ai.createConversation).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByPlaceholderText('你想了解什么？'), {
+    fireEvent.click(screen.getByRole('radio', { name: '总结全书' }));
+    fireEvent.change(screen.getByPlaceholderText('还有特别想了解的吗？（可选）'), {
       target: { value: '全书讲了什么？' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '发送首次问题' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始解读' }));
     await waitFor(() => expect(api.ai.createConversation).toHaveBeenCalledOnce());
   });
 
@@ -345,10 +378,11 @@ describe('ReaderPage 会话编排', () => {
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
     await screen.findByText('所谓自由并不是任性。');
     fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
-    fireEvent.change(screen.getByPlaceholderText('你想了解什么？'), {
+    fireEvent.click(screen.getByRole('radio', { name: '总结全书' }));
+    fireEvent.change(screen.getByPlaceholderText('还有特别想了解的吗？（可选）'), {
       target: { value: '全书讲了什么？' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '发送首次问题' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始解读' }));
 
     listeners.forEach((listener) =>
       listener({
@@ -453,7 +487,18 @@ describe('ReaderPage 会话编排', () => {
     api.threads.listWithMessagesByBook.mockResolvedValueOnce({
       threads: [
         {
-          thread: { ...thread, status: 'ready' },
+          thread: {
+            ...thread,
+            status: 'ready',
+            target: {
+              type: 'selection',
+              chapterId: 'c1',
+              start: { blockId: 'p-body', offsetInBlock: 0 },
+              end: { blockId: 'p-body', offsetInBlock: 4 },
+              selectedText: '所谓自由',
+              breadcrumb: [{ chapterId: 'c1', title: '第一章' }],
+            },
+          },
           messages: [{ ...assistant, status: 'complete' }],
         },
       ],
@@ -465,7 +510,7 @@ describe('ReaderPage 会话编排', () => {
     fireEvent.click(screen.getByRole('button', { name: '历史' }));
     fireEvent.click(screen.getByRole('button', { name: '全书 · 问题' }));
     expect(scroll).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: '回到原文' }));
+    fireEvent.click(screen.getByRole('button', { name: '框选内容 ↗' }));
     expect(scroll).toHaveBeenCalledOnce();
   });
 
@@ -489,7 +534,7 @@ describe('ReaderPage 会话编排', () => {
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
     await screen.findByText('所谓自由并不是任性。');
 
-    fireEvent.click(screen.getByRole('button', { name: '回到原文' }));
+    fireEvent.click(screen.getByRole('button', { name: '框选内容 ↗' }));
     fireEvent(document, new Event('selectionchange'));
 
     expect(screen.queryByRole('toolbar', { name: '选区操作' })).toBeNull();
@@ -507,12 +552,14 @@ describe('ReaderPage 会话编排', () => {
     selection.removeAllRanges();
     selection.addRange(range);
     fireEvent(document, new Event('selectionchange'));
-    fireEvent.click(screen.getByRole('button', { name: '提问' }));
-    fireEvent.click(await screen.findByRole('button', { name: '第一章' }));
-    fireEvent.change(screen.getByPlaceholderText('你想了解什么？'), {
+    fireEvent.click(screen.getByRole('button', { name: '新建解读' }));
+    fireEvent.click(screen.getByRole('button', { name: /框选内容/ }));
+    fireEvent.click(await screen.findByRole('option', { name: '第一章' }));
+    fireEvent.click(screen.getByRole('radio', { name: '概括本章' }));
+    fireEvent.change(screen.getByPlaceholderText('还有特别想了解的吗？（可选）'), {
       target: { value: '解释本章' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '发送首次问题' }));
+    fireEvent.click(screen.getByRole('button', { name: '开始解读' }));
     await waitFor(() =>
       expect(api.ai.createConversation).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -535,7 +582,7 @@ describe('ReaderPage 会话编排', () => {
     selection.removeAllRanges();
     selection.addRange(range);
     fireEvent(document, new Event('selectionchange'));
-    expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '新建解读' })).toBeTruthy();
 
     const collapsedRange = document.createRange();
     collapsedRange.setStart(text, 4);
@@ -544,8 +591,8 @@ describe('ReaderPage 会话编排', () => {
     selection.addRange(collapsedRange);
     fireEvent(document, new Event('selectionchange'));
 
-    expect(screen.queryByRole('button', { name: '提问' })).toBeNull();
-    expect(screen.getByText('完整全书')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '新建解读' })).toBeNull();
+    expect(screen.getByRole('button', { name: /框选内容/ })).toBeTruthy();
   });
 
   it('鼠标拖动选择期间不挂载提问按钮，松开后才显示', async () => {
@@ -561,10 +608,10 @@ describe('ReaderPage 会话编排', () => {
     window.getSelection()!.addRange(range);
     fireEvent(document, new Event('selectionchange'));
 
-    expect(screen.queryByRole('button', { name: '提问' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '新建解读' })).toBeNull();
 
     fireEvent.pointerUp(document);
-    expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '新建解读' })).toBeTruthy();
   });
 
   it('点击既有选区时不在松开鼠标后重新显示提问按钮', async () => {
@@ -578,20 +625,20 @@ describe('ReaderPage 会话编排', () => {
     selection.removeAllRanges();
     selection.addRange(range);
     fireEvent(document, new Event('selectionchange'));
-    expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '新建解读' })).toBeTruthy();
 
     fireEvent.pointerDown(paragraph);
-    expect(screen.queryByRole('button', { name: '提问' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '新建解读' })).toBeNull();
 
     fireEvent.pointerUp(document);
-    expect(screen.queryByRole('button', { name: '提问' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '新建解读' })).toBeNull();
   });
 
-  it('点击提问后才把临时选区写入草稿并保留输入', async () => {
+  it('草稿打开时自动同步新选区并保留输入', async () => {
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
     const paragraph = await screen.findByText('所谓自由并不是任性。');
     fireEvent.click(screen.getByRole('button', { name: '新建会话' }));
-    fireEvent.change(screen.getByPlaceholderText('你想了解什么？'), {
+    fireEvent.change(screen.getByPlaceholderText('还有特别想了解的吗？（可选）'), {
       target: { value: '这句话是什么意思？' },
     });
 
@@ -602,18 +649,10 @@ describe('ReaderPage 会话编排', () => {
     window.getSelection()!.addRange(range);
     fireEvent(document, new Event('selectionchange'));
 
-    expect(screen.getByText('完整全书')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '框选内容' })).toBeNull();
-
-    const askButton = screen.getByRole('button', { name: '提问' });
-    fireEvent.pointerDown(askButton);
-    expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
-    fireEvent.pointerUp(askButton);
-    fireEvent.click(askButton);
-    expect(screen.getByRole('button', { name: '框选内容' })).toBeTruthy();
-    expect((screen.getByPlaceholderText('你想了解什么？') as HTMLTextAreaElement).value).toBe(
-      '这句话是什么意思？',
-    );
+    expect(screen.getByRole('button', { name: /框选内容/ })).toBeTruthy();
+    expect(
+      (screen.getByPlaceholderText('还有特别想了解的吗？（可选）') as HTMLTextAreaElement).value,
+    ).toBe('这句话是什么意思？');
   });
 
   it('浏览器清空正文选区的所有 Range 时清除选区状态', async () => {
@@ -628,13 +667,13 @@ describe('ReaderPage 会话编排', () => {
     selection.removeAllRanges();
     selection.addRange(range);
     fireEvent(document, new Event('selectionchange'));
-    expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '新建解读' })).toBeTruthy();
 
     selection.removeAllRanges();
     fireEvent(document, new Event('selectionchange'));
 
-    expect(screen.queryByRole('button', { name: '提问' })).toBeNull();
-    expect(screen.getByText('完整全书')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '新建解读' })).toBeNull();
+    expect(screen.getByRole('button', { name: /框选内容/ })).toBeTruthy();
   });
 
   it('阅读正文外的选区变化不影响临时正文选区或当前草稿', async () => {
@@ -649,7 +688,7 @@ describe('ReaderPage 会话编排', () => {
     selection.removeAllRanges();
     selection.addRange(readingRange);
     fireEvent(document, new Event('selectionchange'));
-    expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '新建解读' })).toBeTruthy();
 
     const panelText = screen.getByRole('button', { name: '新建会话' });
     const panelRange = document.createRange();
@@ -658,12 +697,11 @@ describe('ReaderPage 会话编排', () => {
     selection.addRange(panelRange);
     fireEvent(document, new Event('selectionchange'));
 
-    expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: '框选内容' })).toBeNull();
-    expect(screen.getByText('完整全书')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '新建解读' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /框选内容/ })).toBeTruthy();
   });
 
-  it('关闭活动 Tab 后激活相邻 Tab 并清除待发送引用', async () => {
+  it('关闭活动 Tab 后激活相邻 Tab', async () => {
     const t2 = { ...thread, id: 't2', title: '第二个会话', status: 'ready' as const };
     api.threads.listWithMessagesByBook.mockResolvedValueOnce({
       threads: [
@@ -676,7 +714,7 @@ describe('ReaderPage 会话编排', () => {
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
     await screen.findByText('第二个会话');
     fireEvent.click(screen.getByRole('button', { name: '关闭“第二个会话”' }));
-    expect(await screen.findByText('全书认知：hybrid')).toBeTruthy();
+    expect((await screen.findByLabelText('当前解读任务')).textContent).toContain('整本书');
   });
 
   it('历史中仅当存在失败的助手消息时展示重试', async () => {

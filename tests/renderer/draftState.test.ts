@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MessageReference, ReadingTarget } from '../../src/shared/types';
+import type { Chapter, MessageReference, ReadingTarget } from '../../src/shared/types';
 import {
   applyAutomaticSelection,
   createBookDraft,
@@ -7,6 +7,10 @@ import {
   selectTarget,
   validateDraft,
 } from '../../src/renderer/features/conversation/draftState';
+import {
+  buildTargetOptions,
+  targetLabel,
+} from '../../src/renderer/features/conversation/targetOptions';
 
 const selection: ReadingTarget = {
   type: 'selection',
@@ -33,7 +37,49 @@ const chapter: ReadingTarget = {
   breadcrumb: [{ chapterId: 'chapter-1', title: '第一章' }],
 };
 
+const chapters: Chapter[] = [
+  {
+    id: 'part-1',
+    bookId: 'book-1',
+    parentChapterId: null,
+    title: '第一部',
+    level: 1,
+    order: 0,
+    headingBlockId: 'h1',
+    sourceStart: 0,
+    sourceEnd: 100,
+  },
+  {
+    id: 'chapter-1',
+    bookId: 'book-1',
+    parentChapterId: 'part-1',
+    title: '第一章',
+    level: 2,
+    order: 1,
+    headingBlockId: 'h2',
+    sourceStart: 10,
+    sourceEnd: 90,
+  },
+];
+
 describe('新会话草稿状态', () => {
+  it('从当前章节路径和选区派生完整目标菜单', () => {
+    const options = buildTargetOptions(chapters, 'chapter-1', selection);
+    expect(options.map((target) => target.type)).toEqual([
+      'book',
+      'chapter',
+      'chapter',
+      'selection',
+    ]);
+    expect(options.map(targetLabel)).toEqual(['整本书', '第一部', '第一章', '框选内容']);
+    expect(options.at(-1)).toBe(selection);
+  });
+
+  it('没有阅读位置和选区时只提供整本书', () => {
+    expect(buildTargetOptions(chapters, null, null)).toEqual([
+      expect.objectContaining({ type: 'book' }),
+    ]);
+  });
   it('默认以整本书为解读目标并继承书籍策略', () => {
     expect(createBookDraft('book-1', 'hybrid')).toMatchObject({
       bookId: 'book-1',
@@ -108,10 +154,13 @@ describe('新会话草稿状态', () => {
     expect(selectTarget(draft, draft.target).skillType).toBe('book_summary');
   });
 
-  it('选择技能后可空输入发送，没有技能时不可空发送', () => {
+  it('选择解读方式后可空输入发送，没有解读方式时不可发送', () => {
     const empty = createBookDraft('book-1', 'full_book');
-    expect(validateDraft(empty)).toEqual({ valid: false, reason: 'prompt-required' });
-    expect(validateDraft({ ...empty, prompt: '  问题  ' })).toEqual({ valid: true });
+    expect(validateDraft(empty)).toEqual({ valid: false, reason: 'method-required' });
+    expect(validateDraft({ ...empty, prompt: '  问题  ' })).toEqual({
+      valid: false,
+      reason: 'method-required',
+    });
     expect(validateDraft({ ...empty, skillType: 'book_summary' })).toEqual({ valid: true });
   });
 
@@ -121,6 +170,6 @@ describe('新会话草稿状态', () => {
       target: selection,
       skillType: 'book_summary' as const,
     };
-    expect(validateDraft(draft)).toEqual({ valid: false, reason: 'skill-not-allowed' });
+    expect(validateDraft(draft)).toEqual({ valid: false, reason: 'method-not-allowed' });
   });
 });

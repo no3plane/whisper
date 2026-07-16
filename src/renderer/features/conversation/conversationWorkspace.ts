@@ -1,9 +1,4 @@
-import type {
-  AiStreamEvent,
-  MessageReference,
-  ReadingThread,
-  ThreadMessage,
-} from '../../../shared/types';
+import type { AiStreamEvent, ReadingThread, ThreadMessage } from '../../../shared/types';
 
 export type AiPanelView =
   | { type: 'draft' }
@@ -20,7 +15,6 @@ export interface ConversationWorkspace {
   threads: ThreadItem[];
   openThreadIds: string[];
   activeView: AiPanelView;
-  pendingReference: MessageReference | null;
 }
 
 export type ConversationWorkspaceAction =
@@ -35,11 +29,10 @@ export type ConversationWorkspaceAction =
   | { type: 'threadClosed'; threadId: string }
   | { type: 'threadRemoved'; threadId: string }
   | { type: 'threadUpserted'; thread: ReadingThread; messages: ThreadMessage[] }
-  | { type: 'streamReceived'; event: AiStreamEvent }
-  | { type: 'referenceChanged'; reference: MessageReference | null };
+  | { type: 'streamReceived'; event: AiStreamEvent };
 
 export function createConversationWorkspace(): ConversationWorkspace {
-  return { threads: [], openThreadIds: [], activeView: null, pendingReference: null };
+  return { threads: [], openThreadIds: [], activeView: null };
 }
 
 export function conversationWorkspaceReducer(
@@ -63,11 +56,10 @@ export function conversationWorkspaceReducer(
         threads: action.threads,
         openThreadIds,
         activeView: activeThreadId ? { type: 'thread', threadId: activeThreadId } : null,
-        pendingReference: null,
       };
     }
     case 'viewChanged':
-      return { ...state, activeView: action.activeView, pendingReference: null };
+      return { ...state, activeView: action.activeView };
     case 'threadOpened':
       return {
         ...state,
@@ -75,7 +67,6 @@ export function conversationWorkspaceReducer(
           ? state.openThreadIds
           : [...state.openThreadIds, action.threadId],
         activeView: { type: 'thread', threadId: action.threadId },
-        pendingReference: null,
       };
     case 'threadClosed': {
       const index = state.openThreadIds.indexOf(action.threadId);
@@ -93,7 +84,6 @@ export function conversationWorkspaceReducer(
             ? { type: 'thread', threadId: neighbor }
             : null
           : state.activeView,
-        pendingReference: null,
       };
     }
     case 'threadRemoved':
@@ -110,8 +100,6 @@ export function conversationWorkspaceReducer(
     }
     case 'streamReceived':
       return { ...state, threads: updateThreadsFromStream(state.threads, action.event) };
-    case 'referenceChanged':
-      return { ...state, pendingReference: action.reference };
   }
 }
 

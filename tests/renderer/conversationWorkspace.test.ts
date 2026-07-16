@@ -57,7 +57,7 @@ describe('conversationWorkspaceReducer', () => {
     expect(state.activeView).toEqual({ type: 'thread', threadId: 't2' });
   });
 
-  it('关闭活动 Tab 时选择相邻 Tab 并清除引用', () => {
+  it('关闭活动 Tab 时选择相邻 Tab', () => {
     const initialized = conversationWorkspaceReducer(createConversationWorkspace(), {
       type: 'initialized',
       threads: [
@@ -67,23 +67,12 @@ describe('conversationWorkspaceReducer', () => {
       savedOpenThreadIds: ['t1', 't2'],
       activeThreadId: 't1',
     });
-    const withReference = {
-      ...initialized,
-      pendingReference: {
-        selectedText: '引用',
-        start: { blockId: 'p1', offsetInBlock: 0 },
-        end: { blockId: 'p1', offsetInBlock: 2 },
-        breadcrumb: [],
-      },
-    };
-
-    const state = conversationWorkspaceReducer(withReference, {
+    const state = conversationWorkspaceReducer(initialized, {
       type: 'threadClosed',
       threadId: 't1',
     });
 
     expect(state.openThreadIds).toEqual(['t2']);
     expect(state.activeView).toEqual({ type: 'thread', threadId: 't2' });
-    expect(state.pendingReference).toBeNull();
   });
 });

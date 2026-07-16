@@ -1,28 +1,21 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { labelForSkill } from '../../../shared/skills';
 import type { MessageReference } from '../../../shared/types';
 import type { ThreadItem } from './conversationWorkspace';
+import { targetLabel } from './targetOptions';
 import type { ConversationCommands } from './useConversationWorkspace';
 import styles from './RightAiPanel.module.css';
 
 interface ThreadChatProps {
   item: ThreadItem;
-  pendingReference: MessageReference | null;
   onFollowUp: ConversationCommands['followUp'];
-  onClearReference(): void;
   onRetryMessage(threadId: string, messageId: string): void;
   onLocate(threadId: string, reference?: MessageReference | null): void;
 }
 
-export function ThreadChat({
-  item,
-  pendingReference,
-  onFollowUp,
-  onClearReference,
-  onRetryMessage,
-  onLocate,
-}: ThreadChatProps) {
+export function ThreadChat({ item, onFollowUp, onRetryMessage, onLocate }: ThreadChatProps) {
   const [question, setQuestion] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -48,11 +41,8 @@ export function ThreadChat({
     }
     setIsSubmitting(true);
     try {
-      await onFollowUp(item.thread.id, nextQuestion, pendingReference);
+      await onFollowUp(item.thread.id, nextQuestion);
       setQuestion('');
-      if (pendingReference) {
-        onClearReference();
-      }
     } catch {
       // The conversation controller reports the error; keep the draft available for retry.
     } finally {
@@ -83,9 +73,17 @@ export function ThreadChat({
     undefined;
   return (
     <div className={styles.threadChat}>
-      <header>
-        <p className="muted">全书认知：{item.thread.contextStrategy}</p>
-        <button onClick={() => onLocate(item.thread.id)}>回到原文</button>
+      <header className={styles.threadTaskSummary} aria-label="当前解读任务">
+        {item.thread.target.type === 'book' ? (
+          <span className={styles.threadTarget}>{targetLabel(item.thread.target)}</span>
+        ) : (
+          <button className={styles.threadTarget} onClick={() => onLocate(item.thread.id)}>
+            {targetLabel(item.thread.target)} ↗
+          </button>
+        )}
+        <span aria-hidden>·</span>
+        <span>{item.thread.skillType ? labelForSkill(item.thread.skillType) : '自由提问'}</span>
+        <span className={styles.readOnly}>只读</span>
       </header>
       {streamError ? <p className="error">{streamError}</p> : null}
       <div className={styles.threadRoot}>
@@ -120,26 +118,17 @@ export function ThreadChat({
           ) : null}
         </div>
         <div className={styles.threadComposerArea}>
-          {pendingReference ? (
-            <aside className={styles.pendingReference}>
-              <span>{pendingReference.breadcrumb.map((crumb) => crumb.title).join(' > ')}</span>
-              <blockquote>{pendingReference.selectedText}</blockquote>
-              <button aria-label="移除引用" onClick={onClearReference}>
-                ×
-              </button>
-            </aside>
-          ) : null}
           <form className={styles.composer} onSubmit={submit}>
             <textarea
               className={styles.composerInput}
-              placeholder={pendingReference ? '结合这段文字追问什么？' : '继续追问这个回答'}
+              placeholder="继续追问……"
               rows={1}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               onKeyDown={handleKeyDown}
             />
             <button className={styles.composerSend} aria-label="发送追问" disabled={!canSend}>
-              发送
+              ↑
             </button>
           </form>
         </div>
