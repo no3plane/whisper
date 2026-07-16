@@ -567,6 +567,26 @@ describe('ReaderPage 会话编排', () => {
     expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
   });
 
+  it('点击既有选区时不在松开鼠标后重新显示提问按钮', async () => {
+    render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
+    const paragraph = await screen.findByText('所谓自由并不是任性。');
+    const text = paragraph.firstChild!;
+    const range = document.createRange();
+    range.setStart(text, 0);
+    range.setEnd(text, 4);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    fireEvent(document, new Event('selectionchange'));
+    expect(screen.getByRole('button', { name: '提问' })).toBeTruthy();
+
+    fireEvent.pointerDown(paragraph);
+    expect(screen.queryByRole('button', { name: '提问' })).toBeNull();
+
+    fireEvent.pointerUp(document);
+    expect(screen.queryByRole('button', { name: '提问' })).toBeNull();
+  });
+
   it('点击提问后才把临时选区写入草稿并保留输入', async () => {
     render(<ReaderPage bookId="b1" onBack={vi.fn()} />);
     const paragraph = await screen.findByText('所谓自由并不是任性。');

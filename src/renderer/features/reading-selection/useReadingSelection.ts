@@ -22,7 +22,11 @@ export function useReadingSelection({
 }: UseReadingSelectionInput) {
   const [target, setTarget] = useState<ReadingTarget | null>(null);
   const [menuPosition, setMenuPosition] = useState<SelectionMenuPosition | null>(null);
+  // 按住正文时可能正在拖选，按钮应暂时隐藏；记录从按下到松开的操作是否仍在进行。
   const isPointerSelectingRef = useRef(false);
+  // 单击旧选区时，pointerup 早于选区折叠，会让按钮闪现；
+  // 记录本次按下后选区是否真的变化，只有变化过才在松开后显示按钮。
+  const didPointerSelectionChangeRef = useRef(false);
 
   useEffect(() => {
     function clearSelection() {
@@ -67,12 +71,18 @@ export function useReadingSelection({
     }
 
     const article = articleElRef.current;
-    const handleSelectionChange = () => syncSelection(!isPointerSelectingRef.current);
+    const handleSelectionChange = () => {
+      if (isPointerSelectingRef.current) {
+        didPointerSelectionChangeRef.current = true;
+      }
+      syncSelection(!isPointerSelectingRef.current);
+    };
     const handlePointerDown = (event: PointerEvent) => {
       if (event.target instanceof Element && event.target.closest('[data-selection-menu]')) {
         return;
       }
       isPointerSelectingRef.current = true;
+      didPointerSelectionChangeRef.current = false;
       setMenuPosition(null);
     };
     const handlePointerUp = () => {
@@ -80,10 +90,13 @@ export function useReadingSelection({
         return;
       }
       isPointerSelectingRef.current = false;
-      syncSelection(true);
+      if (didPointerSelectionChangeRef.current) {
+        syncSelection(true);
+      }
     };
     const handlePointerCancel = () => {
       isPointerSelectingRef.current = false;
+      didPointerSelectionChangeRef.current = false;
       setMenuPosition(null);
     };
 
@@ -133,9 +146,7 @@ function positionSelectionMenu(range: Range, scrollElement: HTMLElement | null) 
     globalThis.innerHeight - menuHeight - edge,
   );
   const top =
-    below <= maxTop
-      ? below
-      : Math.max(scrollRect.top + edge, selectionRect.top - menuHeight - gap);
+    below <= maxTop ? below : Math.max(scrollRect.top + edge, selectionRect.top - menuHeight - gap);
   return { left: Math.round(left), top: Math.round(top) };
 }
 
